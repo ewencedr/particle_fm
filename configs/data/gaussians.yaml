@@ -1,0 +1,12 @@
+_target_: src.data.torchdyn_datamodule.TorchdynDataModule
+data_dir: ${paths.data_dir}
+batch_size: 128
+train_val_test_split: [20_000, 2_000, 4_000]
+num_workers: 32
+pin_memory: False
+dataset_type: "gaussians"
+n_gaussians: 6
+std_gaussians: 0.5
+radius: 4
+dim: 2
+
