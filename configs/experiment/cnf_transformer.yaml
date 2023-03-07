@@ -1,0 +1,51 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=cnf_transformer
+
+defaults:
+  - override /data: gaussians.yaml
+  - override /model: cnf_transformer.yaml
+  - override /callbacks: default.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["cnf", "transformer"]
+
+
+trainer:
+  min_epochs: 10
+  max_epochs: 10
+  gradient_clip_val: 0.5
+
+callbacks:
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}"
+    monitor: "val/loss"
+    mode: "max"
+    save_last: True
+    auto_insert_metric_name: False
+
+  early_stopping:
+    monitor: "val/loss"
+    patience: 100
+    mode: "max"
+
+model:
+  optimizer:
+    lr: 0.002
+  net:
+    n_heads: 8
+    
+
+data:
+  batch_size: 256
+
+logger:
+  wandb:
+    tags: ${tags}
+  comet:
+    experiment_name: "cnf_transformer"
