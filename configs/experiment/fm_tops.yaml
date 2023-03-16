@@ -1,0 +1,51 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /data: /jetnet/jetnet_tops_30.yaml
+  - override /model: cnf_flow_matching.yaml
+  - override /callbacks: default.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["flow_matching", "tops"]
+
+trainer:
+  min_epochs: 1
+  max_epochs: 5
+  gradient_clip_val: 0.5
+
+model:
+  optimizer:
+    lr: 0.002
+  features: 3
+  num_particles: 30
+  embedding_dim: 128  
+  heads: 4
+  depth: 6
+
+data:
+  batch_size: 256
+
+callbacks:
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}_loss_{val/loss:.3f}"
+    monitor: "val/loss"
+    mode: "max"
+    save_last: True
+    auto_insert_metric_name: False
+
+  early_stopping:
+    monitor: "val/loss"
+    patience: 6
+    mode: "max"
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "mnist"
