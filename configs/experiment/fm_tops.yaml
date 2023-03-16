@@ -12,6 +12,8 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
+
+
 tags: ["flow_matching", "tops"]
 
 trainer:
@@ -30,6 +32,10 @@ model:
 
 data:
   batch_size: 256
+  variable_jet_sizes: False
+  centering: True
+  normalize: False
+  use_calculated_base_distribution: False
 
 callbacks:
   model_checkpoint:
@@ -48,4 +54,7 @@ callbacks:
 logger:
   wandb:
     tags: ${tags}
-    group: "mnist"
+    group: "fm_tops"
+
+
+task_name: "fm_tops-${model.num_particles}"
