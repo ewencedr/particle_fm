@@ -7,7 +7,7 @@ defaults:
   - override /data: mnist.yaml
   - override /model: mnist.yaml
   - override /callbacks: default.yaml
-  - override /trainer: default.yaml
+  - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -30,7 +30,7 @@ model:
     lin3_size: 64
 
 data:
-  batch_size: 64
+  batch_size: 512
 
 logger:
   wandb:
