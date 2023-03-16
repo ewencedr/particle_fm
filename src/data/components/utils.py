@@ -1,0 +1,165 @@
+import energyflow as ef
+import numpy as np
+import torch
+
+
+# centering
+
+
+def center_jets(data):
+    """Center Jets
+
+    Args:
+        data (_type_): Particle Data (batch, particles, features); features: eta, phi, pt
+
+    Returns:
+        _type_: Particle Data (batch, particles, features); features: eta, phi, pt
+    """
+    data = data[:, :, [2, 0, 1]]
+    etas = jet_etas(data)
+    phis = jet_phis(data)
+    etas = etas[:, np.newaxis].repeat(repeats=data.shape[1], axis=1)
+    phis = phis[:, np.newaxis].repeat(repeats=data.shape[1], axis=1)
+    mask = data[..., 0] > 0  # mask all particles with nonzero pt
+    data[mask, 1] -= etas[mask]
+    data[mask, 2] -= phis[mask]
+
+    return data[:, :, [1, 2, 0]]
+
+
+def jet_etas(jets_ary):
+    jets_p4s = ef.p4s_from_ptyphims(jets_ary)
+    etas = ef.etas_from_p4s(jets_p4s.sum(axis=1))
+    return etas
+
+
+def jet_phis(jets_ary):
+    jets_p4s = ef.p4s_from_ptyphims(jets_ary)
+    phis = ef.phis_from_p4s(jets_p4s.sum(axis=1), phi_ref=0)
+    return phis
+
+
+# mask data
+
+
+def mask_data(particle_data, jet_data, num_particles, variable_jet_sizes=True):
+    """Splits particle data in data and mask
+        If variable_jet_sizes is True, the returned data only contains jets with num_particles constituents
+
+    Args:
+        particle_data (_type_): Particle Data (batch, particles, features)
+        jet_data (_type_): _description_
+        num_particles (_type_): _description_
+        variable_jet_sizes (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        x (): masked particle data
+        mask (): mask
+        particle_data (): modified particle data with 4 features (3 + mask)
+        jet_data (): masked jet data
+    """
+    x = None
+    mask = None
+    if variable_jet_sizes == False:
+        # take only jets with num_particles constituents
+        jet_mask = np.ma.masked_where(
+            np.sum(particle_data[:, :, 3], axis=1) == num_particles,
+            np.sum(particle_data[:, :, 3], axis=1),
+        )
+        masked_particle_data = particle_data[jet_mask.mask]
+
+        jet_data = jet_data[jet_mask.mask]
+
+        x = torch.Tensor(masked_particle_data[:, :, :3])
+        mask = torch.Tensor(masked_particle_data[:, :, 3:])
+        particle_data = masked_particle_data
+        # print(
+        #    f"Jets with {num_particles} constituents:",
+        #    np.ma.count_masked(jet_mask),
+        #    f"({np.round(np.ma.count_masked(jet_mask)/(np.ma.count_masked(jet_mask)+np.ma.count(jet_mask))*100,2)}%)",
+        # )
+        # print(
+        #    f"Jets with less than {num_particles} constituents:",
+        #    np.ma.count(jet_mask),
+        #    f"({np.round(np.ma.count(jet_mask)/(np.ma.count_masked(jet_mask)+np.ma.count(jet_mask))*100,2)}%)",
+        # )
+
+    elif variable_jet_sizes == True:
+        particle_data = particle_data[:, :num_particles, :]
+        x = torch.Tensor(particle_data[:, :, :3])
+        mask = torch.Tensor(particle_data[:, :, 3:])
+
+    mask[mask > 0] = 1
+    mask[mask < 0] = 0
+
+    return x, mask, particle_data, jet_data
+
+
+# normalize
+
+
+def normalize_tensor(tensor, mean, std, sigma=5):
+    """Normalisation of every tensor feature
+        tensor[..., i] = (tensor[..., i] - mean[i]) / (std[i] / sigma)
+    Args:
+        tensor (_type_): (batch, particles, features)
+        mean (_type_): _description_
+        std (_type_): _description_
+        sigma (int, optional): _description_. Defaults to 5.
+
+    Returns:
+        _type_: _description_
+    """
+
+    for i in range(len(mean)):
+        tensor[..., i] = (tensor[..., i] - mean[i]) / (std[i] / sigma)
+    return tensor
+
+
+def inverse_normalize_tensor(tensor, mean, std, sigma=5):
+    """Inverse normalisation of each feature of a tensor
+        tensor[..., i] = (tensor[..., i] * (std[i] / sigma)) + mean[i]
+
+    Args:
+        tensor (_type_): _description_
+        mean (_type_): _description_
+        std (_type_): _description_
+        sigma (int, optional): _description_. Defaults to 5.
+
+    Returns:
+        _type_: _description_
+    """
+    for i in range(len(mean)):
+        tensor[..., i] = (tensor[..., i] * (std[i] / sigma)) + mean[i]
+    return tensor
+
+
+# base distribution of flow
+def get_base_distribution(x, mask, use_calculated_base_distribution=False):
+    """Calculate different mean and std_dist values for Gaussian base distribution of flow based on data
+
+    Args:
+        x (_type_): _description_
+        mask (_type_): _description_
+        use_calculated_base_distribution (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        x_mean : Mean value of Gaussian calculated based on data
+        x_cov : Std value of Gaussian calculated based on data
+    """
+    # Change base distribution of flow according to dataset
+    x_mean = torch.zeros(3)
+    x_cov = torch.zeros(3)
+    if use_calculated_base_distribution:
+        for i in range(x.shape[-1]):
+            x_mean[i] = x[:, :, i].unsqueeze(-1)[mask.bool()].mean()
+            x_cov[i] = x[:, :, i].unsqueeze(-1)[mask.bool()].std()
+            if i == 2:
+                x_cov *= 5.0
+    else:
+        x_mean = None
+        x_cov = None
+
+    # print(f"x_mean: {x_mean}, x_cov: {x_cov}")
+    # print(f"x.shape: {x.shape}")
+    return x_mean, x_cov
