@@ -3,13 +3,13 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from .mlp import DiffeqMLP, MLP
+
+from .mlp import MLP, DiffeqMLP
 
 
 def attention(query, key, value, n_heads=1, mask_diagonal=False, mask=None):
-    """
-    Multihead attention layer with optional masking.
-    "Attention Is All You Need" (https://arxiv.org/abs/1706.03762)
+    """Multihead attention layer with optional masking. "Attention Is All You Need"
+    (https://arxiv.org/abs/1706.03762)
 
     Args:
         query (tensor): Query matrix (..., N, D)
@@ -53,13 +53,11 @@ def attention(query, key, value, n_heads=1, mask_diagonal=False, mask=None):
 
 
 class Attention(nn.Module):
-    """
-    Attention layer.
-
+    """Attention layer.
 
     Args:
         in_dim (int): Input size
-        hidden_dims (List[int]): Hidden dimensions of embedding network, last dimmension
+        hidden_dims (List[int]): Hidden dimensions of embedding network, last dimension
             is used as an embedding size for queries, keys and values
         out_dim (int): Output size
         h_heads (int, optional): Number of attention heads, must divide last element
@@ -68,9 +66,7 @@ class Attention(nn.Module):
             i.e., if self-interaction is disallowed. Default: False
     """
 
-    def __init__(
-        self, in_dim, hidden_dims, out_dim, n_heads=1, mask_diagonal=False, **kwargs
-    ):
+    def __init__(self, in_dim, hidden_dims, out_dim, n_heads=1, mask_diagonal=False, **kwargs):
         super().__init__()
 
         self.mask_diagonal = mask_diagonal
@@ -104,17 +100,13 @@ class Attention(nn.Module):
 
 
 class SelfAttention(Attention):
-    """
-    Self attention layer.
-    Same as `Attention` but `forward` takes only `x` and `mask`.
+    """Self attention layer. Same as `Attention` but `forward` takes only `x` and `mask`.
 
     Args:
         Same as in `Attention`
     """
 
-    def __init__(
-        self, in_dim, hidden_dims, out_dim, n_heads=1, mask_diagonal=False, **kwargs
-    ):
+    def __init__(self, in_dim, hidden_dims, out_dim, n_heads=1, mask_diagonal=False, **kwargs):
         super().__init__(in_dim, hidden_dims, out_dim, n_heads, mask_diagonal)
 
     def forward(self, x, mask=None, **kwargs):
@@ -130,15 +122,13 @@ class SelfAttention(Attention):
 
 
 class InducedSelfAttention(nn.Module):
-    """
-    Induced self attention that used inducing points to reduce the complexity
-    of computing the attention for big sets.
-    "Set Transformer: A Framework for Attention-based Permutation-Invariant Neural Networks"
-    (https://arxiv.org/abs/1810.00825)
+    """Induced self attention that used inducing points to reduce the complexity of computing the
+    attention for big sets. "Set Transformer: A Framework for Attention-based Permutation-Invariant
+    Neural Networks" (https://arxiv.org/abs/1810.00825)
 
     Args:
         in_dim (int): Input size
-        hidden_dims (List[int]): Hidden dimensions of embedding network, last dimmension
+        hidden_dims (List[int]): Hidden dimensions of embedding network, last dimension
             is used as an embedding size for queries, keys and values
         out_dim (int): Output size
         h_heads (int, optional): Number of attention heads, must divide last element

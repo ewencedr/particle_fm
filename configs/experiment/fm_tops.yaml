@@ -26,7 +26,7 @@ model:
     lr: 0.002
   features: 3
   num_particles: 30
-  embedding_dim: 128  
+  embedding_dim: 128
   heads: 4
   depth: 6
 

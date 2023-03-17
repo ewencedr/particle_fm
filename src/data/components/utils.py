@@ -2,12 +2,11 @@ import energyflow as ef
 import numpy as np
 import torch
 
-
 # centering
 
 
 def center_jets(data):
-    """Center Jets
+    """Center Jets.
 
     Args:
         data (_type_): Particle Data (batch, particles, features); features: eta, phi, pt
@@ -43,8 +42,8 @@ def jet_phis(jets_ary):
 
 
 def mask_data(particle_data, jet_data, num_particles, variable_jet_sizes=True):
-    """Splits particle data in data and mask
-        If variable_jet_sizes is True, the returned data only contains jets with num_particles constituents
+    """Splits particle data in data and mask If variable_jet_sizes is True, the returned data only
+    contains jets with num_particles constituents.
 
     Args:
         particle_data (_type_): Particle Data (batch, particles, features)
@@ -60,7 +59,7 @@ def mask_data(particle_data, jet_data, num_particles, variable_jet_sizes=True):
     """
     x = None
     mask = None
-    if variable_jet_sizes == False:
+    if not variable_jet_sizes:
         # take only jets with num_particles constituents
         jet_mask = np.ma.masked_where(
             np.sum(particle_data[:, :, 3], axis=1) == num_particles,
@@ -84,7 +83,7 @@ def mask_data(particle_data, jet_data, num_particles, variable_jet_sizes=True):
         #    f"({np.round(np.ma.count(jet_mask)/(np.ma.count_masked(jet_mask)+np.ma.count(jet_mask))*100,2)}%)",
         # )
 
-    elif variable_jet_sizes == True:
+    elif variable_jet_sizes:
         particle_data = particle_data[:, :num_particles, :]
         x = torch.Tensor(particle_data[:, :, :3])
         mask = torch.Tensor(particle_data[:, :, 3:])
@@ -99,7 +98,8 @@ def mask_data(particle_data, jet_data, num_particles, variable_jet_sizes=True):
 
 
 def normalize_tensor(tensor, mean, std, sigma=5):
-    """Normalisation of every tensor feature
+    """Normalisation of every tensor feature.
+
         tensor[..., i] = (tensor[..., i] - mean[i]) / (std[i] / sigma)
     Args:
         tensor (_type_): (batch, particles, features)
@@ -117,7 +117,8 @@ def normalize_tensor(tensor, mean, std, sigma=5):
 
 
 def inverse_normalize_tensor(tensor, mean, std, sigma=5):
-    """Inverse normalisation of each feature of a tensor
+    """Inverse normalisation of each feature of a tensor.
+
         tensor[..., i] = (tensor[..., i] * (std[i] / sigma)) + mean[i]
 
     Args:
@@ -136,7 +137,8 @@ def inverse_normalize_tensor(tensor, mean, std, sigma=5):
 
 # base distribution of flow
 def get_base_distribution(x, mask, use_calculated_base_distribution=False):
-    """Calculate different mean and std_dist values for Gaussian base distribution of flow based on data
+    """Calculate different mean and std_dist values for Gaussian base distribution of flow based on
+    data.
 
     Args:
         x (_type_): _description_

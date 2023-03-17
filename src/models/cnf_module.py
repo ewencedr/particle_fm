@@ -1,24 +1,24 @@
 from typing import Any, List
 
 import torch
+from pytorch_lightning import LightningDataModule, LightningModule
 from torch import nn
+from torch.distributions import (
+    Categorical,
+    MultivariateNormal,
+    SigmoidTransform,
+    TransformedDistribution,
+    Uniform,
+)
 from torchdyn.core import NeuralODE
 from torchdyn.models import CNF, autograd_trace, hutch_trace
-from torchdyn.nn import DataControl, DepthCat, Augmenter
-from pytorch_lightning import LightningDataModule, LightningModule
+from torchdyn.nn import Augmenter, DataControl, DepthCat
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
-from torch.distributions import (
-    MultivariateNormal,
-    Uniform,
-    TransformedDistribution,
-    SigmoidTransform,
-    Categorical,
-)
 
 
 class CNFLitModule(LightningModule):
-    """Continous Normalizing Flow Module for training generative models.
+    """Continuous Normalizing Flow Module for training generative models.
 
     A LightningModule organizes your PyTorch code into 6 sections:
         - Computations (init)
@@ -40,6 +40,7 @@ class CNFLitModule(LightningModule):
         scheduler: torch.optim.lr_scheduler = torch.optim.lr_scheduler.StepLR,
     ) -> None:
         """Initialize the model.
+
         Args:
             f: torch module
             optimizer: torch optimizer

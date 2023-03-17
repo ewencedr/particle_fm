@@ -1,16 +1,20 @@
 from typing import Any, Dict, Optional, Tuple
 
+import numpy as np
 import torch
+from jetnet.datasets import JetNet
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
+from torch.utils.data import (
+    ConcatDataset,
+    DataLoader,
+    Dataset,
+    TensorDataset,
+    random_split,
+)
 from torchvision.datasets import MNIST
 from torchvision.transforms import transforms
 
-import numpy as np
-
-from jetnet.datasets import JetNet
-from .components import center_jets, mask_data, normalize_tensor, get_base_distribution
-from torch.utils.data import TensorDataset
+from .components import center_jets, get_base_distribution, mask_data, normalize_tensor
 
 
 class JetNetDataModule(LightningDataModule):
@@ -133,9 +137,7 @@ class JetNetDataModule(LightningDataModule):
             if self.hparams.centering:
                 mask = particle_data[..., 3]
                 particle_data = center_jets(particle_data[..., :3])
-                particle_data = np.append(
-                    particle_data, np.expand_dims(mask, axis=-1), axis=-1
-                )
+                particle_data = np.append(particle_data, np.expand_dims(mask, axis=-1), axis=-1)
 
             x, mask, masked_particle_data, masked_jet_data = mask_data(
                 particle_data,
@@ -152,7 +154,7 @@ class JetNetDataModule(LightningDataModule):
 
             n_samples_val = int(self.hparams.val_fraction * len(x))
             n_samples_test = int(self.hparams.test_fraction * len(x))
-            full_mask = np.repeat(mask, repeats=3, axis=-1) == False
+            full_mask = np.repeat(mask, repeats=3, axis=-1) is False
             full_mask = np.ma.make_mask(full_mask, shrink=False)
             x_ma = np.ma.masked_array(x, full_mask)
             dataset_train, dataset_val, dataset_test = np.split(
@@ -171,14 +173,14 @@ class JetNetDataModule(LightningDataModule):
                 # print(f"Stds: {stds}")
 
                 normalized_dataset_train = normalize_tensor(dataset_train, means, stds)
-                mask_train = np.ma.getmask(normalized_dataset_train) == False
+                mask_train = np.ma.getmask(normalized_dataset_train) is False
                 mask_train = mask_train.astype(int)
                 mask_train = torch.tensor(np.expand_dims(mask_train[..., 0], axis=-1))
                 tensor_train = torch.tensor(normalized_dataset_train)
 
                 # Validation
                 normalized_dataset_val = normalize_tensor(dataset_val, means, stds)
-                mask_val = np.ma.getmask(normalized_dataset_val) == False
+                mask_val = np.ma.getmask(normalized_dataset_val) is False
                 mask_val = mask_val.astype(int)
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
@@ -186,7 +188,7 @@ class JetNetDataModule(LightningDataModule):
             # Validation without
 
             unnormalized_tensor_val = torch.tensor(dataset_val)
-            unnormalized_mask_val = np.ma.getmask(dataset_val) == False
+            unnormalized_mask_val = np.ma.getmask(dataset_val) is False
             unnormalized_mask_val = unnormalized_mask_val.astype(int)
             unnormalized_mask_val = torch.tensor(
                 np.expand_dims(unnormalized_mask_val[..., 0], axis=-1)
@@ -194,7 +196,7 @@ class JetNetDataModule(LightningDataModule):
 
             # Test
             tensor_test = torch.tensor(dataset_test)
-            mask_test = np.ma.getmask(dataset_test) == False
+            mask_test = np.ma.getmask(dataset_test) is False
             mask_test = mask_test.astype(int)
             mask_test = torch.tensor(np.expand_dims(mask_test[..., 0], axis=-1))
 

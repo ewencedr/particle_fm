@@ -3,8 +3,7 @@ import torch.nn as nn
 
 
 class MLP(nn.Module):
-    """
-    Simple multi-layer neural network.
+    """Simple multi-layer neural network.
 
     Args:
         in_dim (int): Input size
@@ -30,7 +29,9 @@ class MLP(nn.Module):
         super().__init__()
 
         if not wrapper_func:
-            wrapper_func = lambda x: x
+
+            def wrapper_func(x):
+                return x
 
         hidden_dims = hidden_dims[:]
         hidden_dims.append(out_dim)
@@ -59,8 +60,7 @@ class MLP(nn.Module):
 
 
 class DiffeqConcat(nn.Module):
-    """
-    Differential equation that concatenates the input and time.
+    """Differential equation that concatenates the input and time.
 
     Args:
         net (Type[nn.Module]): Neural network that concatenates
@@ -91,23 +91,13 @@ class DiffeqConcat(nn.Module):
 
 
 class DiffeqMLP(DiffeqConcat):
-    """
-    Differential equation defined with MLP.
-
+    """Differential equation defined with MLP.
 
     Args:
         Same as in `MLP`
     """
 
     def __init__(
-        self,
-        in_dim,
-        hidden_dims,
-        out_dim,
-        activation="Tanh",
-        final_activation=None,
-        **kwargs
+        self, in_dim, hidden_dims, out_dim, activation="Tanh", final_activation=None, **kwargs
     ):
-        super().__init__(
-            MLP(in_dim, hidden_dims, out_dim, activation, final_activation)
-        )
+        super().__init__(MLP(in_dim, hidden_dims, out_dim, activation, final_activation))

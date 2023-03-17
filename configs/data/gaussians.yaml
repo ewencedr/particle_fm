@@ -9,4 +9,3 @@ n_gaussians: 6
 std_gaussians: 0.5
 radius: 4
 dim: 2
-

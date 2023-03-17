@@ -4,10 +4,9 @@ from torch.nn import functional as F
 
 
 def mask_(matrices, maskval=0.0, mask_diagonal=True):
-    """
-    Masks out all values in the given batch of matrices where i <= j holds,
-    i < j if mask_diagonal is false
-    In place operation
+    """Masks out all values in the given batch of matrices where i <= j holds, i < j if
+    mask_diagonal is false In place operation.
+
     :param tns:
     :return:
     """
@@ -19,9 +18,7 @@ def mask_(matrices, maskval=0.0, mask_diagonal=True):
 
 
 class SelfAttention(nn.Module):
-    """
-    Canonical implementation of multi-head self attention.
-    """
+    """Canonical implementation of multi-head self attention."""
 
     def __init__(self, emb, heads=2, mask=False):
         """
@@ -87,9 +84,7 @@ class SelfAttention(nn.Module):
 
         assert dot.size() == (b * h, t, t)
 
-        if (
-            self.mask
-        ):  # mask out the upper half of the dot matrix, excluding the diagonal
+        if self.mask:  # mask out the upper half of the dot matrix, excluding the diagonal
             mask_(dot, maskval=float("-inf"), mask_diagonal=False)
 
         dot = F.softmax(dot, dim=2)
@@ -142,9 +137,7 @@ class TransformerBlock(nn.Module):
 
 
 class Transformer(nn.Module):
-    """
-    Transformer for classifying sequences
-    """
+    """Transformer for classifying sequences."""
 
     def __init__(self, emb, heads, depth, seq_length, mask=True, dropout=0.0):
         """

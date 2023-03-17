@@ -6,13 +6,12 @@ from torch.utils.data import (
     ConcatDataset,
     DataLoader,
     Dataset,
-    random_split,
     TensorDataset,
+    random_split,
 )
+from torchdyn.datasets import ToyDataset
 from torchvision.datasets import MNIST
 from torchvision.transforms import transforms
-
-from torchdyn.datasets import *
 
 
 class TorchdynDataModule(LightningDataModule):

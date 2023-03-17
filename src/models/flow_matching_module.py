@@ -1,11 +1,13 @@
-import torch
-import torch.nn as nn
-from typing import *
-from torch import Tensor
-from zuko.utils import odeint
-from torch.distributions import Normal
+from typing import Any, List
+
 import numpy as np
 import pytorch_lightning as pl
+import torch
+import torch.nn as nn
+from torch import Tensor
+from torch.distributions import Normal
+from zuko.utils import odeint
+
 from .components import CosineWarmupScheduler, Transformer
 
 
@@ -20,9 +22,7 @@ class CNF(nn.Module):
     ):
         super().__init__()
 
-        self.net = Transformer(
-            emb=embedding_dim, mask=False, seq_length=num_particles, **kwargs
-        )
+        self.net = Transformer(emb=embedding_dim, mask=False, seq_length=num_particles, **kwargs)
         self.emb = nn.Linear(features + 2 * frequencies, embedding_dim)
         self.demb = nn.Linear(embedding_dim, features)
 
@@ -48,17 +48,15 @@ class CNF(nn.Module):
         return odeint(self, z, 1.0, 0.0, phi=self.parameters())
 
     def log_prob(self, x: Tensor) -> Tensor:
-        I = torch.eye(x.shape[-1]).to(x)
-        I = I.expand(x.shape + x.shape[-1:]).movedim(-1, 0)
+        i = torch.eye(x.shape[-1]).to(x)
+        i = i.expand(x.shape + x.shape[-1:]).movedim(-1, 0)
 
         def augmented(t: Tensor, x: Tensor, ladj: Tensor) -> Tensor:
             with torch.enable_grad():
                 x = x.requires_grad_()
                 dx = self(t, x)
 
-            jacobian = torch.autograd.grad(
-                dx, x, I, is_grads_batched=True, create_graph=True
-            )[0]
+            jacobian = torch.autograd.grad(dx, x, i, is_grads_batched=True, create_graph=True)[0]
             trace = torch.einsum("i...i", jacobian)
 
             return dx, trace * 1e-2
@@ -170,8 +168,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def sample(self, n_samples: int):
         samples = self.flow.decode(
-            torch.randn(
-                n_samples, self.hparams.num_particles, self.hparams.features
-            ).to(self.device)
+            torch.randn(n_samples, self.hparams.num_particles, self.hparams.features).to(
+                self.device
+            )
         )
         return samples

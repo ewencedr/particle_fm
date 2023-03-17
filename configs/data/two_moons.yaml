@@ -6,4 +6,3 @@ num_workers: 32
 pin_memory: False
 dataset_type: "moons"
 noise: 0.2
-

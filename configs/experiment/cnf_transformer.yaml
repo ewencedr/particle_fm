@@ -39,7 +39,7 @@ model:
     lr: 0.002
   net:
     n_heads: 8
-    
+
 
 data:
   batch_size: 256
