@@ -1,5 +1,6 @@
 import energyflow as ef
 import numpy as np
+import pandas as pd
 import torch
 
 # centering
@@ -165,3 +166,104 @@ def get_base_distribution(x, mask, use_calculated_base_distribution=False):
     # print(f"x_mean: {x_mean}, x_cov: {x_cov}")
     # print(f"x.shape: {x.shape}")
     return x_mean, x_cov
+
+
+def get_metrics_data(path, mgpu=False):
+    """Read metrics that were saved via CSV Logger.
+
+    Args:
+        path (String): Path of log file
+        mgpu (bool, optional): Whether the new model with multi GPU support was used. Defaults to False.
+
+    Returns:
+        _type_: _description_
+    """
+    metrics_df = pd.read_csv(path)
+    epochs = metrics_df["epoch"].dropna().unique()
+    train_loss = metrics_df["train_loss_epoch"].dropna().to_numpy()
+    if mgpu:
+        val_loss = metrics_df["val_loss_epoch"].dropna().to_numpy()
+    else:
+        val_loss = metrics_df["val_loss"].dropna().to_numpy()
+    lr = metrics_df["lr-AdamW"].dropna().to_numpy()
+    if not (len(epochs) == len(train_loss) == len(val_loss) == len(lr)):
+        epoch = np.min([len(epochs), len(train_loss), len(val_loss), len(lr)])
+        epochs = epochs[:epoch]
+        train_loss = train_loss[:epoch]
+        val_loss = val_loss[:epoch]
+        lr = lr[:epoch]
+    return epochs, train_loss, val_loss, lr
+
+
+def calculate_jet_features(particle_data):
+    """Calculate the jet_features by transforming jet constituents to p4s, summing up and
+    transforming back to hadrodic coordinates. Phi_ref is 0. Mask in input particle_data is
+    allowed.
+
+    Args:
+        particle_data (_type_): particle data, shape: [events, particles, features], features: [eta,phi,pt,(mask)]
+
+    Returns:
+        jet_data _type_: jet data, shape: [events, features], features: [pt,y,phi,m]
+    """
+    particle_data = particle_data[..., [2, 0, 1]]
+    p4s = ef.p4s_from_ptyphims(particle_data)
+    sum_p4 = np.sum(p4s, axis=-2)
+    jet_data = ef.ptyphims_from_p4s(sum_p4, phi_ref=0)
+    return jet_data
+
+
+def count_parameters(model):
+    """Count Parameters of model.
+
+    Args:
+        model (_type_): model
+
+    Returns:
+        parameters _type_: parameters of the model
+    """
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def get_pt_of_selected_particles(particle_data, selected_particles=[1, 3, 10]):
+    """Return pt of selected particles.
+
+    Args:
+        particle_data (_type_): _description_
+        selected_particles (list, optional): _description_. Defaults to [1, 3, 10].
+
+    Returns:
+        _type_: _description_
+    """
+    particle_data_sorted = np.sort(particle_data[:, :, 2])[:, ::-1]
+    pt_selected_particles = []
+    for selected_particle in selected_particles:
+        pt_selected_particle = particle_data_sorted[:, selected_particle - 1]
+        pt_selected_particles.append(pt_selected_particle)
+    return np.array(pt_selected_particles)
+
+
+def get_pt_of_selected_multiplicities(
+    particle_data, selected_multiplicities=[10, 20, 30], num_jets=150
+):
+    """Return pt of jets with selected particle multiplicities.
+
+    Args:
+        particle_data (_type_): _description_
+        selected_multiplicities (list, optional): _description_. Defaults to [20, 30, 40].
+        num_jets (int, optional): _description_. Defaults to 150.
+
+    Returns:
+        _type_: _description_
+    """
+    data = {}
+    for count, selected_multiplicity in enumerate(selected_multiplicities):
+        particle_data_temp = particle_data[:, :selected_multiplicity, :]
+        mask = np.ma.masked_where(
+            np.count_nonzero(particle_data_temp[:, :, 0], axis=1) == selected_multiplicity,
+            np.count_nonzero(particle_data_temp[:, :, 0], axis=1),
+        )
+        masked_particle_data = particle_data_temp[mask.mask]
+        masked_pt = masked_particle_data[:num_jets, :, 2]
+        data[f"{count}"] = masked_pt
+    return data

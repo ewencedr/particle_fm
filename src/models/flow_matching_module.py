@@ -112,17 +112,17 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def model_step(self, batch: Any):
         pass
 
-    def training_epoch_end(self, outputs: List[Any]):
-        # `outputs` is a list of dicts returned from `training_step()`
+    # def on_training_epoch_end(self, outputs: List[Any]):
+    # `outputs` is a list of dicts returned from `training_step()`
 
-        # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
-        # this may not be an issue when training on mnist
-        # but on larger datasets/models it's easy to run into out-of-memory errors
+    # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
+    # this may not be an issue when training on mnist
+    # but on larger datasets/models it's easy to run into out-of-memory errors
 
-        # consider detaching tensors before returning them from `training_step()`
-        # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
+    # consider detaching tensors before returning them from `training_step()`
+    # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
 
-        pass
+    #    pass
 
     def training_step(self, batch, batch_idx):
         x, mask = batch
@@ -136,14 +136,14 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
-    def validation_epoch_end(self, outputs: List[Any]):
-        pass
+    # def on_validation_epoch_end(self, outputs: List[Any]):
+    #    pass
 
     def test_step(self, batch: Any, batch_idx: int):
         pass
 
-    def test_epoch_end(self, outputs: List[Any]):
-        pass
+    # def on_test_epoch_end(self, outputs: List[Any]):
+    #    pass
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
