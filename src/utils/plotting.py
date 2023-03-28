@@ -13,7 +13,7 @@ from matplotlib.gridspec import GridSpec
 from scipy.stats import wasserstein_distance as w_dist
 from tqdm import tqdm
 
-from src.data.components.utils import (
+from src.data.components import (
     calculate_jet_features,
     count_parameters,
     get_metrics_data,
@@ -823,7 +823,6 @@ def create_and_plot_data(
     labels: list[str],
     num_jet_samples: int = 10000,
     batch_size: int = 1000,
-    particles_per_jet: int = 30,
     selected_particles: list[int] = [1, 5, 20],
     selected_multiplicities: list[int] = [10, 20, 30, 40, 50, 80],
     plottype: str = "sim_data",
@@ -853,7 +852,6 @@ def create_and_plot_data(
         labels (_type_): _description_
         num_jet_samples (int, optional): _description_. Defaults to 10000.
         batch_size (int, optional): _description_. Defaults to 10000.
-        particles_per_jet (int, optional): _description_. Defaults to 30.
         selected_particles (list, optional): _description_. Defaults to [1, 5, 20].
         selected_multiplicities (list, optional): _description_. Defaults to [10, 20, 30, 40, 50, 80].
         plottype (str, optional): _description_. Defaults to "sim_data".
@@ -880,7 +878,7 @@ def create_and_plot_data(
     Returns:
         _type_: _description_
     """
-
+    particles_per_jet = sim_data.shape[-2]
     (
         particle_data,
         times,
@@ -944,7 +942,6 @@ def create_and_plot_data(
         variable_jet_sizes_plotting=variable_jet_sizes_plotting,
         bins=bins,
     )
-
     return fig, particle_data, times
 
 
@@ -1076,8 +1073,7 @@ def create_data_for_plotting(
     w_dist_m = []
     sim_data = sim_data_in[:num_jet_samples]
     jet_data_sim = calculate_jet_features(sim_data)
-    efps_sim = efps(sim_data)
-
+    efps_sim = efps(sim_data, efp_jobs=1)
     pt_selected_particles_sim = get_pt_of_selected_particles(sim_data, selected_particles)
     if plot_selected_multiplicities:
         pt_selected_multiplicities_sim = get_pt_of_selected_multiplicities(
@@ -1132,7 +1128,6 @@ def create_data_for_plotting(
 
     for count, i in enumerate(new_dict):
         new_dict[i] = np.array(new_dict[i])
-
     return (
         np.array(data),
         np.array(times),
