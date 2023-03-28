@@ -7,6 +7,7 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from cycler import cycler
 from jetnet.utils import efps
 from matplotlib.gridspec import GridSpec
 from scipy.stats import wasserstein_distance as w_dist
@@ -21,6 +22,19 @@ from src.data.components.utils import (
 )
 
 from .data_generation import generate_data
+
+
+def apply_mpl_styles() -> None:
+    mpl.rcParams["axes.prop_cycle"] = cycler(
+        color=[
+            "#B6BFC3",
+            "#3B515B",
+            "#0271BB",
+            "#E2001A",
+        ]
+    )
+    mpl.rcParams["font.size"] = 15
+    mpl.rcParams["patch.linewidth"] = 1.25
 
 
 def plot_single_jets(
@@ -931,7 +945,7 @@ def create_and_plot_data(
         bins=bins,
     )
 
-    return fig, times
+    return fig, particle_data, times
 
 
 def plot_loss_curves(

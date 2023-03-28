@@ -1,5 +1,6 @@
 from src.utils.data_generation import generate_data
 from src.utils.plotting import (
+    apply_mpl_styles,
     create_and_plot_data,
     do_timing_plots,
     plot_data,
