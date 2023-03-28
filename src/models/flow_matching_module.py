@@ -8,7 +8,7 @@ from torch import Tensor
 from torch.distributions import Normal
 from zuko.utils import odeint
 
-from .components import CosineWarmupScheduler, Transformer
+from .components import Transformer
 
 
 class CNF(nn.Module):
