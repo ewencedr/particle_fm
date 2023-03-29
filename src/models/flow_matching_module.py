@@ -8,23 +8,48 @@ from torch import Tensor
 from torch.distributions import Normal
 from zuko.utils import odeint
 
-from .components import Transformer
+from .components import EPiC_generator, Transformer
 
 
 class CNF(nn.Module):
     def __init__(
         self,
         features: int,
+        model: str = "transformer",
         num_particles: int = 150,
         frequencies: int = 6,
-        embedding_dim: int = 128,
-        **kwargs,
+        hidden_dim: int = 128,
+        layers: int = 8,
+        return_latent_space: bool = False,
+        dropout: float = 0.0,
+        heads: int = 4,
+        mask=False,
+        latent: int = 16,
     ):
         super().__init__()
+        self.model = model
+        self.latent = latent
+        if self.model == "transformer":
+            self.net = Transformer(
+                input_dim=features + 2 * frequencies,
+                output_dim=features,
+                emb=hidden_dim,
+                mask=mask,
+                seq_length=num_particles,
+                heads=heads,
+                depth=layers,
+                dropout=dropout,
+            )
+        elif self.model == "epic":
 
-        self.net = Transformer(emb=embedding_dim, mask=False, seq_length=num_particles, **kwargs)
-        self.emb = nn.Linear(features + 2 * frequencies, embedding_dim)
-        self.demb = nn.Linear(embedding_dim, features)
+            self.net = EPiC_generator(
+                latent_local=features + 2 * frequencies,
+                feats=features,
+                latent=latent,
+                equiv_layers=layers,
+                hid_d=hidden_dim,
+                return_latent_space=return_latent_space,
+            )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
 
@@ -34,10 +59,12 @@ class CNF(nn.Module):
         t = t.expand(*x.shape[:-1], -1)
 
         x = torch.cat((t, x), dim=-1)
-
-        x = self.emb(x)
-        x = self.net(x)
-        x = self.demb(x)
+        if self.model == "epic":
+            x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
+            x_local = x
+            x = self.net(x_global, x_local)
+        else:
+            x = self.net(x)
 
         return x
 
@@ -103,13 +130,22 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        features=3,
-        embedding_dim=128,
-        num_particles=150,
-        n_transforms=1,
+        model: str = "epic",
+        features: int = 3,
+        hidden_dim: int = 128,
+        num_particles: int = 150,
+        frequencies: int = 6,
+        layers: int = 8,
+        n_transforms: int = 1,
+        # epic
+        latent: int = 16,
+        return_latent_space: bool = False,
+        # transformer
+        dropout: float = 0.0,
+        heads: int = 4,
+        mask=False,
         **kwargs,
     ):
-
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
@@ -117,7 +153,21 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         flows = nn.ModuleList()
         # losses = nn.ModuleList()
         for _ in range(n_transforms):
-            flows.append(CNF(features=features, embedding_dim=embedding_dim, **kwargs))
+            flows.append(
+                CNF(
+                    features=features,
+                    model=model,
+                    hidden_dim=hidden_dim,
+                    num_particles=num_particles,
+                    frequencies=frequencies,
+                    layers=layers,
+                    latent=latent,
+                    return_latent_space=return_latent_space,
+                    dropout=dropout,
+                    heads=heads,
+                    mask=mask,
+                )
+            )
             # losses.append(FlowMatchingLoss(flows[-1]))
         self.flows = flows
         # self.losses = losses

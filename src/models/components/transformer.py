@@ -139,7 +139,17 @@ class TransformerBlock(nn.Module):
 class Transformer(nn.Module):
     """Transformer for classifying sequences."""
 
-    def __init__(self, emb, heads, depth, seq_length, mask=True, dropout=0.0):
+    def __init__(
+        self,
+        emb,
+        heads,
+        depth,
+        seq_length,
+        mask=True,
+        dropout=0.0,
+        input_dim=4,
+        output_dim=3,
+    ):
         """
         :param emb: Embedding dimension
         :param heads: nr. of attention heads
@@ -152,7 +162,7 @@ class Transformer(nn.Module):
         super().__init__()
 
         tblocks = []
-        for i in range(depth):
+        for _ in range(depth):
             tblocks.append(
                 TransformerBlock(
                     emb=emb,
@@ -166,14 +176,17 @@ class Transformer(nn.Module):
         self.tblocks = nn.Sequential(*tblocks)
 
         self.do = nn.Dropout(dropout)
+        self.emb = nn.Linear(input_dim, emb)
+        self.demb = nn.Linear(emb, output_dim)
 
     def forward(self, x):
         """
         :param x: A batch by sequence length integer tensor of token indices.
         :return: predicted log-probability vectors for each token based on the preceding tokens.
         """
-
+        x = self.emb(x)
         x = self.do(x)
         x = self.tblocks(x)
+        x = self.demb(x)
 
         return x

@@ -24,12 +24,20 @@ trainer:
 model:
   optimizer:
     lr: 0.002
+  model: "epic"
   features: 3
+  hidden_dim: 128
   num_particles: 30
+  frequencies: 6
+  layers: 8
   n_transforms: 1
-  embedding_dim: 128
+  # epic
+  latent: 16
+  return_latent_space: False
+  # transformer
+  dropout: 0.0
   heads: 4
-  depth: 8
+  mask: False
   scheduler:
     warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}
