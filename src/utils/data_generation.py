@@ -47,70 +47,29 @@ def generate_data(
                     mask_batch = mask[:batch_size]
                 else:
                     mask_batch = mask[i * batch_size : (i + 1) * batch_size]
-                if type(model) == SetFlowMatching:
-                    with torch.no_grad():
-                        z = torch.randn(batch_size, particles_per_jet, 3).to(torch.device(device))
-                        jet_samples_batch = model.to(torch.device(device)).flow.decode(z).cpu()
-                else:
-                    jet_samples_batch = (
-                        model.to(torch.device(device))
-                        .sample(
-                            num_samples=(batch_size, particles_per_jet),
-                            mask=mask_batch.to(torch.device(device)),
-                        )
-                        .detach()
-                        .cpu()
-                    )
+
+                with torch.no_grad():
+                    jet_samples_batch = model.to(torch.device(device)).sample(batch_size).cpu()
                 if normalised_data:
                     jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
-                if type(model) == SetFlowMatching:
-                    with torch.no_grad():
-                        z = torch.randn(batch_size, particles_per_jet, 3).to(torch.device(device))
-                        jet_samples_batch = model.to(torch.device(device)).flow.decode(z).cpu()
-                else:
-                    jet_samples_batch = (
-                        model.to(torch.device(device))
-                        .sample(num_samples=(batch_size, particles_per_jet))
-                        .detach()
-                        .cpu()
-                    )
+                with torch.no_grad():
+                    jet_samples_batch = model.to(torch.device(device)).sample(batch_size).cpu()
         else:
             if max_particles:
                 if shuffle_mask:
                     mask_batch = mask[:batch_size]
                 else:
                     mask_batch = mask[i * batch_size : (i + 1) * batch_size]
-                if type(model) == SetFlowMatching:
-                    with torch.no_grad():
-                        z = torch.randn(batch_size, particles_per_jet, 3).to(torch.device(device))
-                        jet_samples_batch = model.to(torch.device(device)).flow.decode(z).cpu()
-                else:
-                    jet_samples_batch = (
-                        model.network.to(torch.device(device))
-                        .sample(
-                            num_samples=(batch_size, particles_per_jet),
-                            mask=mask_batch.to(torch.device(device)),
-                        )
-                        .detach()
-                        .cpu()
-                    )
+                with torch.no_grad():
+                    jet_samples_batch = model.to(torch.device(device)).sample(batch_size).cpu()
                 if normalised_data:
                     jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
-                if type(model) == SetFlowMatching:
-                    with torch.no_grad():
-                        z = torch.randn(batch_size, particles_per_jet, 3).to(torch.device(device))
-                        jet_samples_batch = model.to(torch.device(device)).flow.decode(z).cpu()
-                else:
-                    jet_samples_batch = (
-                        model.network.to(torch.device(device))
-                        .sample(num_samples=(batch_size, particles_per_jet))
-                        .detach()
-                        .cpu()
-                    )
+                with torch.no_grad():
+                    jet_samples_batch = model.to(torch.device(device)).sample(batch_size).cpu()
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
 
     end_time = time.time()

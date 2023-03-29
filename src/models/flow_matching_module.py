@@ -18,7 +18,7 @@ class CNF(nn.Module):
         num_particles: int = 150,
         frequencies: int = 6,
         embedding_dim: int = 128,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
 
@@ -82,6 +82,22 @@ class FlowMatchingLoss(nn.Module):
         return (self.v(t.squeeze(-1), y) - u).square().mean()
 
 
+class FlowMatchingLoss2(nn.Module):
+    def __init__(self, vs: nn.Module):
+        super().__init__()
+
+        self.vs = vs
+
+    def forward(self, x: Tensor) -> Tensor:
+        t = torch.rand_like(x[..., 0]).unsqueeze(-1)
+        z = torch.randn_like(x)
+        y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
+        u = (1 - 1e-4) * z - x
+        for v in self.vs:
+            y = v(t.squeeze(-1), y)
+        return (y - u).square().mean()
+
+
 class SetFlowMatchingLitModule(pl.LightningModule):
     def __init__(
         self,
@@ -90,19 +106,34 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         features=3,
         embedding_dim=128,
         num_particles=150,
-        **kwargs
+        n_transforms=1,
+        **kwargs,
     ):
 
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
+        flows = nn.ModuleList()
+        # losses = nn.ModuleList()
+        for _ in range(n_transforms):
+            flows.append(CNF(features=features, embedding_dim=embedding_dim, **kwargs))
+            # losses.append(FlowMatchingLoss(flows[-1]))
+        self.flows = flows
+        # self.losses = losses
+        self.loss = FlowMatchingLoss(self.flows[0])
 
-        self.flow = CNF(features=features, embedding_dim=embedding_dim, **kwargs)
-        self.loss = FlowMatchingLoss(self.flow)
+    def forward(self, x: torch.Tensor, reverse: bool = False):
+        if reverse:
+            for f in reversed(self.flows):
+                x = f.decode(x)
+        else:
+            for f in self.flows:
+                x = f.encode(x)
+        return x
 
-    def forward(self, x: torch.Tensor):
-        return self.flow(x)
+    # def loss(self, x: torch.Tensor):
+    #    return sum(loss(x) for loss in self.losses) / len(self.losses)
 
     def on_train_start(self):
         # by default lightning executes validation step sanity checks before training starts,
@@ -166,10 +197,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             }
         return {"optimizer": optimizer}
 
+    @torch.no_grad()
     def sample(self, n_samples: int):
-        samples = self.flow.decode(
-            torch.randn(n_samples, self.hparams.num_particles, self.hparams.features).to(
-                self.device
-            )
+        z = torch.randn(n_samples, self.hparams.num_particles, self.hparams.features).to(
+            self.device
         )
+        samples = self.forward(z, reverse=True)
         return samples

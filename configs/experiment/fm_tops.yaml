@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops"]
+tags: ["flow_matching", "tops", "30"]
 
 trainer:
   min_epochs: 10
@@ -26,12 +26,17 @@ model:
     lr: 0.002
   features: 3
   num_particles: 30
+  n_transforms: 1
   embedding_dim: 128
   heads: 4
-  depth: 6
+  depth: 8
+  scheduler:
+    warmup: ${trainer.min_epochs}
+    max_iters: ${trainer.max_epochs}
   #scheduler:
-  #  warmup: ${trainer.min_epochs}
-  #  max_iters: ${trainer.max_epochs}
+#  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+#  _partial_: true
+#  T_max: 100
 
 data:
   batch_size: 256
@@ -45,14 +50,14 @@ callbacks:
     dirpath: ${paths.output_dir}/checkpoints
     filename: "epoch_{epoch:03d}_loss_{val/loss:.3f}"
     monitor: "val/loss"
-    mode: "max"
+    mode: "min"
     save_last: True
     auto_insert_metric_name: False
 
   early_stopping:
     monitor: "val/loss"
-    patience: 6
-    mode: "max"
+    patience: 10
+    mode: "min"
 
   #jetnet_eval:
   #  logger: 1
@@ -64,11 +69,12 @@ callbacks:
   #  test_mask: None
   #  means: None
   #  stds: None
+task_name: "fm_tops-${model.num_particles}"
 
 logger:
   wandb:
     tags: ${tags}
     group: "fm_tops"
-
-
-task_name: "fm_tops-${model.num_particles}"
+    name: ${task_name}
+  comet:
+    experiment_name: ${task_name}
