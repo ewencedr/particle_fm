@@ -7,7 +7,6 @@ import torch
 from tqdm import tqdm
 
 from src.data.components.utils import inverse_normalize_tensor
-from src.models.flow_matching_module import SetFlowMatchingLitModule as SetFlowMatching
 
 
 def generate_data(
@@ -56,6 +55,8 @@ def generate_data(
             else:
                 with torch.no_grad():
                     jet_samples_batch = model.to(torch.device(device)).sample(batch_size).cpu()
+                if normalised_data:
+                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
         else:
             if max_particles:
                 if shuffle_mask:
@@ -70,6 +71,8 @@ def generate_data(
             else:
                 with torch.no_grad():
                     jet_samples_batch = model.to(torch.device(device)).sample(batch_size).cpu()
+                if normalised_data:
+                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
 
     end_time = time.time()
@@ -82,46 +85,36 @@ def generate_data(
             # mask = torch.reshape(mask,(remaining_samples*150,1))
         if mgpu_model:
             if max_particles:
-                jet_samples_batch = (
-                    model.to(torch.device(device))
-                    .sample(
-                        num_samples=(remaining_samples, particles_per_jet),
-                        mask=mask_batch.to(torch.device(device)),
+                with torch.no_grad():
+                    jet_samples_batch = (
+                        model.to(torch.device(device)).sample(remaining_samples).cpu()
                     )
-                    .detach()
-                    .cpu()
-                )
                 if normalised_data:
                     jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
-                jet_samples_batch = (
-                    model.to(torch.device(device))
-                    .sample(num_samples=(remaining_samples, particles_per_jet))
-                    .detach()
-                    .cpu()
-                )
+                with torch.no_grad():
+                    jet_samples_batch = (
+                        model.to(torch.device(device)).sample(remaining_samples).cpu()
+                    )
+                if normalised_data:
+                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
         else:
             if max_particles:
-                jet_samples_batch = (
-                    model.network.to(torch.device(device))
-                    .sample(
-                        num_samples=(remaining_samples, particles_per_jet),
-                        mask=mask_batch.to(torch.device(device)),
+                with torch.no_grad():
+                    jet_samples_batch = (
+                        model.to(torch.device(device)).sample(remaining_samples).cpu()
                     )
-                    .detach()
-                    .cpu()
-                )
                 if normalised_data:
                     jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
-                jet_samples_batch = (
-                    model.network.to(torch.device(device))
-                    .sample(num_samples=(remaining_samples, particles_per_jet))
-                    .detach()
-                    .cpu()
-                )
+                with torch.no_grad():
+                    jet_samples_batch = (
+                        model.to(torch.device(device)).sample(remaining_samples).cpu()
+                    )
+                if normalised_data:
+                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
     particle_data_sampled = np.array(particle_data_sampled)
     generation_time = end_time - start_time
