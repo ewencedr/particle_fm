@@ -24,14 +24,13 @@ trainer:
 model:
   optimizer:
     lr: 0.002
-  model: "epic"
+  model: "transformer"
   features: 3
   hidden_dim: 128
   num_particles: 30
   frequencies: 6
   layers: 8
   n_transforms: 1
-  activation: silu
   # epic
   latent: 16
   return_latent_space: False

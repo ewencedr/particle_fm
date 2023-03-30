@@ -31,7 +31,6 @@ model:
   frequencies: 6
   layers: 8
   n_transforms: 1
-  activation: silu
   # epic
   latent: 16
   return_latent_space: False

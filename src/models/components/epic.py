@@ -10,8 +10,9 @@ class EPiC_layer(nn.Module):
     ordered: first update global, then local
     """
 
-    def __init__(self, local_in_dim, hid_dim, latent_dim):
+    def __init__(self, local_in_dim, hid_dim, latent_dim, activation: str = "leaky_relu"):
         super().__init__()
+        self.activation = activation
         self.fc_global1 = weight_norm(nn.Linear(int(2 * hid_dim) + latent_dim, hid_dim))
         self.fc_global2 = weight_norm(nn.Linear(hid_dim, latent_dim))
         self.fc_local1 = weight_norm(nn.Linear(local_in_dim + latent_dim, hid_dim))
@@ -29,8 +30,10 @@ class EPiC_layer(nn.Module):
         )  # meansum pooling
 
         # phi global
-        x_global1 = F.leaky_relu(self.fc_global1(x_pooledCATglobal))  # new intermediate step
-        x_global = F.leaky_relu(
+        x_global1 = getattr(F, self.activation)(
+            self.fc_global1(x_pooledCATglobal)
+        )  # new intermediate step
+        x_global = getattr(F, self.activation)(
             self.fc_global2(x_global1) + x_global
         )  # with residual connection before AF
 
@@ -40,10 +43,10 @@ class EPiC_layer(nn.Module):
         x_localCATglobal = torch.cat([x_local, x_global2local], 2)
 
         # phi p
-        x_local1 = F.leaky_relu(
+        x_local1 = getattr(F, self.activation)(
             self.fc_local1(x_localCATglobal)
         )  # with residual connection before AF
-        x_local = F.leaky_relu(self.fc_local2(x_local1) + x_local)
+        x_local = getattr(F, self.activation)(self.fc_local2(x_local1) + x_local)
 
         return x_global, x_local
 
@@ -51,9 +54,6 @@ class EPiC_layer(nn.Module):
 # Decoder / Generator for multiple particles with Variable Number of Equivariant Layers (with global concat)
 # added same global and local usage in EPiC layer
 # order: global first, then local
-args = {"latent"}
-
-
 class EPiC_generator(nn.Module):
     def __init__(
         self,
@@ -63,8 +63,10 @@ class EPiC_generator(nn.Module):
         feats=128,
         equiv_layers=8,
         return_latent_space=False,
+        activation: str = "leaky_relu",
     ):
         super().__init__()
+        self.activation = activation
         self.latent = latent  # used for latent size of equiv concat
         self.latent_local = latent_local  # noise
         self.hid_d = hid_d  # default 256
@@ -78,7 +80,9 @@ class EPiC_generator(nn.Module):
 
         self.nn_list = nn.ModuleList()
         for _ in range(self.equiv_layers):
-            self.nn_list.append(EPiC_layer(self.hid_d, self.hid_d, self.latent))
+            self.nn_list.append(
+                EPiC_layer(self.hid_d, self.hid_d, self.latent, activation=self.activation)
+            )
 
         self.local_1 = weight_norm(nn.Linear(self.hid_d, self.feats))
 
@@ -87,9 +91,9 @@ class EPiC_generator(nn.Module):
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
 
-        z_local = F.leaky_relu(self.local_0(z_local))
-        z_global = F.leaky_relu(self.global_0(z_global))
-        z_global = F.leaky_relu(self.global_1(z_global))
+        z_local = getattr(F, self.activation)(self.local_0(z_local))
+        z_global = getattr(F, self.activation)(self.global_0(z_global))
+        z_global = getattr(F, self.activation)(self.global_1(z_global))
 
         latent_tensor = torch.cat([latent_tensor, z_global.clone().reshape(batch_size, 1, -1)], 1)
 
