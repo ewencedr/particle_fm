@@ -17,8 +17,8 @@ defaults:
 tags: ["flow_matching", "tops", "30"]
 
 trainer:
-  min_epochs: 10
-  max_epochs: 100
+  min_epochs: 3
+  max_epochs: 30
   gradient_clip_val: 0.5
 
 model:
@@ -31,7 +31,8 @@ model:
   frequencies: 6
   layers: 8
   n_transforms: 1
-  activation: silu
+  activation: leaky_relu
+  wrapper_func: weight_norm
   # epic
   latent: 16
   return_latent_space: False

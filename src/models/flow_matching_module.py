@@ -26,6 +26,7 @@ class CNF(nn.Module):
         mask=False,
         latent: int = 16,
         activation: str = "leaky_relu",
+        wrapper_func: str = None,
     ):
         super().__init__()
         self.model = model
@@ -51,6 +52,7 @@ class CNF(nn.Module):
                 hid_d=hidden_dim,
                 return_latent_space=return_latent_space,
                 activation=activation,
+                wrapper_func=wrapper_func,
             )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
@@ -140,6 +142,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         layers: int = 8,
         n_transforms: int = 1,
         activation: str = "leaky_relu",
+        wrapper_func: str = None,
         # epic
         latent: int = 16,
         return_latent_space: bool = False,
@@ -170,6 +173,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     heads=heads,
                     mask=mask,
                     activation=activation,
+                    wrapper_func=wrapper_func,
                 )
             )
             # losses.append(FlowMatchingLoss(flows[-1]))

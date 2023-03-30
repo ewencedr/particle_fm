@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.utils.weight_norm as weight_norm
 
 
 class EPiC_layer(nn.Module):
@@ -10,13 +9,22 @@ class EPiC_layer(nn.Module):
     ordered: first update global, then local
     """
 
-    def __init__(self, local_in_dim, hid_dim, latent_dim, activation: str = "leaky_relu"):
+    def __init__(
+        self,
+        local_in_dim,
+        hid_dim,
+        latent_dim,
+        activation: str = "leaky_relu",
+        wrapper_func: str = "weight_norm",
+    ):
         super().__init__()
         self.activation = activation
-        self.fc_global1 = weight_norm(nn.Linear(int(2 * hid_dim) + latent_dim, hid_dim))
-        self.fc_global2 = weight_norm(nn.Linear(hid_dim, latent_dim))
-        self.fc_local1 = weight_norm(nn.Linear(local_in_dim + latent_dim, hid_dim))
-        self.fc_local2 = weight_norm(nn.Linear(hid_dim, hid_dim))
+        self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
+
+        self.fc_global1 = self.wrapper_func(nn.Linear(int(2 * hid_dim) + latent_dim, hid_dim))
+        self.fc_global2 = self.wrapper_func(nn.Linear(hid_dim, latent_dim))
+        self.fc_local1 = self.wrapper_func(nn.Linear(local_in_dim + latent_dim, hid_dim))
+        self.fc_local2 = self.wrapper_func(nn.Linear(hid_dim, hid_dim))
 
     def forward(self, x_global, x_local):  # shapes: x_global[b,latent], x_local[b,n,latent_local]
         batch_size, n_points, latent_local = x_local.size()
@@ -30,10 +38,10 @@ class EPiC_layer(nn.Module):
         )  # meansum pooling
 
         # phi global
-        x_global1 = getattr(F, self.activation)(
+        x_global1 = getattr(F, self.activation, lambda x: x)(
             self.fc_global1(x_pooledCATglobal)
         )  # new intermediate step
-        x_global = getattr(F, self.activation)(
+        x_global = getattr(F, self.activation, lambda x: x)(
             self.fc_global2(x_global1) + x_global
         )  # with residual connection before AF
 
@@ -43,10 +51,10 @@ class EPiC_layer(nn.Module):
         x_localCATglobal = torch.cat([x_local, x_global2local], 2)
 
         # phi p
-        x_local1 = getattr(F, self.activation)(
+        x_local1 = getattr(F, self.activation, lambda x: x)(
             self.fc_local1(x_localCATglobal)
         )  # with residual connection before AF
-        x_local = getattr(F, self.activation)(self.fc_local2(x_local1) + x_local)
+        x_local = getattr(F, self.activation, lambda x: x)(self.fc_local2(x_local1) + x_local)
 
         return x_global, x_local
 
@@ -64,6 +72,7 @@ class EPiC_generator(nn.Module):
         equiv_layers=8,
         return_latent_space=False,
         activation: str = "leaky_relu",
+        wrapper_func: str = "weight_norm",
     ):
         super().__init__()
         self.activation = activation
@@ -73,27 +82,33 @@ class EPiC_generator(nn.Module):
         self.feats = feats
         self.equiv_layers = equiv_layers
         self.return_latent_space = return_latent_space  # false or true
-
-        self.local_0 = weight_norm(nn.Linear(self.latent_local, self.hid_d))
-        self.global_0 = weight_norm(nn.Linear(self.latent, self.hid_d))
-        self.global_1 = weight_norm(nn.Linear(self.hid_d, self.latent))
+        self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
+        self.local_0 = self.wrapper_func(nn.Linear(self.latent_local, self.hid_d))
+        self.global_0 = self.wrapper_func(nn.Linear(self.latent, self.hid_d))
+        self.global_1 = self.wrapper_func(nn.Linear(self.hid_d, self.latent))
 
         self.nn_list = nn.ModuleList()
         for _ in range(self.equiv_layers):
             self.nn_list.append(
-                EPiC_layer(self.hid_d, self.hid_d, self.latent, activation=self.activation)
+                EPiC_layer(
+                    self.hid_d,
+                    self.hid_d,
+                    self.latent,
+                    activation=activation,
+                    wrapper_func=wrapper_func,
+                )
             )
 
-        self.local_1 = weight_norm(nn.Linear(self.hid_d, self.feats))
+        self.local_1 = self.wrapper_func(nn.Linear(self.hid_d, self.feats))
 
     def forward(self, z_global, z_local):  # shape: [batch, points, feats]
 
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
 
-        z_local = getattr(F, self.activation)(self.local_0(z_local))
-        z_global = getattr(F, self.activation)(self.global_0(z_global))
-        z_global = getattr(F, self.activation)(self.global_1(z_global))
+        z_local = getattr(F, self.activation, lambda x: x)(self.local_0(z_local))
+        z_global = getattr(F, self.activation, lambda x: x)(self.global_0(z_global))
+        z_global = getattr(F, self.activation, lambda x: x)(self.global_1(z_global))
 
         latent_tensor = torch.cat([latent_tensor, z_global.clone().reshape(batch_size, 1, -1)], 1)
 
