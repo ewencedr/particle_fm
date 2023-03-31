@@ -8,9 +8,9 @@ from torch import Tensor
 from torch.distributions import Normal
 from zuko.utils import odeint
 
-from .components import EPiC_generator, Transformer
+from src.data.components.utils import jet_masses
 
-# from src.data.components.utils import jet_masses
+from .components import EPiC_generator, Transformer
 
 
 class CNF(nn.Module):
@@ -110,10 +110,11 @@ class CNF(nn.Module):
 
 
 class FlowMatchingLoss(nn.Module):
-    def __init__(self, v: nn.Module):
+    def __init__(self, v: nn.Module, use_mass_loss: bool = False):
         super().__init__()
 
         self.v = v
+        self.use_mass_loss = use_mass_loss
 
     def forward(self, x: Tensor) -> Tensor:
         t = torch.rand_like(x[..., 0]).unsqueeze(-1)
@@ -121,11 +122,15 @@ class FlowMatchingLoss(nn.Module):
         y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
         u = (1 - 1e-4) * z - x
         v_res = self.v(t.squeeze(-1), y)
-        return (v_res - u).square().mean()
-
-    # + (
-    #        jet_masses(v_res) - jet_masses(u)
-    #    ).square().mean()
+        out = (v_res - u).square().mean()
+        if self.use_mass_loss:
+            mass_scaling_factor = 0.001 * 2
+            mass_mse = (jet_masses(v_res) - jet_masses(u)).square().mean()
+            # print(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
+            # print(f"out: {out}")
+            return out + mass_mse * mass_scaling_factor, mass_mse * mass_scaling_factor
+        else:
+            return out
 
 
 class FlowMatchingLoss2(nn.Module):
@@ -154,6 +159,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         hidden_dim: int = 128,
         num_particles: int = 150,
         frequencies: int = 6,
+        use_mass_loss: bool = True,
         layers: int = 8,
         n_transforms: int = 1,
         activation: str = "leaky_relu",
@@ -193,8 +199,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             )
             # losses.append(FlowMatchingLoss(flows[-1]))
         self.flows = flows
+        self.use_mass_loss = use_mass_loss
         # self.losses = losses
-        self.loss = FlowMatchingLoss(self.flows[0])
+        self.loss = FlowMatchingLoss(self.flows[0], use_mass_loss=use_mass_loss)
 
     def forward(self, x: torch.Tensor, reverse: bool = False):
         if reverse:
@@ -230,13 +237,23 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, mask = batch
-        loss = self.loss(x)
+        if self.use_mass_loss:
+            loss, mse_mass = self.loss(x)
+            self.log("train/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
+        else:
+            loss = self.loss(x)
+        # loss = self.loss(x)
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask = batch
-        loss = self.loss(x)
+        if self.use_mass_loss:
+            loss, mse_mass = self.loss(x)
+            self.log("val/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
+        else:
+            loss = self.loss(x)
+        # loss = self.loss(x)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 

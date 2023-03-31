@@ -39,6 +39,46 @@ def jet_phis(jets_ary):
     return phis
 
 
+def jet_masses(jets_tensor):  # in format (jets, particles, features)
+    jets_p4s = torch_p4s_from_ptyphi(jets_tensor)
+    masses = torch_ms_from_p4s(jets_p4s.sum(axis=1))
+    return masses
+
+
+# p4s
+def torch_p4s_from_ptyphi(ptyphi):
+    # get pts, ys, phis
+    # ptyphi = torch.Tensor(ptyphi).float()
+    pts, ys, phis = (
+        ptyphi[..., 0, np.newaxis],
+        ptyphi[..., 1, np.newaxis],
+        ptyphi[..., 2, np.newaxis],
+    )
+
+    # + ms**2) everything assumed massless
+    Ets = torch.sqrt(pts**2)
+
+    p4s = torch.cat(
+        (
+            Ets * torch.cosh(ys),
+            pts * torch.cos(phis),
+            pts * torch.sin(phis),
+            Ets * torch.sinh(ys),
+        ),
+        axis=-1,
+    )
+    return p4s
+
+
+def torch_ms_from_p4s(p4s):
+    m2s = torch_m2s_from_p4s(p4s)
+    return torch.sign(m2s) * torch.sqrt(torch.abs(m2s))
+
+
+def torch_m2s_from_p4s(p4s):
+    return p4s[..., 0] ** 2 - p4s[..., 1] ** 2 - p4s[..., 2] ** 2 - p4s[..., 3] ** 2
+
+
 # mask data
 
 
