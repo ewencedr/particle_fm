@@ -10,6 +10,8 @@ from zuko.utils import odeint
 
 from .components import EPiC_generator, Transformer
 
+# from src.data.components.utils import jet_masses
+
 
 class CNF(nn.Module):
     def __init__(
@@ -53,20 +55,29 @@ class CNF(nn.Module):
                 return_latent_space=return_latent_space,
                 activation=activation,
                 wrapper_func=wrapper_func,
+                frequencies=frequencies,
             )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
 
     def forward(self, t: Tensor, x: Tensor) -> Tensor:
-        t = self.frequencies * t[..., None]
-        t = torch.cat((t.cos(), t.sin()), dim=-1)
-        t = t.expand(*x.shape[:-1], -1)
+        # print(f"t.shape0: {t[:3]}")
+        # print(f"x.shape1: {x.shape}")
+        # t: (batch_size,num_particles)
+        t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
+        # print(f"t.shape1: {t[:3]}")
+        t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
+        # print(f"t.shape2: {t[:3]}")
+        t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
+        # print(f"t.shape3: {t[:3]}")
+        # print(f"t.shape3: {t.shape}")
+        x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
+        # print(f"x.shape2: {x[:3]}")
 
-        x = torch.cat((t, x), dim=-1)
         if self.model == "epic":
             x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
             x_local = x
-            x = self.net(x_global, x_local)
+            x = self.net(t, x_global, x_local)
         else:
             x = self.net(x)
 
@@ -109,8 +120,12 @@ class FlowMatchingLoss(nn.Module):
         z = torch.randn_like(x)
         y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
         u = (1 - 1e-4) * z - x
+        v_res = self.v(t.squeeze(-1), y)
+        return (v_res - u).square().mean()
 
-        return (self.v(t.squeeze(-1), y) - u).square().mean()
+    # + (
+    #        jet_masses(v_res) - jet_masses(u)
+    #    ).square().mean()
 
 
 class FlowMatchingLoss2(nn.Module):
