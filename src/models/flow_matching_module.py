@@ -9,8 +9,11 @@ from torch.distributions import Normal
 from zuko.utils import odeint
 
 from src.data.components.utils import jet_masses
+from utils.pylogger import get_pylogger
 
 from .components import EPiC_generator, Transformer
+
+logger = get_pylogger("fm_module")
 
 
 class CNF(nn.Module):
@@ -61,18 +64,18 @@ class CNF(nn.Module):
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
 
     def forward(self, t: Tensor, x: Tensor) -> Tensor:
-        # print(f"t.shape0: {t[:3]}")
-        # print(f"x.shape1: {x.shape}")
+        # logger.debug(f"t.shape0: {t[:3]}")
+        logger.debug(f"x.shape1: {x.shape}")
         # t: (batch_size,num_particles)
         t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
-        # print(f"t.shape1: {t[:3]}")
+        logger.debug(f"t.shape1: {t[:3]}")
         t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
-        # print(f"t.shape2: {t[:3]}")
+        logger.debug(f"t.shape2: {t[:3]}")
         t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
-        # print(f"t.shape3: {t[:3]}")
-        # print(f"t.shape3: {t.shape}")
+        logger.debug(f"t.shape3: {t[:3]}")
+        logger.debug(f"t.shape3: {t.shape}")
         x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
-        # print(f"x.shape2: {x[:3]}")
+        logger.debug(f"x.shape2: {x[:3]}")
 
         if self.model == "epic":
             x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
@@ -124,10 +127,10 @@ class FlowMatchingLoss(nn.Module):
         v_res = self.v(t.squeeze(-1), y)
         out = (v_res - u).square().mean()
         if self.use_mass_loss:
-            mass_scaling_factor = 0.001 * 2
+            mass_scaling_factor = 0.0000001 * 2
             mass_mse = (jet_masses(v_res) - jet_masses(u)).square().mean()
-            # print(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
-            # print(f"out: {out}")
+            logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
+            logger.debug(f"out: {out}")
             return out + mass_mse * mass_scaling_factor, mass_mse * mass_scaling_factor
         else:
             return out

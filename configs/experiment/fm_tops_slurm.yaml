@@ -17,8 +17,8 @@ defaults:
 tags: ["flow_matching", "tops", "30"]
 
 trainer:
-  min_epochs: 3
-  max_epochs: 30
+  min_epochs: 200
+  max_epochs: 2000
   gradient_clip_val: 0.5
 
 model:
@@ -72,11 +72,11 @@ callbacks:
 
   jetnet_eval:
     logger: 0
-    every_n_epochs: 3
-    num_jet_samples: 3000
+    every_n_epochs: 100
+    num_jet_samples: 10000
     batch_size: 1000
     plot_w_dists: False
-    w_dists_batches: 3
+    w_dists_batches: 5
 
 
 task_name: "fm_tops-${model.num_particles}"
