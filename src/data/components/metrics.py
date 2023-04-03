@@ -7,7 +7,13 @@ from torch import Tensor
 
 
 def calculate_all_wasserstein_metrics(
-    particle_data1, particle_data2, mask1, mask2, num_eval_samples=10000, num_batches=5
+    particle_data1,
+    particle_data2,
+    mask1,
+    mask2,
+    num_eval_samples=10000,
+    num_batches=5,
+    calculate_efps=True,
 ):
     """Calculate the Wasserstein distances w1m, w1p and w1efp with standard deviations.
 
@@ -49,17 +55,19 @@ def calculate_all_wasserstein_metrics(
     )
     # print(f"w1p_mean: {w1p_mean}")
     # print(f"w1p_std: {w1p_std}")
-    w1efp_mean, w1efp_std = w1efp(
-        jets1=particle_data1,  # real jets
-        jets2=particle_data2,  # fake jets
-        use_particle_masses=False,
-        efpset_args=[("n==", 4), ("d==", 4), ("p==", 1)],
-        num_eval_samples=num_eval_samples,
-        num_batches=num_batches,
-        average_over_efps=True,
-        return_std=True,
-        efp_jobs=None,
-    )
+    w1efp_mean, w1efp_std = 0, 0
+    if calculate_efps:
+        w1efp_mean, w1efp_std = w1efp(
+            jets1=particle_data1,  # real jets
+            jets2=particle_data2,  # fake jets
+            use_particle_masses=False,
+            efpset_args=[("n==", 4), ("d==", 4), ("p==", 1)],
+            num_eval_samples=num_eval_samples,
+            num_batches=num_batches,
+            average_over_efps=True,
+            return_std=True,
+            efp_jobs=None,
+        )
     # print(f"w1efp_mean: {w1efp_mean}")
     # print(f"w1efp_std: {w1efp_std}")
     w_dists = {

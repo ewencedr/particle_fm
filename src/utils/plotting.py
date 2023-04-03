@@ -94,6 +94,7 @@ def plot_data(
     plot_jet_features: bool = False,
     plot_w_dists: bool = False,
     w_dist_m: float = 0,
+    plot_efps: bool = True,
     variable_jet_sizes_plotting: bool = True,
     selected_particles: list[int] = [1, 5, 20],
     pt_selected_particles_sim: list[float] = None,
@@ -122,6 +123,7 @@ def plot_data(
         plot_jet_features (bool, optional): Plot Jet Features. Defaults to False.
         plot_w_dists (bool, optional): Plot wasserstein distances inside of jet mass plot. Defaults to False.
         w_dist_m (float, optional): wasserstein distances to be plotted if plot_w_dists==True. Defaults to 0.
+        plot_efps (bool, optional): Plot EFPs. Defaults to True.
         variable_jet_sizes_plotting (bool, optional): Plot p_t distributions of selected jets. Count by p_t. Defaults to True.
         selected_particles (list, optional): Highest p_t particles for which the distributions are plotted if variable_jet_sizes_plotting==True. Defaults to [1, 5, 20].
         pt_selected_particles_sim (list, optional): Data from reference model for the plots if variable_jet_sizes_plotting==True. Defaults to None.
@@ -464,42 +466,42 @@ def plot_data(
     ax8.set_xlabel("Particle Multiplicity")
 
     ax9 = fig.add_subplot(gs[gs_counter + 2])
-
-    data1 = np.concatenate(efps_sim)
-    if not plot_data_only:
-        data = [np.concatenate(d) for d in efps_values]
-        x_min, x_max = (
-            np.array([d.min() for d in data]).min(),
-            np.array([d.max() for d in data]).max(),
-        )
-    if plottype == "sim_data":
-        x_min, x_max = data1.min(), data1.max()
-    if "150" in plottype:
-        x_min, x_max = 0, 0.01
-    if plottype == "q" or plottype == "q_max_particles":
-        x_min, x_max = 0, 0.0002
-    elif plottype == "t":
-        x_min, x_max = 0, 0.01
-    hist1 = ax9.hist(
-        data1,
-        bins=bins,
-        histtype="stepfilled",
-        alpha=0.5,
-        range=[x_min, x_max],
-        label=sim_data_label,
-    )
-    if not plot_data_only:
-        for count, model in enumerate(particle_data):
-            hist = ax9.hist(
-                data[count],
-                bins=bins,
-                histtype="step",
-                range=[x_min, x_max],
-                label=f"{labels[count]}",
+    if plot_efps:
+        data1 = np.concatenate(efps_sim)
+        if not plot_data_only:
+            data = [np.concatenate(d) for d in efps_values]
+            x_min, x_max = (
+                np.array([d.min() for d in data]).min(),
+                np.array([d.max() for d in data]).max(),
             )
-    ax9.set_xlabel("Jet EFPs")
-    ax9.set_yscale("log")
-    ax9.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+        if plottype == "sim_data":
+            x_min, x_max = data1.min(), data1.max()
+        if "150" in plottype:
+            x_min, x_max = 0, 0.01
+        if plottype == "q" or plottype == "q_max_particles":
+            x_min, x_max = 0, 0.0002
+        elif plottype == "t":
+            x_min, x_max = 0, 0.01
+        hist1 = ax9.hist(
+            data1,
+            bins=bins,
+            histtype="stepfilled",
+            alpha=0.5,
+            range=[x_min, x_max],
+            label=sim_data_label,
+        )
+        if not plot_data_only:
+            for count, model in enumerate(particle_data):
+                hist = ax9.hist(
+                    data[count],
+                    bins=bins,
+                    histtype="step",
+                    range=[x_min, x_max],
+                    label=f"{labels[count]}",
+                )
+        ax9.set_xlabel("Jet EFPs")
+        ax9.set_yscale("log")
+        ax9.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
 
     ax10 = fig.add_subplot(gs[gs_counter + 3])
 
@@ -823,6 +825,7 @@ def create_and_plot_data(
     labels: list[str],
     num_jet_samples: int = 10000,
     batch_size: int = 1000,
+    plot_efps: bool = False,
     selected_particles: list[int] = [1, 5, 20],
     selected_multiplicities: list[int] = [10, 20, 30, 40, 50, 80],
     plottype: str = "sim_data",
@@ -851,7 +854,8 @@ def create_and_plot_data(
         save_name (_type_): _description_
         labels (_type_): _description_
         num_jet_samples (int, optional): _description_. Defaults to 10000.
-        batch_size (int, optional): _description_. Defaults to 10000.
+        batch_size (int, optional): Batch size for generating. Defaults to 10000.
+        plot_efps (bool, optional): Plot EFPs. Defaults to False.
         selected_particles (list, optional): _description_. Defaults to [1, 5, 20].
         selected_multiplicities (list, optional): _description_. Defaults to [10, 20, 30, 40, 50, 80].
         plottype (str, optional): _description_. Defaults to "sim_data".
@@ -907,6 +911,7 @@ def create_and_plot_data(
         means=means,
         stds=stds,
         file_dict=file_dict,
+        calculate_efps=plot_efps,
     )
 
     if print_parameters:
@@ -927,6 +932,7 @@ def create_and_plot_data(
         sim_data_label=sim_data_label,
         plot_jet_features=plot_jet_features,
         plot_w_dists=plot_w_dists,
+        plot_efps=plot_efps,
         plot_selected_multiplicities=plot_selected_multiplicities,
         selected_multiplicities=selected_multiplicities,
         selected_particles=selected_particles,
@@ -1063,6 +1069,7 @@ def create_data_for_plotting(
     means: list[float] = None,
     stds: list[float] = None,
     file_dict: dict = None,
+    calculate_efps: bool = False,
 ):
     data = []
     times = []
@@ -1073,7 +1080,9 @@ def create_data_for_plotting(
     w_dist_m = []
     sim_data = sim_data_in[:num_jet_samples]
     jet_data_sim = calculate_jet_features(sim_data)
-    efps_sim = efps(sim_data, efp_jobs=1)
+    efps_sim = []
+    if calculate_efps:
+        efps_sim = efps(sim_data)
     pt_selected_particles_sim = get_pt_of_selected_particles(sim_data, selected_particles)
     if plot_selected_multiplicities:
         pt_selected_multiplicities_sim = get_pt_of_selected_multiplicities(
@@ -1104,7 +1113,9 @@ def create_data_for_plotting(
                 stds=stds,
             )
         jet_data_temp = calculate_jet_features(data_temp)
-        efps_temp = efps(data_temp)
+        efps_temp = []
+        if calculate_efps:
+            efps_temp = efps(data_temp)
         pt_selected_particles_temp = get_pt_of_selected_particles(data_temp, selected_particles)
         pt_selected_multiplicities_temp = get_pt_of_selected_multiplicities(
             data_temp, selected_multiplicities
