@@ -2,13 +2,13 @@ defaults:
   - model_checkpoint.yaml
   - early_stopping.yaml
   - model_summary.yaml
-  - rich_progress_bar.yaml
+  #- rich_progress_bar.yaml
   - jetnet_eval.yaml
   - _self_
 
 model_checkpoint:
   dirpath: ${paths.output_dir}/checkpoints
-  filename: "epoch_{epoch:03d}_loss_{val/loss:.3f}"
+  filename: "epoch_{epoch:03d}_loss_{val/loss:.5f}"
   monitor: "val/loss"
   mode: "min"
   save_last: True

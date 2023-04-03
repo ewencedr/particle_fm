@@ -5,80 +5,85 @@ from src.data.components import calculate_all_wasserstein_metrics
 from src.data.components.utils import count_parameters
 from src.utils import apply_mpl_styles, create_and_plot_data
 
-# TODO Add dataset as input instead of test_particle_data, test_mask, means, stds
 
-
+# TODO add wandb logging
+# TODO fix w_dists_batches
+# TODO fix efp logging
 class JetNetEvaluationCallback(pl.Callback):
+    """Create a callback to evaluate the model on the test dataset of the JetNet dataset and log
+    the results to a selected logger.
+
+    Args:
+        logger (int, optional): Number of Logger in List to use for logging. Defaults to 1.
+        every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
+        num_jet_samples (int, optional): How many jet samples to generate. Defaults to 25000.
+        w_dists_batches (int, optional): How many batches to calculate Wasserstein distances. Jet samples for each batch are num_jet_samples // w_dists_batches. Defaults to 5.
+        image_path (str, optional): Folder where the images are saved. Defaults to "/beegfs/desy/user/ewencedr/comet_logs".
+        model_name (str, optional): Name for saving the model. Defaults to "model-test".
+        calculate_efps (bool, optional): Calculate EFPs for the jets. Defaults to False.
+        log_w_dists (bool, optional): Calculate and log wasserstein distances Defaults to False.
+        log_num_parameters (bool, optional): Log parameters of model. Only logged in first epoch. Defaults to True.
+        log_times (bool, optional): Log generation times of data. Defaults to True.
+        log_epoch_zero (bool, optional): Log in first epoch. Default to False.
+        **kwargs: Arguments for create_and_plot_data
+    """
+
     def __init__(
         self,
-        logger=1,
-        every_n_epochs=10,
-        num_jet_samples=25000,
-        w_dists_batches=5,
-        sampling_batch_size=1000,
-        test_particle_data=None,
-        test_mask=None,
-        means=None,
-        stds=None,
-        normalised_data=True,
-        image_path="/beegfs/desy/user/ewencedr/comet_logs",
-        model_name="model-test",
-        max_particles=True,
-        mgpu=True,
-        selected_particles=[1, 5, 20],
-        selected_multiplicities=[10, 20, 30, 40, 50, 80],
-        plot_selected_multiplicities=False,
-        plottype="sim_data",
+        logger: int = 1,
+        every_n_epochs: int = 10,
+        num_jet_samples: int = 25000,
+        w_dists_batches: int = 5,
+        image_path: str = "./logs/callback_images/",
+        model_name: str = "model",
+        calculate_efps: bool = False,
+        log_w_dists: bool = False,
+        log_num_parameters: bool = True,
+        log_times: bool = True,
+        log_epoch_zero: bool = False,
+        **kwargs,
     ):
+
         super().__init__()
         self.logger = logger
-        self.every_n_epochs = (
-            every_n_epochs  # Only save those jets every N epochs to reduce logging
-        )
-        self.num_jet_samples = num_jet_samples  # Number of jets to generate
+        self.every_n_epochs = every_n_epochs
+        self.num_jet_samples = num_jet_samples
         self.w_dists_batches = w_dists_batches
-        self.sampling_batch_size = sampling_batch_size
+        self.log_w_dists = log_w_dists
+        self.log_num_parameters = log_num_parameters
+        self.log_times = log_times
+        self.log_epoch_zero = log_epoch_zero
 
         # Parameters for plotting
         self.model_name = model_name
-        self.test_particle_data = test_particle_data
-        self.test_mask = test_mask
-        self.means = means
-        self.stds = stds
-        self.normalised_data = normalised_data
-        self.max_particles = max_particles
-        self.mgpu = mgpu
-        self.selected_particles = selected_particles
-        self.selected_multiplicites = selected_multiplicities
-        self.plot_selected_multiplicities = plot_selected_multiplicities
-        self.plottype = plottype
+        self.calculate_efps = calculate_efps
+        self.kwargs = kwargs
 
         self.image_path = image_path
         apply_mpl_styles()
 
     def on_train_epoch_end(self, trainer, pl_module):
         # Skip for all other epochs
-        if trainer.current_epoch % self.every_n_epochs == 0:
+        log_epoch = True
+        if not self.log_epoch_zero and trainer.current_epoch == 0:
+            log_epoch = False
+        if trainer.current_epoch % self.every_n_epochs == 0 and log_epoch:
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
             fig, particle_data, times = create_and_plot_data(
-                self.test_particle_data,
+                np.array(trainer.datamodule.tensor_test),
                 [pl_module],
                 save_name=plot_name,
                 labels=["Model"],
-                normalised_data=[self.normalised_data],
-                mgpu=self.mgpu,
-                plottype=self.plottype,
-                max_particles=self.max_particles,
-                mask=self.test_mask,
-                batch_size=self.sampling_batch_size,
+                normalised_data=[trainer.datamodule.hparams.normalize],
+                max_particles=trainer.datamodule.hparams.variable_jet_sizes,
+                mask=np.array(trainer.datamodule.mask_test),
                 num_jet_samples=self.num_jet_samples,
-                means=self.means,
-                stds=self.stds,
+                means=trainer.datamodule.means,
+                stds=trainer.datamodule.stds,
                 save_folder=self.image_path,
                 print_parameters=False,
-                selected_particles=self.selected_particles,
-                selected_multiplicities=self.selected_multiplicites,
-                plot_selected_multiplicities=self.plot_selected_multiplicities,
+                plot_efps=self.calculate_efps,
+                **self.kwargs,
             )
 
             particle_data = particle_data[0]
@@ -88,41 +93,49 @@ class JetNetEvaluationCallback(pl.Callback):
             )
             mask_data = np.expand_dims(mask_data, axis=-1)
 
-            # 1 batch
-            w_dists_1b = calculate_all_wasserstein_metrics(
-                self.test_particle_data[..., :3],
-                particle_data,
-                self.test_mask,
-                mask_data,
-                num_eval_samples=self.num_jet_samples,
-                num_batches=1,
-            )
+            if self.log_w_dists:
+                # 1 batch
+                w_dists_1b = calculate_all_wasserstein_metrics(
+                    trainer.datamodule.tensor_test[..., :3],
+                    particle_data,
+                    trainer.datamodule.mask_test,
+                    mask_data,
+                    num_eval_samples=self.num_jet_samples,
+                    num_batches=1,
+                    calculate_efps=self.calculate_efps,
+                )
 
-            # divide into 3 batches
-            w_dists = calculate_all_wasserstein_metrics(
-                self.test_particle_data[..., :3],
-                particle_data,
-                self.test_mask,
-                mask_data,
-                num_eval_samples=self.num_jet_samples // self.w_dists_batches,
-                num_batches=self.w_dists_batches,
-            )
+                # divide into batches
+                w_dists = calculate_all_wasserstein_metrics(
+                    trainer.datamodule.tensor_test[..., :3],
+                    particle_data,
+                    trainer.datamodule.mask_test,
+                    mask_data,
+                    num_eval_samples=self.num_jet_samples // self.w_dists_batches,
+                    num_batches=self.w_dists_batches,
+                    calculate_efps=self.calculate_efps,
+                )
 
-            # Wasserstein Metrics
-            text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
-            trainer.loggers[self.logger].experiment.log_text(text)
-            trainer.loggers[self.logger].experiment.log_metrics(w_dists)
+                # Wasserstein Metrics
+                text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+                trainer.loggers[self.logger].experiment.log_text(text)
+                trainer.loggers[self.logger].experiment.log_metrics(w_dists)
 
-            text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean']}+-{w_dists_1b['w1m_std']}, W1p: {w_dists_1b['w1p_mean']}+-{w_dists_1b['w1p_std']}, W1efp: {w_dists_1b['w1efp_mean']}+-{w_dists_1b['w1efp_std']}"
-            trainer.loggers[self.logger].experiment.log_text(text_1b)
-            trainer.loggers[self.logger].experiment.log_metrics(w_dists_1b)
+                text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean']}+-{w_dists_1b['w1m_std']}, W1p: {w_dists_1b['w1p_mean']}+-{w_dists_1b['w1p_std']}, W1efp: {w_dists_1b['w1efp_mean']}+-{w_dists_1b['w1efp_std']}"
+                trainer.loggers[self.logger].experiment.log_text(text_1b)
+                trainer.loggers[self.logger].experiment.log_metrics(w_dists_1b)
+
+            # Jet genereation time
+            if self.log_times:
+                trainer.loggers[self.logger].experiment.log_metrics({"Jet generation time": times})
 
             # Histogram Plots
-            img_path = f"{self.image_path}/plots/{plot_name}.png"
+            img_path = f"{self.image_path}{plot_name}.png"
             trainer.loggers[self.logger].experiment.log_image(
                 img_path, name=f"epoch{trainer.current_epoch}"
             )
 
             # Parameters
-            parameters = count_parameters(pl_module)
-            trainer.loggers[self.logger].log_hyperparams({"parameters": parameters})
+            if self.log_num_parameters and trainer.current_epoch == 0:
+                parameters = count_parameters(pl_module)
+                trainer.loggers[self.logger].log_hyperparams({"parameters": parameters})

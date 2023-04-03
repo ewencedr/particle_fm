@@ -5,17 +5,7 @@ jetnet_eval:
   every_n_epochs: 10 # evaluate every n epochs
   num_jet_samples: 25000 # jet samples to generate
   w_dists_batches: 5
-  sampling_batch_size: 1000
-  test_particle_data: None
-  test_mask: None
-  means: None
-  stds: None
-  normalised_data: True
-  image_path: ${paths.data_dir}/callback_logs/
+  image_path: ${paths.log_dir}callback_logs/
   model_name: "model-test"
-  max_particles: True
-  mgpu: True
-  selected_particles: [1, 5, 20]
-  selected_multiplicities: [10, 20, 30, 40, 50, 80]
-  plot_selected_multiplicities: False
-  plottype: "sim_data"
+  #plotting
+  batch_size: 1000

@@ -6,7 +6,7 @@
 defaults:
   - override /data: /jetnet/jetnet_tops_30.yaml
   - override /model: cnf_flow_matching.yaml
-  - override /callbacks: default.yaml
+  - override /callbacks: jetnet.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -59,7 +59,7 @@ data:
 callbacks:
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_loss_{val/loss:.3f}"
+    filename: "epoch_{epoch:03d}_loss_{val/loss:.5f}"
     monitor: "val/loss"
     mode: "min"
     save_last: True
@@ -70,16 +70,15 @@ callbacks:
     patience: 2000
     mode: "min"
 
-  #jetnet_eval:
-  #  logger: 1
-  #  every_n_epochs: 10
-  #  num_jet_samples: 5000
-  #  w_dists_batches: 2
-  #  sampling_batch_size: 1000
-  #  test_particle_data: None
-  #  test_mask: None
-  #  means: None
-  #  stds: None
+  jetnet_eval:
+    logger: 0
+    every_n_epochs: 3
+    num_jet_samples: 3000
+    batch_size: 1000
+    plot_w_dists: False
+    w_dists_batches: 3
+
+
 task_name: "fm_tops-${model.num_particles}"
 
 logger:

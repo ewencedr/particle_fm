@@ -1,1 +1,1 @@
-from .jetnet_eval_callback import JetNetEvaluationCallback
+from .jetnet_eval import JetNetEvaluationCallback
