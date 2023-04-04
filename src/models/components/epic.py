@@ -19,6 +19,7 @@ class EPiC_layer(nn.Module):
         local_in_dim,
         hid_dim,
         latent_dim,
+        t_global_cat=False,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
         frequencies=6,
@@ -26,15 +27,20 @@ class EPiC_layer(nn.Module):
     ):
         super().__init__()
         self.activation = activation
+        self.t_global_cat = t_global_cat
+        t_global_dim = latent_dim if self.t_global_cat else 0
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
 
-        self.fc_global1 = self.wrapper_func(nn.Linear(int(2 * hid_dim) + 2 * latent_dim, hid_dim))
+        self.fc_global1 = self.wrapper_func(
+            nn.Linear(int(2 * hid_dim) + latent_dim + t_global_dim, hid_dim)
+        )
         self.fc_global2 = self.wrapper_func(nn.Linear(hid_dim, latent_dim))
         self.fc_local1 = self.wrapper_func(
             nn.Linear(local_in_dim + latent_dim + 2 * frequencies, hid_dim)
         )
         self.fc_local2 = self.wrapper_func(nn.Linear(hid_dim + 2 * frequencies, hid_dim))
-        self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, latent_dim))
+        if self.t_global_cat:
+            self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, latent_dim))
 
     def forward(
         self, t, x_global, x_local
@@ -44,20 +50,18 @@ class EPiC_layer(nn.Module):
         latent_global = x_global.size(1)
         logger_el.debug(f"t shape: {t.shape}")
 
-        # prepare t for concat to global
-        t_global = self.fc_t(t.clone().reshape(t.shape[0], -1))
-        logger_el.debug(f"t_global shape: {t_global.shape}")
+        if self.t_global_cat:
+            # prepare t for concat to global
+            t_global = self.fc_t(t.clone().reshape(t.shape[0], -1))
+            logger_el.debug(f"t_global shape: {t_global.shape}")
+        else:
+            t_global = torch.Tensor().to(t.device)
 
         # meansum pooling
         x_pooled_mean = x_local.mean(1, keepdim=False)
         x_pooled_sum = x_local.sum(1, keepdim=False)
         x_pooledCATglobal = torch.cat(
-            [
-                x_pooled_mean,
-                x_pooled_sum,
-                x_global,
-                t_global,
-            ],
+            [x_pooled_mean, x_pooled_sum, x_global, t_global],
             1,
         )  # meansum pooling
         logger_el.debug(f"x_pooled_mean.shape: {x_pooled_mean.shape}")
@@ -109,6 +113,7 @@ class EPiC_generator(nn.Module):
         wrapper_func: str = "weight_norm",
         frequencies=6,
         num_points=30,
+        t_global_cat=False,
     ):
         super().__init__()
         self.activation = activation
@@ -118,11 +123,13 @@ class EPiC_generator(nn.Module):
         self.feats = feats
         self.equiv_layers = equiv_layers
         self.return_latent_space = return_latent_space  # false or true
+        self.t_global_cat = t_global_cat
+        t_global_dim = self.latent if self.t_global_cat else 0
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
         self.local_0 = self.wrapper_func(
             nn.Linear(self.latent_local + 2 * frequencies, self.hid_d)
         )
-        self.global_0 = self.wrapper_func(nn.Linear(2 * self.latent, self.hid_d))
+        self.global_0 = self.wrapper_func(nn.Linear(self.latent + t_global_dim, self.hid_d))
         self.global_1 = self.wrapper_func(nn.Linear(self.hid_d, self.latent))
 
         self.nn_list = nn.ModuleList()
@@ -135,12 +142,13 @@ class EPiC_generator(nn.Module):
                     activation=activation,
                     wrapper_func=wrapper_func,
                     num_points=num_points,
+                    t_global_cat=t_global_cat,
                 )
             )
 
         self.local_1 = self.wrapper_func(nn.Linear(self.hid_d + 2 * frequencies, self.feats))
-
-        self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, self.latent))
+        if self.t_global_cat:
+            self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, self.latent))
 
     def forward(self, t, z_global, z_local):  # shape: [batch, points, feats]
 
@@ -149,12 +157,13 @@ class EPiC_generator(nn.Module):
         logger_eg.debug(f"t: {t.shape}")
         logger_eg.debug(f"z_local: {z_local.shape}")
 
-        # prepare t for concat to global
-        t_global = getattr(F, self.activation, lambda x: x)(
-            self.fc_t(t.clone().reshape(t.shape[0], -1))
-        )
-        logger_el.debug(f"t_global shape: {t_global.shape}")
-        z_global = torch.cat([z_global, t_global], 1)
+        if self.t_global_cat:
+            # prepare t for concat to global
+            t_global = getattr(F, self.activation, lambda x: x)(
+                self.fc_t(t.clone().reshape(t.shape[0], -1))
+            )
+            logger_el.debug(f"t_global shape: {t_global.shape}")
+            z_global = torch.cat([z_global, t_global], 1)
 
         z_local = getattr(F, self.activation, lambda x: x)(
             self.local_0(torch.cat((t, z_local), dim=-1))

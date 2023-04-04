@@ -32,6 +32,7 @@ class CNF(nn.Module):
         latent: int = 16,
         activation: str = "leaky_relu",
         wrapper_func: str = None,
+        t_global_cat: bool = False,
     ):
         super().__init__()
         self.model = model
@@ -59,6 +60,7 @@ class CNF(nn.Module):
                 activation=activation,
                 wrapper_func=wrapper_func,
                 frequencies=frequencies,
+                t_global_cat=t_global_cat,
             )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
@@ -127,7 +129,7 @@ class FlowMatchingLoss(nn.Module):
         v_res = self.v(t.squeeze(-1), y)
         out = (v_res - u).square().mean()
         if self.use_mass_loss:
-            mass_scaling_factor = 0.0000001 * 2
+            mass_scaling_factor = 0.0001 * 1
             mass_mse = (jet_masses(v_res) - jet_masses(u)).square().mean()
             logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
             logger.debug(f"out: {out}")
