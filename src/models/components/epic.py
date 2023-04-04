@@ -16,6 +16,7 @@ class EPiC_layer(nn.Module):
         local_in_dim (int, optional): local in dim. Defaults to 3.
         hid_dim (int, optional): hidden dimension. Defaults to 256.
         latent_dim (int, optional): latent dim. Defaults to 16.
+        global_cond_dim (int, optional): Global conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
         activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
         frequencies (int, optional): Frequencies for time. Defaults to 6.
@@ -29,6 +30,7 @@ class EPiC_layer(nn.Module):
         local_in_dim: int = 3,
         hid_dim: int = 256,
         latent_dim: int = 16,
+        global_cond_dim: int = 0,
         t_local_cat: bool = False,
         t_global_cat: bool = False,
         activation: str = "leaky_relu",
@@ -39,6 +41,7 @@ class EPiC_layer(nn.Module):
 
         super().__init__()
         self.activation = activation
+        self.global_cond_dim = global_cond_dim
 
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
@@ -48,7 +51,7 @@ class EPiC_layer(nn.Module):
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
 
         self.fc_global1 = self.wrapper_func(
-            nn.Linear(int(2 * hid_dim) + latent_dim + t_global_dim, hid_dim)
+            nn.Linear(int(2 * hid_dim) + latent_dim + t_global_dim + global_cond_dim, hid_dim)
         )
         self.fc_global2 = self.wrapper_func(nn.Linear(hid_dim, latent_dim))
         self.fc_local1 = self.wrapper_func(
@@ -59,8 +62,20 @@ class EPiC_layer(nn.Module):
             self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, latent_dim))
 
     def forward(
-        self, t, x_global, x_local
-    ):  # shapes: x_global[b,latent], x_local[b,n,latent_local]
+        self,
+        t: torch.Tensor,
+        x_global: torch.Tensor,
+        x_local: torch.Tensor,
+        global_cond: torch.Tensor = None,
+    ) -> tuple[
+        torch.Tensor, torch.Tensor
+    ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
+        if global_cond is None and self.global_cond_dim > 0:
+            raise ValueError(
+                f"global_cond_dim is {self.global_cond_dim} but no global_cond is given"
+            )
+        if global_cond is None:
+            global_cond = torch.Tensor().to(x_global.device)
 
         batch_size, n_points, latent_local = x_local.size()
         latent_global = x_global.size(1)
@@ -79,7 +94,7 @@ class EPiC_layer(nn.Module):
         x_pooled_mean = x_local.mean(1, keepdim=False)
         x_pooled_sum = x_local.sum(1, keepdim=False)
         x_pooledCATglobal = torch.cat(
-            [x_pooled_mean, x_pooled_sum, x_global, t_global],
+            [x_pooled_mean, x_pooled_sum, x_global, t_global, global_cond],
             1,
         )  # meansum pooling
         logger_el.debug(f"x_pooled_mean.shape: {x_pooled_mean.shape}")
@@ -127,6 +142,7 @@ class EPiC_generator(nn.Module):
         hid_d (int, optional): Hidden dimension. Defaults to 256.
         feats (int, optional): Embedding dimension for EPiC Layers. Defaults to 128.
         equiv_layers (int, optional): Number of EPiC Layers used. Defaults to 8.
+        global_cond_dim (int, optional): Global conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
@@ -143,6 +159,7 @@ class EPiC_generator(nn.Module):
         hid_d: int = 256,
         feats: int = 128,
         equiv_layers: int = 8,
+        global_cond_dim: int = 0,
         return_latent_space: bool = False,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
@@ -158,6 +175,7 @@ class EPiC_generator(nn.Module):
         self.hid_d = hid_d
         self.feats = feats
         self.equiv_layers = equiv_layers
+        self.global_cond_dim = global_cond_dim
         self.return_latent_space = return_latent_space
 
         self.t_local_cat = t_local_cat
@@ -182,6 +200,7 @@ class EPiC_generator(nn.Module):
                     num_points=num_points,
                     t_global_cat=t_global_cat,
                     t_local_cat=t_local_cat,
+                    global_cond_dim=global_cond_dim,
                 )
             )
 
@@ -189,8 +208,13 @@ class EPiC_generator(nn.Module):
         if self.t_global_cat:
             self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, self.latent))
 
-    def forward(self, t, z_global, z_local):  # shape: [batch, points, feats]
-
+    def forward(
+        self,
+        t: torch.Tensor,
+        z_global: torch.Tensor,
+        z_local: torch.Tensor,
+        global_cond: torch.Tensor = None,
+    ):  # shape: [batch, points, feats]
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
         logger_eg.debug(f"t: {t.shape}")
@@ -221,7 +245,7 @@ class EPiC_generator(nn.Module):
         # equivariant connections, each one_hot conditined
         for i in range(self.equiv_layers):
             z_global, z_local = self.nn_list[i](
-                t, z_global, z_local
+                t, z_global, z_local, global_cond=global_cond
             )  # contains residual connection
 
             z_global, z_local = (

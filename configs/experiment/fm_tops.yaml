@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops", "30"]
+tags: ["flow_matching", "tops", "30", "test_runs"]
 
 trainer:
   min_epochs: 3
@@ -29,7 +29,7 @@ model:
   hidden_dim: 128
   num_particles: 30
   frequencies: 6
-  use_mass_loss: True
+  use_mass_loss: False
   layers: 8
   n_transforms: 1
   activation: leaky_relu
@@ -37,6 +37,7 @@ model:
   # epic
   latent: 16
   return_latent_space: False
+  mass_conditioning: True
   t_local_cat: True
   t_global_cat: False
   # transformer
@@ -85,6 +86,7 @@ task_name: "fm_tops-${model.num_particles}"
 
 logger:
   wandb:
+    project_name: "test_runs"
     tags: ${tags}
     group: "fm_tops"
     name: ${task_name}

@@ -15,6 +15,8 @@ from .components import EPiC_generator, Transformer
 
 logger = get_pylogger("fm_module")
 
+# TODO conditioned sampling
+
 
 class CNF(nn.Module):
     """Continuous Normalizing Flow with EPiC Generator or Transformer.
@@ -26,6 +28,7 @@ class CNF(nn.Module):
         frequencies (int, optional): Frequency for time. Defaults to 6.
         hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
         layers (int, optional): Number of Layers to use. Defaults to 8.
+        mass_conditioning (bool, optional): Condition the model on the jet mass. Defaults to False.
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         dropout (float, optional): Dropout value for dropout layers. Defaults to 0.0.
         heads (int, optional): Number of attention heads. Defaults to 4.
@@ -45,6 +48,7 @@ class CNF(nn.Module):
         frequencies: int = 6,
         hidden_dim: int = 128,
         layers: int = 8,
+        mass_conditioning: bool = False,
         return_latent_space: bool = False,
         dropout: float = 0.0,
         heads: int = 4,
@@ -58,6 +62,7 @@ class CNF(nn.Module):
         super().__init__()
         self.model = model
         self.latent = latent
+        self.mass_conditioning = mass_conditioning
         if self.model == "transformer":
             self.net = Transformer(
                 input_dim=features + 2 * frequencies,
@@ -70,7 +75,7 @@ class CNF(nn.Module):
                 dropout=dropout,
             )
         elif self.model == "epic":
-
+            global_cond_dim = 1 if mass_conditioning else 0
             self.net = EPiC_generator(
                 latent_local=features + 2 * frequencies,
                 feats=features,
@@ -83,11 +88,17 @@ class CNF(nn.Module):
                 frequencies=frequencies,
                 t_local_cat=t_local_cat,
                 t_global_cat=t_global_cat,
+                global_cond_dim=global_cond_dim,
             )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
 
-    def forward(self, t: Tensor, x: Tensor) -> Tensor:
+    def forward(
+        self,
+        t: Tensor,
+        x: Tensor,
+    ) -> Tensor:
+        logger.debug(f"self.mass_conditioning: {self.mass_conditioning}")
         # logger.debug(f"t.shape0: {t[:3]}")
         logger.debug(f"x.shape1: {x.shape}")
         # t: (batch_size,num_particles)
@@ -104,7 +115,13 @@ class CNF(nn.Module):
         if self.model == "epic":
             x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
             x_local = x
-            x = self.net(t, x_global, x_local)
+            if self.mass_conditioning:
+                cond = jet_masses(x_local).unsqueeze(-1)
+                logger.debug(f"mass.shape: {cond.shape}")
+            else:
+                cond = None
+            x = self.net(t, x_global, x_local, cond)
+
         else:
             x = self.net(x)
 
@@ -197,6 +214,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         use_mass_loss (bool, optional): Add mass term to loss. Defaults to True.
         layers (int, optional): Number of layers. Defaults to 8.
         n_transforms (int, optional): Number of flow transforms. Defaults to 1.
+        mass_conditioning (bool, optional): Condition the model on the jet mass. Defaults to False.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
         latent (int, optional): Latent dimension. Defaults to 16.
@@ -227,6 +245,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         return_latent_space: bool = False,
         t_local_cat: bool = False,
         t_global_cat: bool = False,
+        mass_conditioning: bool = False,
         # transformer
         dropout: float = 0.0,
         heads: int = 4,
@@ -248,6 +267,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     num_particles=num_particles,
                     frequencies=frequencies,
                     layers=layers,
+                    mass_conditioning=mass_conditioning,
                     latent=latent,
                     return_latent_space=return_latent_space,
                     dropout=dropout,
@@ -354,5 +374,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         z = torch.randn(n_samples, self.hparams.num_particles, self.hparams.features).to(
             self.device
         )
+        cond = torch.zeros(n_samples, self.hparams.num_particles, 1).to(self.device)
         samples = self.forward(z, reverse=True)
         return samples

@@ -37,6 +37,7 @@ model:
   # epic
   latent: 16
   return_latent_space: False
+  mass_conditioning: False
   t_local_cat: True
   t_global_cat: False
   # transformer
