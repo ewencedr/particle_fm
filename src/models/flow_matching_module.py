@@ -9,7 +9,7 @@ from torch.distributions import Normal
 from zuko.utils import odeint
 
 from src.data.components.utils import jet_masses
-from utils.pylogger import get_pylogger
+from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_generator, Transformer
 

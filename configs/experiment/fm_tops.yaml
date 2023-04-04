@@ -86,9 +86,10 @@ task_name: "fm_tops-${model.num_particles}"
 
 logger:
   wandb:
-    project_name: "test_runs"
+    project: "test_runs"
     tags: ${tags}
     group: "fm_tops"
     name: ${task_name}
   comet:
     experiment_name: ${task_name}
+    project_name: "test_runs"

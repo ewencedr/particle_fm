@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.pylogger import get_pylogger
+from src.utils.pylogger import get_pylogger
 
 logger_el = get_pylogger("epic_layer")
 logger_eg = get_pylogger("epic_generator")
