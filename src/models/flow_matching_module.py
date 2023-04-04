@@ -17,9 +17,29 @@ logger = get_pylogger("fm_module")
 
 
 class CNF(nn.Module):
+    """Continuous Normalizing Flow with EPiC Generator or Transformer.
+
+    Args:
+        features (int): Data features. Defaults to 3.
+        model (str, optional): Use Transformer or EPiC Generator as architecture. Defaults to "transformer".
+        num_particles (int, optional): Set cardinality. Defaults to 150.
+        frequencies (int, optional): Frequency for time. Defaults to 6.
+        hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
+        layers (int, optional): Number of Layers to use. Defaults to 8.
+        return_latent_space (bool, optional): Return latent space. Defaults to False.
+        dropout (float, optional): Dropout value for dropout layers. Defaults to 0.0.
+        heads (int, optional): Number of attention heads. Defaults to 4.
+        mask (bool, optional): Use mask. Defaults to False.
+        latent (int, optional): Latent dimension. Defaults to 16.
+        activation (str, optional): Activation function. Defaults to "leaky_relu".
+        wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
+        t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+    """
+
     def __init__(
         self,
-        features: int,
+        features: int = 3,
         model: str = "transformer",
         num_particles: int = 150,
         frequencies: int = 6,
@@ -31,7 +51,7 @@ class CNF(nn.Module):
         mask=False,
         latent: int = 16,
         activation: str = "leaky_relu",
-        wrapper_func: str = None,
+        wrapper_func: str = "weight_norm",
         t_local_cat: bool = False,
         t_global_cat: bool = False,
     ):
@@ -117,6 +137,13 @@ class CNF(nn.Module):
 
 
 class FlowMatchingLoss(nn.Module):
+    """Flow Matching loss objective for training CNFs.
+
+    Args:
+        v (nn.Module): Model
+        use_mass_loss (bool, optional): Use mass in loss function. Defaults to False.
+    """
+
     def __init__(self, v: nn.Module, use_mass_loss: bool = False):
         super().__init__()
 
@@ -157,6 +184,30 @@ class FlowMatchingLoss2(nn.Module):
 
 
 class SetFlowMatchingLitModule(pl.LightningModule):
+    """Pytorch Lightning module for training CNFs with Flow Matching loss.
+
+    Args:
+        optimizer (torch.optim.Optimizer): Optimizer
+        scheduler (torch.optim.lr_scheduler): Scheduler
+        model (str, optional): Use Transformer or EPiC Generator as model. Defaults to "epic".
+        features (int, optional): Features of data. Defaults to 3.
+        hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
+        num_particles (int, optional): Set cardinality. Defaults to 150.
+        frequencies (int, optional): Time frequencies. Defaults to 6.
+        use_mass_loss (bool, optional): Add mass term to loss. Defaults to True.
+        layers (int, optional): Number of layers. Defaults to 8.
+        n_transforms (int, optional): Number of flow transforms. Defaults to 1.
+        activation (str, optional): Activation function. Defaults to "leaky_relu".
+        wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
+        latent (int, optional): Latent dimension. Defaults to 16.
+        return_latent_space (bool, optional): Return latent space. Defaults to False.
+        t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+        dropout (float, optional): Value for dropout layers. Defaults to 0.0.
+        heads (int, optional): Number of attention heads. Defaults to 4.
+        mask (bool, optional): Use Mask. Defaults to False.
+    """
+
     def __init__(
         self,
         optimizer: torch.optim.Optimizer,
@@ -170,7 +221,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         layers: int = 8,
         n_transforms: int = 1,
         activation: str = "leaky_relu",
-        wrapper_func: str = None,
+        wrapper_func: str = "weight_norm",
         # epic
         latent: int = 16,
         return_latent_space: bool = False,

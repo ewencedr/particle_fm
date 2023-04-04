@@ -9,23 +9,34 @@ logger_eg = get_pylogger("epic_generator")
 
 
 class EPiC_layer(nn.Module):
-    """
-    equivariant layer with global concat & residual connections inside this module  & weight_norm
+    """equivariant layer with global concat & residual connections inside this module  & weight_norm
     ordered: first update global, then local
+
+    Args:
+        local_in_dim (int, optional): local in dim. Defaults to 3.
+        hid_dim (int, optional): hidden dimension. Defaults to 256.
+        latent_dim (int, optional): latent dim. Defaults to 16.
+        activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
+        wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
+        frequencies (int, optional): Frequencies for time. Defaults to 6.
+        num_points (int, optional): Number of points in set. Defaults to 30.
+        t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
     """
 
     def __init__(
         self,
-        local_in_dim,
-        hid_dim,
-        latent_dim,
-        t_local_cat=False,
-        t_global_cat=False,
+        local_in_dim: int = 3,
+        hid_dim: int = 256,
+        latent_dim: int = 16,
+        t_local_cat: bool = False,
+        t_global_cat: bool = False,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
-        frequencies=6,
-        num_points=30,
+        frequencies: int = 6,
+        num_points: int = 30,
     ):
+
         super().__init__()
         self.activation = activation
 
@@ -104,33 +115,50 @@ class EPiC_layer(nn.Module):
         return x_global, x_local
 
 
-# Decoder / Generator for multiple particles with Variable Number of Equivariant Layers (with global concat)
-# added same global and local usage in EPiC layer
-# order: global first, then local
 class EPiC_generator(nn.Module):
+    """Decoder / Generator for multiple particles with Variable Number of Equivariant Layers (with global concat)
+       added same global and local usage in EPiC layer
+       order: global first, then local
+
+
+    Args:
+        latent (int, optional): used for latent size of equiv concat. Defaults to 16.
+        latent_local (int, optional): noise. Defaults to 3.
+        hid_d (int, optional): Hidden dimension. Defaults to 256.
+        feats (int, optional): Embedding dimension for EPiC Layers. Defaults to 128.
+        equiv_layers (int, optional): Number of EPiC Layers used. Defaults to 8.
+        return_latent_space (bool, optional): Return latent space. Defaults to False.
+        activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
+        wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
+        frequencies (int, optional): Frequencies for time. Defaults to 6.
+        num_points (int, optional): Number of points in set. Defaults to 30.
+        t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+    """
+
     def __init__(
         self,
-        latent=16,
-        latent_local=3,
-        hid_d=256,
-        feats=128,
-        equiv_layers=8,
-        return_latent_space=False,
+        latent: int = 16,
+        latent_local: int = 3,
+        hid_d: int = 256,
+        feats: int = 128,
+        equiv_layers: int = 8,
+        return_latent_space: bool = False,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
-        frequencies=6,
-        num_points=30,
-        t_local_cat=False,
-        t_global_cat=False,
+        frequencies: int = 6,
+        num_points: int = 30,
+        t_local_cat: bool = False,
+        t_global_cat: bool = False,
     ):
         super().__init__()
         self.activation = activation
-        self.latent = latent  # used for latent size of equiv concat
-        self.latent_local = latent_local  # noise
-        self.hid_d = hid_d  # default 256
+        self.latent = latent
+        self.latent_local = latent_local
+        self.hid_d = hid_d
         self.feats = feats
         self.equiv_layers = equiv_layers
-        self.return_latent_space = return_latent_space  # false or true
+        self.return_latent_space = return_latent_space
 
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
