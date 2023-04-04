@@ -32,6 +32,7 @@ class CNF(nn.Module):
         latent: int = 16,
         activation: str = "leaky_relu",
         wrapper_func: str = None,
+        t_local_cat: bool = False,
         t_global_cat: bool = False,
     ):
         super().__init__()
@@ -60,6 +61,7 @@ class CNF(nn.Module):
                 activation=activation,
                 wrapper_func=wrapper_func,
                 frequencies=frequencies,
+                t_local_cat=t_local_cat,
                 t_global_cat=t_global_cat,
             )
 
@@ -172,6 +174,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # epic
         latent: int = 16,
         return_latent_space: bool = False,
+        t_local_cat: bool = False,
+        t_global_cat: bool = False,
         # transformer
         dropout: float = 0.0,
         heads: int = 4,
@@ -200,6 +204,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     mask=mask,
                     activation=activation,
                     wrapper_func=wrapper_func,
+                    t_global_cat=t_global_cat,
+                    t_local_cat=t_local_cat,
                 )
             )
             # losses.append(FlowMatchingLoss(flows[-1]))

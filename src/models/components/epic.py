@@ -19,6 +19,7 @@ class EPiC_layer(nn.Module):
         local_in_dim,
         hid_dim,
         latent_dim,
+        t_local_cat=False,
         t_global_cat=False,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
@@ -27,8 +28,12 @@ class EPiC_layer(nn.Module):
     ):
         super().__init__()
         self.activation = activation
+
+        self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
+        t_local_dim = 2 * frequencies if self.t_local_cat else 0
         t_global_dim = latent_dim if self.t_global_cat else 0
+
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
 
         self.fc_global1 = self.wrapper_func(
@@ -36,9 +41,9 @@ class EPiC_layer(nn.Module):
         )
         self.fc_global2 = self.wrapper_func(nn.Linear(hid_dim, latent_dim))
         self.fc_local1 = self.wrapper_func(
-            nn.Linear(local_in_dim + latent_dim + 2 * frequencies, hid_dim)
+            nn.Linear(local_in_dim + latent_dim + t_local_dim, hid_dim)
         )
-        self.fc_local2 = self.wrapper_func(nn.Linear(hid_dim + 2 * frequencies, hid_dim))
+        self.fc_local2 = self.wrapper_func(nn.Linear(hid_dim + t_local_dim, hid_dim))
         if self.t_global_cat:
             self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, latent_dim))
 
@@ -50,6 +55,8 @@ class EPiC_layer(nn.Module):
         latent_global = x_global.size(1)
         logger_el.debug(f"t shape: {t.shape}")
 
+        if not self.t_local_cat:
+            t = torch.Tensor().to(t.device)
         if self.t_global_cat:
             # prepare t for concat to global
             t_global = self.fc_t(t.clone().reshape(t.shape[0], -1))
@@ -113,6 +120,7 @@ class EPiC_generator(nn.Module):
         wrapper_func: str = "weight_norm",
         frequencies=6,
         num_points=30,
+        t_local_cat=False,
         t_global_cat=False,
     ):
         super().__init__()
@@ -123,12 +131,14 @@ class EPiC_generator(nn.Module):
         self.feats = feats
         self.equiv_layers = equiv_layers
         self.return_latent_space = return_latent_space  # false or true
+
+        self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
+        t_local_dim = 2 * frequencies if self.t_local_cat else 0
         t_global_dim = self.latent if self.t_global_cat else 0
+
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
-        self.local_0 = self.wrapper_func(
-            nn.Linear(self.latent_local + 2 * frequencies, self.hid_d)
-        )
+        self.local_0 = self.wrapper_func(nn.Linear(self.latent_local + t_local_dim, self.hid_d))
         self.global_0 = self.wrapper_func(nn.Linear(self.latent + t_global_dim, self.hid_d))
         self.global_1 = self.wrapper_func(nn.Linear(self.hid_d, self.latent))
 
@@ -143,10 +153,11 @@ class EPiC_generator(nn.Module):
                     wrapper_func=wrapper_func,
                     num_points=num_points,
                     t_global_cat=t_global_cat,
+                    t_local_cat=t_local_cat,
                 )
             )
 
-        self.local_1 = self.wrapper_func(nn.Linear(self.hid_d + 2 * frequencies, self.feats))
+        self.local_1 = self.wrapper_func(nn.Linear(self.hid_d + t_local_dim, self.feats))
         if self.t_global_cat:
             self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, self.latent))
 
@@ -157,6 +168,8 @@ class EPiC_generator(nn.Module):
         logger_eg.debug(f"t: {t.shape}")
         logger_eg.debug(f"z_local: {z_local.shape}")
 
+        if not self.t_local_cat:
+            t = torch.Tensor().to(t.device)
         if self.t_global_cat:
             # prepare t for concat to global
             t_global = getattr(F, self.activation, lambda x: x)(
