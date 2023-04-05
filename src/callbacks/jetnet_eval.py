@@ -2,7 +2,7 @@ import numpy as np
 import pytorch_lightning as pl
 
 from src.data.components import calculate_all_wasserstein_metrics
-from src.data.components.utils import count_parameters
+from src.data.components.utils import count_parameters, jet_masses
 from src.utils import apply_mpl_styles, create_and_plot_data
 
 
@@ -25,6 +25,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_num_parameters (bool, optional): Log parameters of model. Only logged in first epoch. Defaults to True.
         log_times (bool, optional): Log generation times of data. Defaults to True.
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
+        mass_conditioning (bool, optional): Condition on mass. Defaults to False.
         **kwargs: Arguments for create_and_plot_data
     """
 
@@ -41,6 +42,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_num_parameters: bool = True,
         log_times: bool = True,
         log_epoch_zero: bool = False,
+        mass_conditioning: bool = False,
         **kwargs,
     ):
 
@@ -53,6 +55,8 @@ class JetNetEvaluationCallback(pl.Callback):
         self.log_num_parameters = log_num_parameters
         self.log_times = log_times
         self.log_epoch_zero = log_epoch_zero
+
+        self.mass_conditioning = mass_conditioning
 
         # Parameters for plotting
         self.model_name = model_name
@@ -68,10 +72,15 @@ class JetNetEvaluationCallback(pl.Callback):
         if not self.log_epoch_zero and trainer.current_epoch == 0:
             log_epoch = False
         if trainer.current_epoch % self.every_n_epochs == 0 and log_epoch:
+            if self.mass_conditioning:
+                cond = jet_masses(trainer.datamodule.tensor_test).unsqueeze(-1)
+            else:
+                cond = None
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
             fig, particle_data, times = create_and_plot_data(
                 np.array(trainer.datamodule.tensor_test),
                 [pl_module],
+                cond=cond,
                 save_name=plot_name,
                 labels=["Model"],
                 normalised_data=[trainer.datamodule.hparams.normalize],

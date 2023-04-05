@@ -15,8 +15,6 @@ from .components import EPiC_generator, Transformer
 
 logger = get_pylogger("fm_module")
 
-# TODO conditioned sampling
-
 
 class CNF(nn.Module):
     """Continuous Normalizing Flow with EPiC Generator or Transformer.
@@ -97,6 +95,7 @@ class CNF(nn.Module):
         self,
         t: Tensor,
         x: Tensor,
+        cond: Tensor = None,
     ) -> Tensor:
         logger.debug(f"self.mass_conditioning: {self.mass_conditioning}")
         # logger.debug(f"t.shape0: {t[:3]}")
@@ -116,7 +115,8 @@ class CNF(nn.Module):
             x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
             x_local = x
             if self.mass_conditioning:
-                cond = jet_masses(x_local).unsqueeze(-1)
+                if cond is None:
+                    cond = jet_masses(x_local).unsqueeze(-1)
                 logger.debug(f"mass.shape: {cond.shape}")
             else:
                 cond = None
@@ -128,10 +128,10 @@ class CNF(nn.Module):
         return x
 
     def encode(self, x: Tensor) -> Tensor:
-        return odeint(self, x, 0.0, 1.0, phi=self.parameters())
+        return odeint(self, x, None, 0.0, 1.0, phi=self.parameters())
 
-    def decode(self, z: Tensor) -> Tensor:
-        return odeint(self, z, 1.0, 0.0, phi=self.parameters())
+    def decode(self, z: Tensor, cond: Tensor) -> Tensor:
+        return odeint(self, z, cond, 1.0, 0.0, phi=self.parameters())
 
     def log_prob(self, x: Tensor) -> Tensor:
         i = torch.eye(x.shape[-1]).to(x)
@@ -175,7 +175,7 @@ class FlowMatchingLoss(nn.Module):
         v_res = self.v(t.squeeze(-1), y)
         out = (v_res - u).square().mean()
         if self.use_mass_loss:
-            mass_scaling_factor = 0.001 * 1
+            mass_scaling_factor = 0.0001 * 1
             mass_mse = (jet_masses(v_res) - jet_masses(u)).square().mean()
             logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
             logger.debug(f"out: {out}")
@@ -286,9 +286,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.loss = FlowMatchingLoss(self.flows[0], use_mass_loss=use_mass_loss)
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor = None, reverse: bool = False):
+
         if reverse:
             for f in reversed(self.flows):
-                x = f.decode(x)
+                x = f.decode(x, cond)
         else:
             for f in self.flows:
                 x = f.encode(x)
@@ -370,10 +371,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         return {"optimizer": optimizer}
 
     @torch.no_grad()
-    def sample(self, n_samples: int):
+    def sample(self, n_samples: int, cond: torch.Tensor = None):
         z = torch.randn(n_samples, self.hparams.num_particles, self.hparams.features).to(
             self.device
         )
-        cond = torch.zeros(n_samples, self.hparams.num_particles, 1).to(self.device)
+        if cond is not None:
+            cond = cond.to(self.device)
         samples = self.forward(z, cond=cond, reverse=True)
         return samples

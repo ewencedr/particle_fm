@@ -7,6 +7,7 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from cycler import cycler
 from jetnet.utils import efps
 from matplotlib.gridspec import GridSpec
@@ -821,8 +822,9 @@ def plot_data(
 def create_and_plot_data(
     sim_data: np.ndarray,
     gen_models,
-    save_name: str,
-    labels: list[str],
+    cond: torch.Tensor = None,
+    save_name: str = "plot",
+    labels: list[str] = ["Model"],
     num_jet_samples: int = 10000,
     batch_size: int = 1000,
     plot_efps: bool = False,
@@ -851,6 +853,7 @@ def create_and_plot_data(
     Args:
         sim_data (_type_): _description_
         gen_models (_type_): _description_
+        cond (torch.Tensor, optional): Condition data in case of conditioned model. Defaults to None.
         save_name (_type_): _description_
         labels (_type_): _description_
         num_jet_samples (int, optional): _description_. Defaults to 10000.
@@ -912,6 +915,7 @@ def create_and_plot_data(
         stds=stds,
         file_dict=file_dict,
         calculate_efps=plot_efps,
+        cond=cond,
     )
 
     if print_parameters:
@@ -1070,6 +1074,7 @@ def create_data_for_plotting(
     stds: list[float] = None,
     file_dict: dict = None,
     calculate_efps: bool = False,
+    cond: torch.Tensor = None,
 ):
     data = []
     times = []
@@ -1079,6 +1084,7 @@ def create_data_for_plotting(
     pt_selected_multiplicities = []
     w_dist_m = []
     sim_data = sim_data_in[:num_jet_samples]
+    cond = cond[:num_jet_samples]
     jet_data_sim = calculate_jet_features(sim_data)
     efps_sim = []
     if calculate_efps:
@@ -1111,6 +1117,7 @@ def create_data_for_plotting(
                 normalised_data=normalised_data[count],
                 means=means,
                 stds=stds,
+                cond=cond,
             )
         jet_data_temp = calculate_jet_features(data_temp)
         efps_temp = []

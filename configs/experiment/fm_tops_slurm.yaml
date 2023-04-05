@@ -37,7 +37,7 @@ model:
   # epic
   latent: 16
   return_latent_space: False
-  mass_conditioning: False
+  mass_conditioning: True
   t_local_cat: True
   t_global_cat: False
   # transformer
@@ -75,11 +75,12 @@ callbacks:
 
   jetnet_eval:
     logger: 0
-    every_n_epochs: 100
+    every_n_epochs: 200
     num_jet_samples: 10000
     batch_size: 1000
     plot_w_dists: False
     w_dists_batches: 5
+    mass_conditioning: ${model.mass_conditioning}
 
 
 task_name: "fm_tops-${model.num_particles}"

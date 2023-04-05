@@ -241,7 +241,6 @@ class EPiC_generator(nn.Module):
         latent_tensor = torch.cat([latent_tensor, z_global.clone().reshape(batch_size, 1, -1)], 1)
 
         z_global_in, z_local_in = z_global.clone(), z_local.clone()
-
         # equivariant connections, each one_hot conditined
         for i in range(self.equiv_layers):
             z_global, z_local = self.nn_list[i](

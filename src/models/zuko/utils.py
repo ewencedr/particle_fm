@@ -248,6 +248,7 @@ class GaussLegendre(torch.autograd.Function):
 def odeint(
     f: Callable[[Tensor, Tensor], Tensor],
     x: Tensor | Sequence[Tensor],
+    cond: Tensor,
     t0: float | Tensor,
     t1: float | Tensor,
     phi: Iterable[Tensor] = (),
@@ -305,20 +306,21 @@ def odeint(
         # g = lambda t, x: pack(f(t, *unpack(x)))
 
         def g(t, x):
-            return pack(f(t, *unpack(x)))
+            return pack(f(t, *unpack(x), cond=cond))
 
     t0 = torch.as_tensor(t0).to(x)
     t1 = torch.as_tensor(t1).to(x)
 
     if g is None:
-        return AdaptiveCheckpointAdjoint.apply(f, x, t0, t1, *phi)
+        return AdaptiveCheckpointAdjoint.apply(f, x, cond, t0, t1, *phi)
     else:
-        return unpack(AdaptiveCheckpointAdjoint.apply(g, x, t0, t1, *phi))
+        return unpack(AdaptiveCheckpointAdjoint.apply(g, x, cond, t0, t1, *phi))
 
 
 def dopri45(
     f: Callable[[Tensor, Tensor], Tensor],
     x: Tensor,
+    cond: Tensor,
     t: Tensor,
     dt: Tensor,
     error: bool = False,
@@ -329,13 +331,14 @@ def dopri45(
         https://wikipedia.org/wiki/Dormand-Prince_method
     """
 
-    k1 = dt * f(t, x)
-    k2 = dt * f(t + 1 / 5 * dt, x + 1 / 5 * k1)
-    k3 = dt * f(t + 3 / 10 * dt, x + 3 / 40 * k1 + 9 / 40 * k2)
-    k4 = dt * f(t + 4 / 5 * dt, x + 44 / 45 * k1 - 56 / 15 * k2 + 32 / 9 * k3)
+    k1 = dt * f(t, x, cond)
+    k2 = dt * f(t + 1 / 5 * dt, x + 1 / 5 * k1, cond)
+    k3 = dt * f(t + 3 / 10 * dt, x + 3 / 40 * k1 + 9 / 40 * k2, cond)
+    k4 = dt * f(t + 4 / 5 * dt, x + 44 / 45 * k1 - 56 / 15 * k2 + 32 / 9 * k3, cond)
     k5 = dt * f(
         t + 8 / 9 * dt,
         x + 19372 / 6561 * k1 - 25360 / 2187 * k2 + 64448 / 6561 * k3 - 212 / 729 * k4,
+        cond,
     )
     k6 = dt * f(
         t + dt,
@@ -345,13 +348,14 @@ def dopri45(
         + 46732 / 5247 * k3
         + 49 / 176 * k4
         - 5103 / 18656 * k5,
+        cond,
     )
     x_next = x + 35 / 384 * k1 + 500 / 1113 * k3 + 125 / 192 * k4 - 2187 / 6784 * k5 + 11 / 84 * k6
 
     if not error:
         return x_next
 
-    k7 = dt * f(t + dt, x_next)
+    k7 = dt * f(t + dt, x_next, cond)
     x_star = (
         x
         + 5179 / 57600 * k1
@@ -392,12 +396,13 @@ class AdaptiveCheckpointAdjoint(torch.autograd.Function):
         ctx,
         f: Callable[[Tensor, Tensor], Tensor],
         x: Tensor,
+        cond: Tensor,
         t0: Tensor,
         t1: Tensor,
         *phi: Tensor,
     ) -> Tensor:
         ctx.f = f
-        ctx.save_for_backward(x, t0, t1, *phi)
+        ctx.save_for_backward(x, cond, t0, t1, *phi)
         ctx.steps = []
 
         t, dt = t0, t1 - t0
@@ -407,7 +412,7 @@ class AdaptiveCheckpointAdjoint(torch.autograd.Function):
             dt = sign * torch.min(abs(dt), abs(t1 - t))
 
             while True:
-                y, error = dopri45(f, x, t, dt, error=True)
+                y, error = dopri45(f, x, cond, t, dt, error=True)
                 tolerance = 1e-6 + 1e-5 * torch.max(abs(x), abs(y))
                 error = torch.max(error / tolerance).item() + 1e-6
 
@@ -425,12 +430,12 @@ class AdaptiveCheckpointAdjoint(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_x: Tensor) -> tuple[Tensor, ...]:
         f = ctx.f
-        x0, t0, t1, *phi = ctx.saved_tensors
+        x0, cond, t0, t1, *phi = ctx.saved_tensors
         x1, _, _ = ctx.steps[-1]
 
         # Final time
         if ctx.needs_input_grad[3]:
-            grad_t1 = f(t1, x1) * grad_x
+            grad_t1 = f(t1, x1, cond) * grad_x
         else:
             grad_t1 = None
 
@@ -442,7 +447,7 @@ class AdaptiveCheckpointAdjoint(torch.autograd.Function):
 
             with torch.enable_grad():
                 x = x.detach().requires_grad_()
-                dx = f(t, x)
+                dx = f(t, x, cond)
 
             grad_x, *grad_phi = torch.autograd.grad(dx, (x, *phi), -grad_x, retain_graph=True)
 
@@ -454,8 +459,8 @@ class AdaptiveCheckpointAdjoint(torch.autograd.Function):
 
         # Initial time
         if ctx.needs_input_grad[2]:
-            grad_t0 = f(t0, x0) * grad_x
+            grad_t0 = f(t0, x0, cond) * grad_x
         else:
             grad_t0 = None
 
-        return (None, grad_x, grad_t0, grad_t1, *grad_phi)
+        return (None, grad_x, None, grad_t0, grad_t1, *grad_phi)

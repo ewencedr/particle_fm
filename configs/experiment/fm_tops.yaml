@@ -80,6 +80,7 @@ callbacks:
     batch_size: 1000
     plot_w_dists: False
     w_dists_batches: 3
+    mass_conditioning: ${model.mass_conditioning}
 
 
 task_name: "fm_tops-${model.num_particles}"
