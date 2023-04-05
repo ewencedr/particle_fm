@@ -28,4 +28,3 @@ torchdyn
 # --------- jetnet --------- #
 jetnet
 energyflow
-zuko

@@ -6,9 +6,9 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.distributions import Normal
-from zuko.utils import odeint
 
 from src.data.components.utils import jet_masses
+from src.models.zuko.utils import odeint
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_generator, Transformer
@@ -175,7 +175,7 @@ class FlowMatchingLoss(nn.Module):
         v_res = self.v(t.squeeze(-1), y)
         out = (v_res - u).square().mean()
         if self.use_mass_loss:
-            mass_scaling_factor = 0.0001 * 1
+            mass_scaling_factor = 0.001 * 1
             mass_mse = (jet_masses(v_res) - jet_masses(u)).square().mean()
             logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
             logger.debug(f"out: {out}")
@@ -285,7 +285,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # self.losses = losses
         self.loss = FlowMatchingLoss(self.flows[0], use_mass_loss=use_mass_loss)
 
-    def forward(self, x: torch.Tensor, reverse: bool = False):
+    def forward(self, x: torch.Tensor, cond: torch.Tensor = None, reverse: bool = False):
         if reverse:
             for f in reversed(self.flows):
                 x = f.decode(x)
@@ -375,5 +375,5 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             self.device
         )
         cond = torch.zeros(n_samples, self.hparams.num_particles, 1).to(self.device)
-        samples = self.forward(z, reverse=True)
+        samples = self.forward(z, cond=cond, reverse=True)
         return samples
