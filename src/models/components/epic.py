@@ -207,6 +207,7 @@ class EPiC_generator(nn.Module):
         self.feats = feats
         self.equiv_layers = equiv_layers
         self.return_latent_space = return_latent_space
+        self.global_cond_dim = global_cond_dim
 
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
@@ -215,7 +216,9 @@ class EPiC_generator(nn.Module):
 
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
         self.local_0 = self.wrapper_func(nn.Linear(self.latent_local + t_local_dim, self.hid_d))
-        self.global_0 = self.wrapper_func(nn.Linear(self.latent + t_global_dim, self.hid_d))
+        self.global_0 = self.wrapper_func(
+            nn.Linear(self.latent + t_global_dim + self.global_cond_dim, self.hid_d)
+        )
         self.global_1 = self.wrapper_func(nn.Linear(self.hid_d, self.latent))
 
         self.nn_list = nn.ModuleList()
@@ -258,8 +261,16 @@ class EPiC_generator(nn.Module):
             t_global = getattr(F, self.activation, lambda x: x)(
                 self.fc_t(t.clone().reshape(t.shape[0], -1))
             )
-            logger_el.debug(f"t_global shape: {t_global.shape}")
+            logger_eg.debug(f"t_global shape: {t_global.shape}")
             z_global = torch.cat([z_global, t_global], 1)
+        logger_eg.debug(f"z_global shape: {z_global.shape}")
+        if self.global_cond_dim == 0:
+            global_cond = torch.Tensor().to(z_global.device)
+        else:
+            z_global = torch.cat(
+                [z_global, global_cond.repeat_interleave(self.global_cond_dim, dim=-1)],
+                1,
+            )
 
         z_local = getattr(F, self.activation, lambda x: x)(
             self.local_0(torch.cat((t, z_local), dim=-1))
