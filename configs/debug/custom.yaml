@@ -21,7 +21,8 @@ hydra:
   #  root:
   #    level: DEBUG
   # use this to also set hydra loggers to 'DEBUG'
-  verbose: [fm_module]
+  verbose: [epic_layer]
+  # fn_module, epic_layer, epic_generator
 
 trainer:
   max_epochs: 1

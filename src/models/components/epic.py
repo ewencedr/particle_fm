@@ -51,7 +51,10 @@ class EPiC_layer(nn.Module):
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
 
         self.fc_global1 = self.wrapper_func(
-            nn.Linear(int(2 * hid_dim) + latent_dim + t_global_dim + global_cond_dim, hid_dim)
+            nn.Linear(
+                int(2 * hid_dim) + latent_dim + t_global_dim + self.global_cond_dim,
+                hid_dim,
+            )
         )
         self.fc_global2 = self.wrapper_func(nn.Linear(hid_dim, latent_dim))
         self.fc_local1 = self.wrapper_func(
@@ -89,12 +92,21 @@ class EPiC_layer(nn.Module):
             logger_el.debug(f"t_global shape: {t_global.shape}")
         else:
             t_global = torch.Tensor().to(t.device)
-
+        logger_el.debug(f"global_cond shape: {global_cond.shape}")
+        logger_el.debug(
+            f"global_cond repeat shape: {global_cond.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
+        )
         # meansum pooling
         x_pooled_mean = x_local.mean(1, keepdim=False)
         x_pooled_sum = x_local.sum(1, keepdim=False)
         x_pooledCATglobal = torch.cat(
-            [x_pooled_mean, x_pooled_sum, x_global, t_global, global_cond],
+            [
+                x_pooled_mean,
+                x_pooled_sum,
+                x_global,
+                t_global,
+                global_cond.repeat_interleave(10, dim=-1),
+            ],
             1,
         )  # meansum pooling
         logger_el.debug(f"x_pooled_mean.shape: {x_pooled_mean.shape}")
