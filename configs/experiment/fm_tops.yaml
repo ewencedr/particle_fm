@@ -39,6 +39,7 @@ model:
   return_latent_space: False
   mass_conditioning: True
   global_cond_dim: 10
+  local_cond_dim: 1
   t_local_cat: True
   t_global_cat: False
   # transformer

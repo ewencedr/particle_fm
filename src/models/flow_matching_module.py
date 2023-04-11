@@ -28,6 +28,7 @@ class CNF(nn.Module):
         layers (int, optional): Number of Layers to use. Defaults to 8.
         mass_conditioning (bool, optional): Condition the model on the jet mass. Defaults to False.
         global_cond_dim (int, optional): Dimension to concatenate to the global feature in EPiC Layer. Must be zero for no conditioning. Defaults to 0.
+        local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         dropout (float, optional): Dropout value for dropout layers. Defaults to 0.0.
         heads (int, optional): Number of attention heads. Defaults to 4.
@@ -49,6 +50,7 @@ class CNF(nn.Module):
         layers: int = 8,
         mass_conditioning: bool = False,
         global_cond_dim: int = 0,
+        local_cond_dim: int = 0,
         return_latent_space: bool = False,
         dropout: float = 0.0,
         heads: int = 4,
@@ -75,8 +77,10 @@ class CNF(nn.Module):
                 dropout=dropout,
             )
         elif self.model == "epic":
-            if mass_conditioning and global_cond_dim == 0:
-                raise ValueError("If mass_conditioning is True, global_cond_dim must be > 0")
+            if mass_conditioning and (global_cond_dim == 0 or local_cond_dim == 0):
+                raise ValueError(
+                    "If mass_conditioning is True, global_cond_dim and local_cond_dim must be > 0"
+                )
             self.net = EPiC_generator(
                 latent_local=features + 2 * frequencies,
                 feats=features,
@@ -90,6 +94,7 @@ class CNF(nn.Module):
                 t_local_cat=t_local_cat,
                 t_global_cat=t_global_cat,
                 global_cond_dim=global_cond_dim,
+                local_cond_dim=local_cond_dim,
             )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
@@ -221,6 +226,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         n_transforms (int, optional): Number of flow transforms. Defaults to 1.
         mass_conditioning (bool, optional): Condition the model on the jet mass. Defaults to False.
         global_cond_dim (int, optional): Dimension to concatenate to the global feature in EPiC Layer. Must be zero for no conditioning. Defaults to 0.
+        local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
         latent (int, optional): Latent dimension. Defaults to 16.
@@ -253,6 +259,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         t_global_cat: bool = False,
         mass_conditioning: bool = False,
         global_cond_dim: int = 0,
+        local_cond_dim: int = 0,
         # transformer
         dropout: float = 0.0,
         heads: int = 4,
@@ -276,6 +283,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     layers=layers,
                     mass_conditioning=mass_conditioning,
                     global_cond_dim=global_cond_dim,
+                    local_cond_dim=local_cond_dim,
                     latent=latent,
                     return_latent_space=return_latent_space,
                     dropout=dropout,

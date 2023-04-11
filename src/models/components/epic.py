@@ -17,6 +17,7 @@ class EPiC_layer(nn.Module):
         hid_dim (int, optional): hidden dimension. Defaults to 256.
         latent_dim (int, optional): latent dim. Defaults to 16.
         global_cond_dim (int, optional): Global conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
+        local_cond_dim (int, optional): Local conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
         activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
         frequencies (int, optional): Frequencies for time. Defaults to 6.
@@ -31,6 +32,7 @@ class EPiC_layer(nn.Module):
         hid_dim: int = 256,
         latent_dim: int = 16,
         global_cond_dim: int = 0,
+        local_cond_dim: int = 0,
         t_local_cat: bool = False,
         t_global_cat: bool = False,
         activation: str = "leaky_relu",
@@ -42,6 +44,9 @@ class EPiC_layer(nn.Module):
         super().__init__()
         self.activation = activation
         self.global_cond_dim = global_cond_dim
+        self.local_cond_dim = local_cond_dim
+
+        self.num_points = num_points
 
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
@@ -58,11 +63,13 @@ class EPiC_layer(nn.Module):
         )
         self.fc_global2 = self.wrapper_func(nn.Linear(hid_dim, latent_dim))
         self.fc_local1 = self.wrapper_func(
-            nn.Linear(local_in_dim + latent_dim + t_local_dim, hid_dim)
+            nn.Linear(local_in_dim + latent_dim + t_local_dim + self.local_cond_dim, hid_dim)
         )
-        self.fc_local2 = self.wrapper_func(nn.Linear(hid_dim + t_local_dim, hid_dim))
+        self.fc_local2 = self.wrapper_func(
+            nn.Linear(hid_dim + t_local_dim + self.local_cond_dim, hid_dim)
+        )
         if self.t_global_cat:
-            self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * num_points, latent_dim))
+            self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * self.num_points, latent_dim))
 
     def forward(
         self,
@@ -73,12 +80,22 @@ class EPiC_layer(nn.Module):
     ) -> tuple[
         torch.Tensor, torch.Tensor
     ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
-        if global_cond is None and self.global_cond_dim > 0:
+        if global_cond is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
-                f"global_cond_dim is {self.global_cond_dim} but no global_cond is given"
+                f"global_cond_dim is {self.global_cond_dim} and loca_cond_dim is {self.local_cond_dim} but no global_cond is given"
             )
         if global_cond is None:
             global_cond = torch.Tensor().to(x_global.device)
+
+        if self.local_cond_dim > 0:
+            local_cond = (
+                global_cond.repeat_interleave(self.num_points, dim=-1)
+                .unsqueeze(-1)
+                .repeat_interleave(self.local_cond_dim, dim=-1)
+            )
+            logger_el.debug(f"local_cond shape: {local_cond.shape}")
+        else:
+            local_cond = torch.Tensor().to(x_local.device)
 
         batch_size, n_points, latent_local = x_local.size()
         latent_global = x_global.size(1)
@@ -132,11 +149,11 @@ class EPiC_layer(nn.Module):
         # phi p
         logger_el.debug(f"x_localCATglobal.shape: {x_localCATglobal.shape}")
         x_local1 = getattr(F, self.activation, lambda x: x)(
-            self.fc_local1(torch.cat((t, x_localCATglobal), dim=-1))
+            self.fc_local1(torch.cat((t, x_localCATglobal, local_cond), dim=-1))
         )  # with residual connection before AF
         logger_el.debug(f"x_local1.shape: {x_local1.shape}")
         x_local = getattr(F, self.activation, lambda x: x)(
-            self.fc_local2(torch.cat((t, x_local1), dim=-1)) + x_local
+            self.fc_local2(torch.cat((t, x_local1, local_cond), dim=-1)) + x_local
         )
 
         return x_global, x_local
@@ -155,6 +172,7 @@ class EPiC_generator(nn.Module):
         feats (int, optional): Embedding dimension for EPiC Layers. Defaults to 128.
         equiv_layers (int, optional): Number of EPiC Layers used. Defaults to 8.
         global_cond_dim (int, optional): Global conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
+        local_cond_dim (int, optional): Local conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
@@ -172,6 +190,7 @@ class EPiC_generator(nn.Module):
         feats: int = 128,
         equiv_layers: int = 8,
         global_cond_dim: int = 0,
+        local_cond_dim: int = 0,
         return_latent_space: bool = False,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
@@ -187,7 +206,6 @@ class EPiC_generator(nn.Module):
         self.hid_d = hid_d
         self.feats = feats
         self.equiv_layers = equiv_layers
-        self.global_cond_dim = global_cond_dim
         self.return_latent_space = return_latent_space
 
         self.t_local_cat = t_local_cat
@@ -213,6 +231,7 @@ class EPiC_generator(nn.Module):
                     t_global_cat=t_global_cat,
                     t_local_cat=t_local_cat,
                     global_cond_dim=global_cond_dim,
+                    local_cond_dim=local_cond_dim,
                 )
             )
 
