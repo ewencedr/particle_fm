@@ -4,6 +4,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+from matplotlib import pyplot as plt
 from torch import Tensor
 from torch.distributions import Normal
 
@@ -184,10 +185,17 @@ class FlowMatchingLoss(nn.Module):
         out = (v_res - u).square().mean()
         if self.use_mass_loss:
             mass_scaling_factor = 0.0001 * 1
-            mass_mse = (jet_masses(v_res) - jet_masses(u)).square().mean()
+            jm_v = jet_masses(v_res)
+            jm_u = jet_masses(u)
+            mass_mse = (jm_v - jm_u).square().mean()
             logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
             logger.debug(f"out: {out}")
-            return out + mass_mse * mass_scaling_factor, mass_mse * mass_scaling_factor
+            return (
+                out + mass_mse * mass_scaling_factor,
+                mass_mse * mass_scaling_factor,
+                jm_u,
+                jm_v,
+            )
         else:
             return out
 
@@ -264,6 +272,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         dropout: float = 0.0,
         heads: int = 4,
         mask=False,
+        # debug
+        plot_loss_hist_debug: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -298,6 +308,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             # losses.append(FlowMatchingLoss(flows[-1]))
         self.flows = flows
         self.use_mass_loss = use_mass_loss
+        self.plot_loss_hist_debug = plot_loss_hist_debug
+        self.u_mass = []
+        self.v_mass = []
         # self.losses = losses
         self.loss = FlowMatchingLoss(self.flows[0], use_mass_loss=use_mass_loss)
 
@@ -337,22 +350,46 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, mask = batch
         if self.use_mass_loss:
-            loss, mse_mass = self.loss(x)
+            loss, mse_mass, u_mass, v_mass = self.loss(x)
             self.log("train/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
+            if self.plot_loss_hist_debug:
+                if batch_idx == 0:
+                    self.u_mass = []
+                    self.v_mass = []
+                if batch_idx != 400:
+                    self.u_mass.append(u_mass.cpu().detach().numpy())
+                    self.v_mass.append(v_mass.cpu().detach().numpy())
+                # print(f"self.test_mass: {np.array(self.test_mass).shape}")
+                if batch_idx == 450:
+                    # print(f"batch_idx: {batch_idx}")
+                    # print(f"mse_mass: {mse_mass.shape}")
+                    plt.hist(
+                        np.array(self.u_mass).flatten(),
+                        bins=100,
+                        label="u",
+                        histtype="stepfilled",
+                    )
+                    plt.hist(
+                        np.array(self.v_mass).flatten(),
+                        bins=100,
+                        label="v",
+                        histtype="step",
+                    )
+                    plt.legend(loc="best")
+                    plt.show()
+
         else:
             loss = self.loss(x)
-        # loss = self.loss(x)
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask = batch
         if self.use_mass_loss:
-            loss, mse_mass = self.loss(x)
+            loss, mse_mass, u_mass, v_mass = self.loss(x)
             self.log("val/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
         else:
             loss = self.loss(x)
-        # loss = self.loss(x)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
