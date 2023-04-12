@@ -122,7 +122,7 @@ class EPiC_layer(nn.Module):
                 x_pooled_sum,
                 x_global,
                 t_global,
-                global_cond.repeat_interleave(10, dim=-1),
+                global_cond.repeat_interleave(self.global_cond_dim, dim=-1),
             ],
             1,
         )  # meansum pooling
