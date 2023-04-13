@@ -47,7 +47,9 @@ model:
   heads: 4
   mask: False
   # debug
-  plot_loss_hist_debug: True
+  plot_loss_hist_debug: False
+  # loss
+  loss_type: CFM
   scheduler:
     warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}
