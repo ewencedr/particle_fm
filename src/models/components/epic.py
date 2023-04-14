@@ -257,6 +257,10 @@ class EPiC_generator(nn.Module):
         z_local: torch.Tensor,
         global_cond: torch.Tensor = None,
     ):  # shape: [batch, points, feats]
+        if global_cond is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
+            raise ValueError(
+                f"global_cond_dim is {self.global_cond_dim} and loca_cond_dim is {self.local_cond_dim} but no global_cond is given"
+            )
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
         logger_eg.debug(f"t: {t.shape}")
