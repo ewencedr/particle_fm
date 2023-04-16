@@ -1,10 +1,12 @@
 from typing import Any, List
 
+import energyflow as ef
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from matplotlib import pyplot as plt
+from matplotlib.gridspec import GridSpec
 from torch import Tensor
 from torch.distributions import Normal
 
@@ -222,8 +224,8 @@ class FlowMatchingLoss(nn.Module):
             return (
                 out + mass_mse * mass_scaling_factor,
                 mass_mse * mass_scaling_factor,
-                jm_u,
-                jm_v,
+                u_t,
+                y,
             )
         else:
             return out
@@ -343,6 +345,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.plot_loss_hist_debug = plot_loss_hist_debug
         self.u_mass = []
         self.v_mass = []
+        self.data = []
+        self.v_mass_tensor = torch.empty(0, 30, 3)
         # self.losses = losses
         self.loss = FlowMatchingLoss(
             self.flows[0], use_mass_loss=use_mass_loss, loss_type=loss_type
@@ -383,6 +387,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, mask = batch
+
         if self.use_mass_loss:
             loss, mse_mass, u_mass, v_mass = self.loss(x)
             self.log("train/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
@@ -390,26 +395,149 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 if batch_idx == 0:
                     self.u_mass = []
                     self.v_mass = []
-                if batch_idx != 400:
-                    self.u_mass.append(u_mass.cpu().detach().numpy())
-                    self.v_mass.append(v_mass.cpu().detach().numpy())
+                    self.data = []
+                    self.v_mass_tensor = torch.empty(0, 30, 3)
+                # if batch_idx = 400:
+                #    pass
+                # print(f"vmass: {v_mass.shape}")
+                # self.v_mass.append(v_mass.cpu().detach())
+                if batch_idx % 50 == 0:
+                    self.v_mass_tensor = torch.cat((self.v_mass_tensor, v_mass.cpu().detach()), 0)
+                # print(f"vmass tensor: {self.v_mass_tensor.shape}")
+                # self.u_mass.append(u_mass.cpu().detach().numpy())
+                # self.v_mass.append(v_mass.cpu().detach().numpy())
                 # print(f"self.test_mass: {np.array(self.test_mass).shape}")
-                if batch_idx == 450:
+
+                # self.data.append(data)
+                if (
+                    batch_idx == 450
+                    and self.trainer.current_epoch % 10 == 0
+                    and self.trainer.current_epoch > 0
+                ):
+                    print(f"BATCH_IDX {batch_idx}")
+                    # print(f"vmass self: {np.array(self.v_mass).shape}")
+                    print(f"vmass tensor: {self.v_mass_tensor.shape}")
+                    data = (
+                        odeint(
+                            self.flows[0],
+                            self.v_mass_tensor.cuda(),
+                            None,
+                            1.0,
+                            0.0,
+                            phi=self.parameters(),
+                        )
+                        .cpu()
+                        .detach()
+                        .numpy()
+                    )
+                    print(f"data: {data.shape}")
+                    # self.v_mass.append(data)
+                    # print(self.trainer.current_epoch)
                     # print(f"batch_idx: {batch_idx}")
                     # print(f"mse_mass: {mse_mass.shape}")
-                    plt.hist(
-                        np.array(self.u_mass).flatten(),
-                        bins=100,
-                        label="u",
-                        histtype="stepfilled",
-                    )
-                    plt.hist(
-                        np.array(self.v_mass).flatten(),
-                        bins=100,
-                        label="v",
+                    # plt.hist(
+                    #    np.array(self.u_mass).flatten(),
+                    #    bins=100,
+                    #    label="u",
+                    #    histtype="stepfilled",
+                    # )
+                    data = self.data
+                    fig = plt.figure(figsize=(20, 4))
+                    gs = GridSpec(1, 4)
+
+                    #####
+
+                    # eta
+                    ax = fig.add_subplot(gs[0])
+                    i_feat = 0
+                    bins = np.linspace(-0.5, 0.5, 50)
+                    ax.hist(
+                        (np.concatenate(data))[:, i_feat],
                         histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="Gen",
                     )
-                    plt.legend(loc="best")
+                    ax.set_xlabel(r"$\eta^\mathrm{rel}$")
+                    ax.get_yaxis().set_ticklabels([])
+                    ax.set_yscale("log")
+                    ax.legend()
+
+                    # phi
+                    ax = fig.add_subplot(gs[1])
+
+                    i_feat = 1
+
+                    bins = np.linspace(-0.5, 0.5, 50)
+                    ax.hist(
+                        (np.concatenate(data))[:, i_feat],
+                        histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="Gen",
+                    )
+                    ax.set_xlabel(r"$\phi^\mathrm{rel}$")
+                    ax.get_yaxis().set_ticklabels([])
+                    ax.set_yscale("log")
+                    ax.legend()
+
+                    # pt
+                    ax = fig.add_subplot(gs[2])
+
+                    i_feat = 2
+
+                    bins = np.linspace(-0.1, 0.5, 100)
+                    ax.hist(
+                        (np.concatenate(data))[:, i_feat],
+                        histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="Gen",
+                    )
+
+                    ax.set_xlabel(r"$p_\mathrm{T}^\mathrm{rel}$")
+                    ax.get_yaxis().set_ticklabels([])
+                    ax.set_yscale("log")
+                    ax.legend()
+
+                    # mass
+                    def jet_masses_ef(jets_ary):
+                        jets_p4s = ef.p4s_from_ptyphims(jets_ary)
+                        masses = ef.ms_from_p4s(jets_p4s.sum(axis=1))
+                        return masses
+
+                    ax = fig.add_subplot(gs[3])
+
+                    bins = np.linspace(0.0, 0.3, 100)
+
+                    jet_mass = jet_masses_ef(
+                        np.array([data[:, :, 2], data[:, :, 0], data[:, :, 1]]).transpose(1, 2, 0)
+                    )
+                    ax.hist(
+                        jet_mass,
+                        histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="Gen",
+                    )
+
+                    ax.set_xlabel(r"Jet mass")
+                    ax.set_yscale("log")
+                    ax.legend()
+
+                    plt.tight_layout()
                     plt.show()
 
         else:

@@ -6,7 +6,7 @@
 defaults:
   - override /data: /jetnet/jetnet_tops_30.yaml
   - override /model: cnf_flow_matching.yaml
-  - override /callbacks: jetnet.yaml
+  - override /callbacks: none.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -37,9 +37,9 @@ model:
   # epic
   latent: 16
   return_latent_space: False
-  mass_conditioning: True
-  global_cond_dim: 10
-  local_cond_dim: 1
+  mass_conditioning: False
+  global_cond_dim: 0
+  local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
   # transformer
@@ -47,9 +47,9 @@ model:
   heads: 4
   mask: False
   # debug
-  plot_loss_hist_debug: False
+  plot_loss_hist_debug: True
   # loss
-  loss_type: CFM
+  loss_type: FM-OT
   scheduler:
     warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}
