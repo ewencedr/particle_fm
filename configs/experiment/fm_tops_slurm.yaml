@@ -48,6 +48,8 @@ model:
   mask: False
   # loss
   loss_type: FM-OT
+  loss_comparison: MSE
+  # scheduler
   scheduler:
     warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}

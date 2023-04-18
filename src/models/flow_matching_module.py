@@ -15,6 +15,7 @@ from src.models.zuko.utils import odeint
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_generator, Transformer
+from .components.utils import swd
 
 logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
@@ -173,12 +174,19 @@ class FlowMatchingLoss(nn.Module):
         use_mass_loss (bool, optional): Use mass in loss function. Defaults to False.
     """
 
-    def __init__(self, v: nn.Module, use_mass_loss: bool = False, loss_type: str = "FM-OT"):
+    def __init__(
+        self,
+        v: nn.Module,
+        use_mass_loss: bool = False,
+        loss_type: str = "FM-OT",
+        comparison: str = "MSE",
+    ):
         super().__init__()
 
         self.v = v
         self.use_mass_loss = use_mass_loss
         self.loss_type = loss_type
+        self.comparison = comparison
 
     def forward(self, x: Tensor) -> Tensor:
         if self.loss_type == "FM-OT":
@@ -186,14 +194,20 @@ class FlowMatchingLoss(nn.Module):
             logger_loss.debug(f"t: {t.shape}")
             z = torch.randn_like(x)
             logger_loss.debug(f"z: {z.shape}")
-            # y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
-            y = (1 - (1 - 1e-4) * t) * z + t * x
+            # y = (1 - (1 - 1e-4) * t) * z + t * x
+            y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
             logger_loss.debug(f"y: {y.shape}")
+            # u_t = (1 - 1e-4) * z - x
             u_t = (1 - 1e-4) * z - x
             logger_loss.debug(f"u_t: {u_t.shape}")
             v_t = self.v(t.squeeze(-1), y)
             logger_loss.debug(f"v_t: {v_t.shape}")
-            out = (v_t - u_t).square().mean()
+            if self.comparison == "MSE":
+                out = (v_t - u_t).square().mean()
+            elif self.comparison == "SWD":
+                out = swd(v_t, u_t)
+            else:
+                raise NotImplementedError
             logger_loss.debug(f"out: {out.shape}")
         elif self.loss_type == "CFM":
             t = torch.rand_like(x[..., 0]).unsqueeze(-1)
@@ -286,6 +300,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         heads (int, optional): Number of attention heads. Defaults to 4.
         mask (bool, optional): Use Mask. Defaults to False.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
+        loss_comparison (str, optional): Which method to use for comparing the two VFs in FM loss. Defaults to "MSE".
     """
 
     def __init__(
@@ -318,6 +333,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         plot_loss_hist_debug: bool = False,
         # loss
         loss_type: str = "FM-OT",
+        loss_comparison: str = "MSE",
         **kwargs,
     ):
         super().__init__()
@@ -359,7 +375,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.v_mass_tensor = torch.empty(0, 30, 3)
         # self.losses = losses
         self.loss = FlowMatchingLoss(
-            self.flows[0], use_mass_loss=use_mass_loss, loss_type=loss_type
+            self.flows[0],
+            use_mass_loss=use_mass_loss,
+            loss_type=loss_type,
+            comparison=loss_comparison,
         )
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor = None, reverse: bool = False):

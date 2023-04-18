@@ -50,6 +50,8 @@ model:
   plot_loss_hist_debug: True
   # loss
   loss_type: FM-OT
+  loss_comparison: SWD
+  # scheduler
   scheduler:
     warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}
