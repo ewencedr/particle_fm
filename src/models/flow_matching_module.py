@@ -186,7 +186,8 @@ class FlowMatchingLoss(nn.Module):
             logger_loss.debug(f"t: {t.shape}")
             z = torch.randn_like(x)
             logger_loss.debug(f"z: {z.shape}")
-            y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
+            # y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
+            y = (1 - (1 - 1e-4) * t) * z + t * x
             logger_loss.debug(f"y: {y.shape}")
             u_t = (1 - 1e-4) * z - x
             logger_loss.debug(f"u_t: {u_t.shape}")
@@ -222,7 +223,7 @@ class FlowMatchingLoss(nn.Module):
             logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
             logger.debug(f"out: {out}")
             return (
-                out + mass_mse * mass_scaling_factor,
+                out,  # + mass_mse * mass_scaling_factor,
                 mass_mse * mass_scaling_factor,
                 u_t,
                 y,
@@ -247,6 +248,15 @@ class FlowMatchingLoss2(nn.Module):
         for v in self.vs:
             y = v(t.squeeze(-1), y)
         return (y - u).square().mean()
+
+
+# class UVF(nn.Module):
+#    def __init__(self):
+#        super().__init__()
+#
+#
+#    def forward(self, t: Tensor, x: Tensor) -> Tensor:
+#        return (x_1 - (1-1e-4)*x_0)/(1-(1-1e-4)t)
 
 
 class SetFlowMatchingLitModule(pl.LightningModule):
@@ -353,7 +363,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         )
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor = None, reverse: bool = False):
-
         if reverse:
             for f in reversed(self.flows):
                 x = f.decode(x, cond)
@@ -411,25 +420,28 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 # self.data.append(data)
                 if (
                     batch_idx == 450
-                    and self.trainer.current_epoch % 10 == 0
+                    and self.trainer.current_epoch % 3 == 0
                     and self.trainer.current_epoch > 0
                 ):
+                    # TODO Still work in progress
+                    # TODO Check if the mass loss is working
                     print(f"BATCH_IDX {batch_idx}")
                     # print(f"vmass self: {np.array(self.v_mass).shape}")
                     print(f"vmass tensor: {self.v_mass_tensor.shape}")
-                    data = (
-                        odeint(
-                            self.flows[0],
-                            self.v_mass_tensor.cuda(),
-                            None,
-                            1.0,
-                            0.0,
-                            phi=self.parameters(),
-                        )
-                        .cpu()
-                        .detach()
-                        .numpy()
-                    )
+                    # data = (
+                    #    odeint(
+                    #        self.flows[0],
+                    #        self.v_mass_tensor.cuda(),
+                    #        None,
+                    #        1.0,
+                    #        0.0,
+                    #        phi=self.parameters(),
+                    #    )
+                    #    .cpu()
+                    #    .detach()
+                    #    .numpy()
+                    # )
+                    data = self.v_mass_tensor.cpu().detach().numpy()
                     print(f"data: {data.shape}")
                     # self.v_mass.append(data)
                     # print(self.trainer.current_epoch)
@@ -441,7 +453,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     #    label="u",
                     #    histtype="stepfilled",
                     # )
-                    data = self.data
+                    # data = np.array(self.data)
                     fig = plt.figure(figsize=(20, 4))
                     gs = GridSpec(1, 4)
 
@@ -451,6 +463,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     ax = fig.add_subplot(gs[0])
                     i_feat = 0
                     bins = np.linspace(-0.5, 0.5, 50)
+                    # print(f"data1: {data.shape}")
+                    # print(f"data2: {np.concatenate(data).shape}")
+                    # print(f"data type: {type(data)}")
                     ax.hist(
                         (np.concatenate(data))[:, i_feat],
                         histtype="step",
@@ -522,10 +537,12 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     jet_mass = jet_masses_ef(
                         np.array([data[:, :, 2], data[:, :, 0], data[:, :, 1]]).transpose(1, 2, 0)
                     )
+                    # print(f"data: {data[0]}")
+                    # print(f"jet_mass: {jet_mass}")
                     ax.hist(
                         jet_mass,
                         histtype="step",
-                        bins=bins,
+                        bins=100,
                         density=True,
                         lw=2,
                         ls="--",
