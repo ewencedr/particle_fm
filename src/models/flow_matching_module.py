@@ -15,7 +15,9 @@ from src.models.zuko.utils import odeint
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_generator, Transformer
-from .components.utils import swd
+from .components.utils import SWD, MMDLoss
+
+# import pytorch3d as p3d
 
 logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
@@ -187,6 +189,10 @@ class FlowMatchingLoss(nn.Module):
         self.use_mass_loss = use_mass_loss
         self.loss_type = loss_type
         self.comparison = comparison
+        if self.comparison == "SWD":
+            self.swd = SWD()
+        elif self.comparison == "MMD":
+            self.mmd = MMDLoss()
 
     def forward(self, x: Tensor) -> Tensor:
         if self.loss_type == "FM-OT":
@@ -205,7 +211,13 @@ class FlowMatchingLoss(nn.Module):
             if self.comparison == "MSE":
                 out = (v_t - u_t).square().mean()
             elif self.comparison == "SWD":
-                out = swd(v_t, u_t)
+                out = self.swd(v_t, u_t)
+            elif self.comparison == "MMD":
+                # TODO NOT WORKING YET
+                out = self.mmd(v_t, u_t)
+            # elif self.comparison == "chamfer":
+            #    # TODO NOT WORKING YET
+            #    out = p3d.pytorch3d.loss.chamfer_distance(v_t, u_t)
             else:
                 raise NotImplementedError
             logger_loss.debug(f"out: {out.shape}")
@@ -430,7 +442,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 # print(f"vmass: {v_mass.shape}")
                 # self.v_mass.append(v_mass.cpu().detach())
                 if batch_idx % 50 == 0:
-                    self.v_mass_tensor = torch.cat((self.v_mass_tensor, v_mass.cpu().detach()), 0)
+                    self.v_mass_tensor = torch.cat((self.v_mass_tensor, u_mass.cpu().detach()), 0)
                 # print(f"vmass tensor: {self.v_mass_tensor.shape}")
                 # self.u_mass.append(u_mass.cpu().detach().numpy())
                 # self.v_mass.append(v_mass.cpu().detach().numpy())
@@ -447,20 +459,20 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     print(f"BATCH_IDX {batch_idx}")
                     # print(f"vmass self: {np.array(self.v_mass).shape}")
                     print(f"vmass tensor: {self.v_mass_tensor.shape}")
-                    # data = (
-                    #    odeint(
-                    #        self.flows[0],
-                    #        self.v_mass_tensor.cuda(),
-                    #        None,
-                    #        1.0,
-                    #        0.0,
-                    #        phi=self.parameters(),
-                    #    )
-                    #    .cpu()
-                    #    .detach()
-                    #    .numpy()
-                    # )
-                    data = self.v_mass_tensor.cpu().detach().numpy()
+                    data = (
+                        odeint(
+                            self.flows[0],
+                            self.v_mass_tensor.cuda(),
+                            None,
+                            1.0,
+                            0.0,
+                            phi=self.parameters(),
+                        )
+                        .cpu()
+                        .detach()
+                        .numpy()
+                    )
+                    # data = self.v_mass_tensor.cpu().detach().numpy()
                     print(f"data: {data.shape}")
                     # self.v_mass.append(data)
                     # print(self.trainer.current_epoch)
