@@ -40,7 +40,6 @@ class EPiC_layer(nn.Module):
         frequencies: int = 6,
         num_points: int = 30,
     ):
-
         super().__init__()
         self.activation = activation
         self.global_cond_dim = global_cond_dim
@@ -76,26 +75,31 @@ class EPiC_layer(nn.Module):
         t: torch.Tensor,
         x_global: torch.Tensor,
         x_local: torch.Tensor,
-        global_cond: torch.Tensor = None,
+        global_cond_in: torch.Tensor = None,
     ) -> tuple[
         torch.Tensor, torch.Tensor
     ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
-        if global_cond is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
+        if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
                 f"global_cond_dim is {self.global_cond_dim} and loca_cond_dim is {self.local_cond_dim} but no global_cond is given"
             )
-        if global_cond is None:
+        if global_cond_in is None:
             global_cond = torch.Tensor().to(x_global.device)
 
-        if self.local_cond_dim > 0:
+        if self.global_cond_dim == 0:
+            global_cond = torch.Tensor().to(x_global.device)
+        else:
+            global_cond = global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1)
+
+        if self.local_cond_dim == 0:
+            local_cond = torch.Tensor().to(x_local.device)
+        else:
             local_cond = (
-                global_cond.repeat_interleave(self.num_points, dim=-1)
+                global_cond_in.repeat_interleave(self.num_points, dim=-1)
                 .unsqueeze(-1)
                 .repeat_interleave(self.local_cond_dim, dim=-1)
             )
             logger_el.debug(f"local_cond shape: {local_cond.shape}")
-        else:
-            local_cond = torch.Tensor().to(x_local.device)
 
         batch_size, n_points, latent_local = x_local.size()
         latent_global = x_global.size(1)
@@ -109,9 +113,9 @@ class EPiC_layer(nn.Module):
             logger_el.debug(f"t_global shape: {t_global.shape}")
         else:
             t_global = torch.Tensor().to(t.device)
-        logger_el.debug(f"global_cond shape: {global_cond.shape}")
+        logger_el.debug(f"global_cond_in shape: {global_cond_in.shape}")
         logger_el.debug(
-            f"global_cond repeat shape: {global_cond.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
+            f"global_cond_in repeat shape: {global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
         )
         # meansum pooling
         x_pooled_mean = x_local.mean(1, keepdim=False)
@@ -122,7 +126,7 @@ class EPiC_layer(nn.Module):
                 x_pooled_sum,
                 x_global,
                 t_global,
-                global_cond.repeat_interleave(self.global_cond_dim, dim=-1),
+                global_cond,
             ],
             1,
         )  # meansum pooling
@@ -255,11 +259,11 @@ class EPiC_generator(nn.Module):
         t: torch.Tensor,
         z_global: torch.Tensor,
         z_local: torch.Tensor,
-        global_cond: torch.Tensor = None,
+        global_cond_in: torch.Tensor = None,
     ):  # shape: [batch, points, feats]
-        if global_cond is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
+        if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
-                f"global_cond_dim is {self.global_cond_dim} and loca_cond_dim is {self.local_cond_dim} but no global_cond is given"
+                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is {self.local_cond_dim} but no global_cond is given"
             )
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
@@ -283,14 +287,17 @@ class EPiC_generator(nn.Module):
             global_cond = torch.Tensor().to(z_global.device)
         else:
             z_global = torch.cat(
-                [z_global, global_cond.repeat_interleave(self.global_cond_dim, dim=-1)],
+                [
+                    z_global,
+                    global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1),
+                ],
                 1,
             )
 
         # local conditioning
         if self.local_cond_dim > 0:
             local_cond = (
-                global_cond.repeat_interleave(self.num_points, dim=-1)
+                global_cond_in.repeat_interleave(self.num_points, dim=-1)
                 .unsqueeze(-1)
                 .repeat_interleave(self.local_cond_dim, dim=-1)
             )
@@ -312,7 +319,7 @@ class EPiC_generator(nn.Module):
         # equivariant connections, each one_hot conditined
         for i in range(self.equiv_layers):
             z_global, z_local = self.nn_list[i](
-                t, z_global, z_local, global_cond=global_cond
+                t, z_global, z_local, global_cond_in=global_cond_in
             )  # contains residual connection
 
             z_global, z_local = (

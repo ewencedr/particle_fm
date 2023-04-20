@@ -84,9 +84,9 @@ class CNF(nn.Module):
                 dropout=dropout,
             )
         elif self.model == "epic":
-            if mass_conditioning and (global_cond_dim == 0 or local_cond_dim == 0):
+            if mass_conditioning and global_cond_dim == 0 and local_cond_dim == 0:
                 raise ValueError(
-                    "If mass_conditioning is True, global_cond_dim and local_cond_dim must be > 0"
+                    "If mass_conditioning is True, global_cond_dim or local_cond_dim must be > 0"
                 )
             self.net = EPiC_generator(
                 latent_local=features + 2 * frequencies,
