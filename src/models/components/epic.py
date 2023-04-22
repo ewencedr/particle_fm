@@ -7,6 +7,8 @@ from src.utils.pylogger import get_pylogger
 logger_el = get_pylogger("epic_layer")
 logger_eg = get_pylogger("epic_generator")
 
+# TODO Adversarial training is not working with wrapper_func
+
 
 class EPiC_layer(nn.Module):
     """equivariant layer with global concat & residual connections inside this module  & weight_norm
@@ -72,17 +74,25 @@ class EPiC_layer(nn.Module):
 
     def forward(
         self,
-        t: torch.Tensor,
-        x_global: torch.Tensor,
-        x_local: torch.Tensor,
+        t: torch.Tensor = None,
+        x_global: torch.Tensor = None,
+        x_local: torch.Tensor = None,
         global_cond_in: torch.Tensor = None,
     ) -> tuple[
         torch.Tensor, torch.Tensor
     ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
+        if x_global is None or x_local is None:
+            raise ValueError("x_global or x_local is None")
         if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
-                f"global_cond_dim is {self.global_cond_dim} and loca_cond_dim is {self.local_cond_dim} but no global_cond is given"
+                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is {self.local_cond_dim} but no global_cond is given"
             )
+        if t is None and (self.t_local_cat or self.t_global_cat):
+            raise ValueError(
+                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no t is given"
+            )
+        if t is None:
+            t = torch.Tensor().to(x_global.device)
         if global_cond_in is None:
             global_cond = torch.Tensor().to(x_global.device)
 
@@ -103,7 +113,8 @@ class EPiC_layer(nn.Module):
 
         batch_size, n_points, latent_local = x_local.size()
         latent_global = x_global.size(1)
-        logger_el.debug(f"t shape: {t.shape}")
+        if t is not None:
+            logger_el.debug(f"t shape: {t.shape}")
 
         if not self.t_local_cat:
             t = torch.Tensor().to(t.device)
@@ -113,10 +124,11 @@ class EPiC_layer(nn.Module):
             logger_el.debug(f"t_global shape: {t_global.shape}")
         else:
             t_global = torch.Tensor().to(t.device)
-        logger_el.debug(f"global_cond_in shape: {global_cond_in.shape}")
-        logger_el.debug(
-            f"global_cond_in repeat shape: {global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
-        )
+        if global_cond_in is not None:
+            logger_el.debug(f"global_cond_in shape: {global_cond_in.shape}")
+            logger_el.debug(
+                f"global_cond_in repeat shape: {global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
+            )
         # meansum pooling
         x_pooled_mean = x_local.mean(1, keepdim=False)
         x_pooled_sum = x_local.sum(1, keepdim=False)
@@ -247,7 +259,7 @@ class EPiC_generator(nn.Module):
             )
 
         self.local_1 = self.wrapper_func(
-            nn.Linear(self.hid_d + t_local_dim + self.local_cond_dim, self.feats)
+            nn.Linear(self.hid_d + t_local_dim + self.local_cond_dim, self.feats),
         )
         if self.t_global_cat:
             self.fc_t = self.wrapper_func(
@@ -256,15 +268,26 @@ class EPiC_generator(nn.Module):
 
     def forward(
         self,
-        t: torch.Tensor,
-        z_global: torch.Tensor,
-        z_local: torch.Tensor,
+        t_in: torch.Tensor = None,
+        z_global: torch.Tensor = None,
+        z_local: torch.Tensor = None,
         global_cond_in: torch.Tensor = None,
     ):  # shape: [batch, points, feats]
+        if z_global is None or z_local is None:
+            raise ValueError("z_global or z_local is None")
         if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
                 f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is {self.local_cond_dim} but no global_cond is given"
             )
+        if t_in is None and (self.t_local_cat or self.t_global_cat):
+            raise ValueError(
+                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no t is given"
+            )
+        if t_in is None:
+            t = torch.Tensor().to(z_global.device)
+        else:
+            t = t_in
+
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
         logger_eg.debug(f"t: {t.shape}")
@@ -275,8 +298,8 @@ class EPiC_generator(nn.Module):
             t = torch.Tensor().to(t.device)
         if self.t_global_cat:
             # prepare t for concat to global
-            t_global = getattr(F, self.activation, lambda x: x)(
-                self.fc_t(t.clone().reshape(t.shape[0], -1))
+            t_global = getattr(F, self.activation, lambda x: x), (
+                self.fc_t(t.clone().reshape(t.shape[0], -1)),
             )
             logger_eg.debug(f"t_global shape: {t_global.shape}")
             z_global = torch.cat([z_global, t_global], 1)
@@ -319,7 +342,7 @@ class EPiC_generator(nn.Module):
         # equivariant connections, each one_hot conditined
         for i in range(self.equiv_layers):
             z_global, z_local = self.nn_list[i](
-                t, z_global, z_local, global_cond_in=global_cond_in
+                t_in, z_global, z_local, global_cond_in=global_cond_in
             )  # contains residual connection
 
             z_global, z_local = (
@@ -332,8 +355,84 @@ class EPiC_generator(nn.Module):
             )
         # final local NN to get down to input feats size
         logger_eg.debug(f"z_local2: {z_local.shape}")
-        out = self.local_1(torch.cat((t, z_local, local_cond), dim=-1))
+        out = self.local_1(
+            torch.cat((t.clone(), z_local.clone(), local_cond.clone()), dim=-1),
+        )
         if self.return_latent_space:
             return out, latent_tensor
         else:
             return out  # [batch, points, feats]
+
+
+class EPiC_discriminator(nn.Module):
+    """EPiC discriminator
+    Discriminator: Deep Sets like 3 + 3 layer with residual connections  & weight_norm   & mix(mean/sum/max) pooling  & NO multiple cond.
+
+    Args:
+        hid_d (int, optional): Hidden dimension. Defaults to 256.
+        feats (int, optional): Features. Defaults to 3.
+        equiv_layers (int, optional): Number of EPiC layers. Defaults to 8.
+        latent (int, optional): Latent space. Defaults to 16.
+        activation (str, optional): Activation function. Defaults to "leaky_relu".
+        wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
+    """
+
+    def __init__(
+        self,
+        hid_d: int = 256,
+        feats: int = 3,
+        equiv_layers: int = 8,
+        latent: int = 16,
+        activation: str = "leaky_relu",
+        wrapper_func: str = "weight_norm",
+    ):
+        super().__init__()
+        self.hid_d = hid_d
+        self.feats = feats
+        self.equiv_layers = equiv_layers
+        self.latent = latent  # used for latent size of equiv concat
+        self.activation = activation
+        self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
+
+        self.fc_l1 = self.wrapper_func(nn.Linear(self.feats, self.hid_d))
+        self.fc_l2 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
+
+        self.fc_g1 = self.wrapper_func(nn.Linear(int(2 * self.hid_d), self.hid_d))
+        self.fc_g2 = self.wrapper_func(nn.Linear(self.hid_d, self.latent))
+
+        self.nn_list = nn.ModuleList()
+        for _ in range(self.equiv_layers):
+            self.nn_list.append(EPiC_layer(self.hid_d, self.hid_d, self.latent))
+
+        self.fc_g3 = self.wrapper_func(nn.Linear(int(2 * self.hid_d + self.latent), self.hid_d))
+        self.fc_g4 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
+        self.fc_g5 = self.wrapper_func(nn.Linear(self.hid_d, 1))
+
+    def forward(self, x):
+        # local encoding
+        x_local = getattr(F, self.activation, lambda x: x)(self.fc_l1(x))
+        x_local = getattr(F, self.activation, lambda x: x)(self.fc_l2(x_local) + x_local)
+
+        # global features
+        x_mean = x_local.mean(1, keepdim=False)  # mean over points dim.
+        x_sum = x_local.sum(1, keepdim=False)  # mean over points dim.
+        x_global = torch.cat([x_mean, x_sum], 1)
+        x_global = getattr(F, self.activation, lambda x: x)(self.fc_g1(x_global))
+        x_global = getattr(F, self.activation, lambda x: x)(
+            self.fc_g2(x_global)
+        )  # projecting down to latent size
+
+        # equivariant connections
+        for i in range(self.equiv_layers):
+            x_global, x_local = self.nn_list[i](
+                None, x_global, x_local
+            )  # contains residual connection
+
+        x_mean = x_local.mean(1, keepdim=False)  # mean over points dim.
+        x_sum = x_local.sum(1, keepdim=False)  # sum over points dim.
+        x = torch.cat([x_mean, x_sum, x_global], 1)
+
+        x = getattr(F, self.activation, lambda x: x)(self.fc_g3(x))
+        x = getattr(F, self.activation, lambda x: x)(self.fc_g4(x) + x)
+        x = self.fc_g5(x)
+        return x

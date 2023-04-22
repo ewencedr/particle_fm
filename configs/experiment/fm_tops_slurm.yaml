@@ -19,7 +19,7 @@ tags: ["flow_matching", "tops", "30"]
 trainer:
   min_epochs: 200
   max_epochs: 2000
-  gradient_clip_val: 0.5
+  # gradient_clip_val: 0.5
 
 model:
   optimizer:
@@ -73,7 +73,6 @@ callbacks:
     mode: "min"
     save_last: True
     auto_insert_metric_name: False
-    plot_jet_features: True
 
   early_stopping:
     monitor: "val/loss"
@@ -88,6 +87,7 @@ callbacks:
     plot_w_dists: False
     w_dists_batches: 5
     mass_conditioning: ${model.mass_conditioning}
+    plot_jet_features: True
 
 
 task_name: "fm_tops-${model.num_particles}"

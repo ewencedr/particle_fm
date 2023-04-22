@@ -5,6 +5,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
 from torch import Tensor
@@ -14,7 +15,7 @@ from src.data.components.utils import jet_masses
 from src.models.zuko.utils import odeint
 from src.utils.pylogger import get_pylogger
 
-from .components import EPiC_generator, Transformer
+from .components import EPiC_discriminator, EPiC_generator, Transformer
 from .components.utils import SWD, MMDLoss
 
 # import pytorch3d as p3d
@@ -73,6 +74,7 @@ class CNF(nn.Module):
         self.latent = latent
         self.mass_conditioning = mass_conditioning
         if self.model == "transformer":
+            # TODO doesn't work anymore
             self.net = Transformer(
                 input_dim=features + 2 * frequencies,
                 output_dim=features,
@@ -168,96 +170,6 @@ class CNF(nn.Module):
         return Normal(0.0, z.new_tensor(1.0)).log_prob(z).sum(dim=-1) + ladj * 1e2
 
 
-class FlowMatchingLoss(nn.Module):
-    """Flow Matching loss objective for training CNFs.
-
-    Args:
-        v (nn.Module): Model
-        use_mass_loss (bool, optional): Use mass in loss function. Defaults to False.
-    """
-
-    def __init__(
-        self,
-        v: nn.Module,
-        use_mass_loss: bool = False,
-        loss_type: str = "FM-OT",
-        comparison: str = "MSE",
-    ):
-        super().__init__()
-
-        self.v = v
-        self.use_mass_loss = use_mass_loss
-        self.loss_type = loss_type
-        self.comparison = comparison
-        if self.comparison == "SWD":
-            self.swd = SWD()
-        elif self.comparison == "MMD":
-            self.mmd = MMDLoss()
-
-    def forward(self, x: Tensor) -> Tensor:
-        if self.loss_type == "FM-OT":
-            t = torch.rand_like(x[..., 0]).unsqueeze(-1)
-            logger_loss.debug(f"t: {t.shape}")
-            z = torch.randn_like(x)
-            logger_loss.debug(f"z: {z.shape}")
-            # y = (1 - (1 - 1e-4) * t) * z + t * x
-            y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
-            logger_loss.debug(f"y: {y.shape}")
-            # u_t = (1 - 1e-4) * z - x
-            u_t = (1 - 1e-4) * z - x
-            logger_loss.debug(f"u_t: {u_t.shape}")
-            v_t = self.v(t.squeeze(-1), y)
-            logger_loss.debug(f"v_t: {v_t.shape}")
-            if self.comparison == "MSE":
-                out = (v_t - u_t).square().mean()
-            elif self.comparison == "SWD":
-                out = self.swd(v_t, u_t)
-            elif self.comparison == "MMD":
-                # TODO NOT WORKING YET
-                out = self.mmd(v_t, u_t)
-            # elif self.comparison == "chamfer":
-            #    # TODO NOT WORKING YET
-            #    out = p3d.pytorch3d.loss.chamfer_distance(v_t, u_t)
-            else:
-                raise NotImplementedError
-            logger_loss.debug(f"out: {out.shape}")
-        elif self.loss_type == "CFM":
-            t = torch.rand_like(x[..., 0]).unsqueeze(-1)
-            logger_loss.debug(f"t: {t.shape}")
-            x_0 = torch.randn_like(x)  # sample from prior
-            logger_loss.debug(f"x_0: {x_0.shape}")
-            x_1 = x  # conditioning
-            logger_loss.debug(f"x_1: {x_1.shape}")
-            mu_t = t * x_1 + (1 - t) * x_0
-            logger_loss.debug(f"mu_t: {mu_t.shape}")
-            sigma_t = 0.1
-            y = mu_t + sigma_t * torch.randn_like(mu_t)
-            logger_loss.debug(f"y: {y.shape}")
-            u_t = x_1 - x_0
-            logger_loss.debug(f"u_t: {u_t.shape}")
-            v_t = self.v(t.squeeze(-1), y)
-            logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
-            logger_loss.debug(f"v_t: {v_t.shape}")
-            out = (v_t - u_t).square().mean()
-            logger_loss.debug(f"out: {out.shape}")
-
-        if self.use_mass_loss:
-            mass_scaling_factor = 0.0001 * 1
-            jm_v = jet_masses(v_t)
-            jm_u = jet_masses(u_t)
-            mass_mse = (jm_v - jm_u).square().mean()
-            logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
-            logger.debug(f"out: {out}")
-            return (
-                out,  # + mass_mse * mass_scaling_factor,
-                mass_mse * mass_scaling_factor,
-                u_t,
-                y,
-            )
-        else:
-            return out
-
-
 class FlowMatchingLoss2(nn.Module):
     def __init__(self, vs: nn.Module):
         super().__init__()
@@ -290,7 +202,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     Args:
         optimizer (torch.optim.Optimizer): Optimizer
+        optimizer_d (torch.optim.Optimizer): Optimizer for discriminator
         scheduler (torch.optim.lr_scheduler): Scheduler
+        scheduler_d (torch.optim.lr_scheduler): Scheduler for discriminator
         model (str, optional): Use Transformer or EPiC Generator as model. Defaults to "epic".
         features (int, optional): Features of data. Defaults to 3.
         hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
@@ -318,7 +232,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def __init__(
         self,
         optimizer: torch.optim.Optimizer,
-        scheduler: torch.optim.lr_scheduler,
+        optimizer_d: torch.optim.Optimizer,
+        scheduler: torch.optim.lr_scheduler = None,
+        scheduler_d: torch.optim.lr_scheduler = None,
         model: str = "epic",
         features: int = 3,
         hidden_dim: int = 128,
@@ -352,6 +268,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
+        self.loss_comparison = loss_comparison
+        if self.loss_comparison == "adversarial":
+            self.automatic_optimization = (
+                False  # we will do our own optimization for Adversarial loss
+            )
         flows = nn.ModuleList()
         # losses = nn.ModuleList()
         for _ in range(n_transforms):
@@ -385,13 +306,20 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.v_mass = []
         self.data = []
         self.v_mass_tensor = torch.empty(0, 30, 3)
-        # self.losses = losses
-        self.loss = FlowMatchingLoss(
-            self.flows[0],
-            use_mass_loss=use_mass_loss,
-            loss_type=loss_type,
-            comparison=loss_comparison,
-        )
+        self.loss_type = loss_type
+        if self.loss_comparison == "SWD":
+            self.swd = SWD()
+        elif self.loss_comparison == "MMD":
+            self.mmd = MMDLoss()
+        elif self.loss_comparison == "adversarial":
+            self.discriminator = EPiC_discriminator(
+                feats=features,
+                equiv_layers=layers,
+                hid_d=hidden_dim,
+                latent=latent,
+                activation=activation,
+                wrapper_func=wrapper_func,
+            )
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor = None, reverse: bool = False):
         if reverse:
@@ -402,8 +330,134 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 x = f.encode(x)
         return x
 
-    # def loss(self, x: torch.Tensor):
-    #    return sum(loss(x) for loss in self.losses) / len(self.losses)
+    def adversarial_loss(self, y_hat, y):
+        # TODO LS GAN loss
+        return F.binary_cross_entropy_with_logits(y_hat, y)
+
+    def loss(self, x: torch.Tensor):
+        v = self.flows[0]
+        if self.loss_type == "FM-OT":
+            t = torch.rand_like(x[..., 0]).unsqueeze(-1)
+            logger_loss.debug(f"t grad: {t.requires_grad}")
+            # t.requires_grad = True
+            logger_loss.debug(f"t grad: {t.requires_grad}")
+            torch.set_grad_enabled(True)
+            logger_loss.debug(f"t: {t.requires_grad}")
+            z = torch.randn_like(x)
+            logger_loss.debug(f"z grad: {z.requires_grad}")
+            # z.requires_grad = True
+            logger_loss.debug(f"z grad: {z.requires_grad}")
+
+            logger_loss.debug(f"z: {z.shape}")
+            # y = (1 - (1 - 1e-4) * t) * z + t * x
+            y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
+            # y = y.clone().detach().requires_grad_(True)
+            logger_loss.debug(f"y: {y.shape}")
+            logger_loss.debug(f"y grad: {y.requires_grad}")
+            # u_t = (1 - 1e-4) * z - x
+            u_t = (1 - 1e-4) * z - x
+            logger_loss.debug(f"u_t: {u_t.shape}")
+            v_t = v(t.squeeze(-1), y)
+            logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
+
+            logger_loss.debug(f"v_t: {v_t.shape}")
+            if self.loss_comparison == "MSE":
+                out = (v_t - u_t).square().mean()
+            elif self.loss_comparison == "SWD":
+                out = self.swd(v_t, u_t)
+            elif self.loss_comparison == "MMD":
+                # TODO NOT WORKING YET
+                out = self.mmd(v_t, u_t)
+            # elif self.loss_comparison == "chamfer":
+            #    # TODO NOT WORKING YET
+            #    out = p3d.pytorch3d.loss.chamfer_distance(v_t, u_t)
+            elif self.loss_comparison == "adversarial":
+                optimizer, optimizer_d = self.optimizers()
+
+                # train generator
+                # generate fake vector field
+                self.toggle_optimizer(optimizer)
+
+                # ground truth result (ie: all fake)
+                valid = torch.ones(v_t.size(0), 1)
+                logger_loss.debug(f"valid: {valid.shape}")
+                valid = valid.type_as(v_t)
+
+                # Measure generator's ability to fool the discriminator
+                # discr = self.discriminator(v_t)
+                # discr.requires_grad = True
+                # valid.requires_grad = True
+                g_loss = self.adversarial_loss(self.discriminator(v_t), valid)
+                self.log("train/g_loss", g_loss, on_step=False, on_epoch=True, prog_bar=True)
+                # g_loss.requires_grad = True
+                logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
+                self.manual_backward(g_loss, retain_graph=True)
+                optimizer.step()
+                optimizer.zero_grad()
+                self.untoggle_optimizer(optimizer)
+
+                # train discriminator
+                # Measure discriminator's ability to classify between both vector fields
+                self.toggle_optimizer(optimizer_d)
+
+                # how well can it label as real?
+                valid = torch.ones(v_t.size(0), 1)
+                valid = valid.type_as(v_t)
+
+                real_loss = self.adversarial_loss(self.discriminator(u_t), valid)
+
+                # how well can it label as fake?
+                fake = torch.zeros(v_t.size(0), 1)
+                fake = valid.type_as(v_t)
+
+                fake_loss = self.adversarial_loss(self.discriminator(v_t), fake)
+
+                # discriminator loss is the average of these
+                d_loss = (real_loss + fake_loss) / 2
+                self.log("train/d_loss", d_loss, on_step=False, on_epoch=True, prog_bar=True)
+                self.manual_backward(d_loss)
+                optimizer_d.step()
+                optimizer.zero_grad()
+                self.untoggle_optimizer(optimizer_d)
+                out = d_loss
+            else:
+                raise NotImplementedError
+            logger_loss.debug(f"out: {out.shape}")
+        elif self.loss_type == "CFM":
+            t = torch.rand_like(x[..., 0]).unsqueeze(-1)
+            logger_loss.debug(f"t: {t.shape}")
+            x_0 = torch.randn_like(x)  # sample from prior
+            logger_loss.debug(f"x_0: {x_0.shape}")
+            x_1 = x  # conditioning
+            logger_loss.debug(f"x_1: {x_1.shape}")
+            mu_t = t * x_1 + (1 - t) * x_0
+            logger_loss.debug(f"mu_t: {mu_t.shape}")
+            sigma_t = 0.1
+            y = mu_t + sigma_t * torch.randn_like(mu_t)
+            logger_loss.debug(f"y: {y.shape}")
+            u_t = x_1 - x_0
+            logger_loss.debug(f"u_t: {u_t.shape}")
+            v_t = v(t.squeeze(-1), y)
+            logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
+            logger_loss.debug(f"v_t: {v_t.shape}")
+            out = (v_t - u_t).square().mean()
+            logger_loss.debug(f"out: {out.shape}")
+
+        if self.use_mass_loss:
+            mass_scaling_factor = 0.0001 * 1
+            jm_v = jet_masses(v_t)
+            jm_u = jet_masses(u_t)
+            mass_mse = (jm_v - jm_u).square().mean()
+            logger.debug(f"jet_mass_diff: {mass_mse*mass_scaling_factor}")
+            logger.debug(f"out: {out}")
+            return (
+                out,  # + mass_mse * mass_scaling_factor,
+                mass_mse * mass_scaling_factor,
+                u_t,
+                y,
+            )
+        else:
+            return out
 
     def on_train_start(self):
         # by default lightning executes validation step sanity checks before training starts,
@@ -590,6 +644,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
         else:
             loss = self.loss(x)
+
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
@@ -619,10 +674,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         Examples:
             https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
         """
+        # TODO check if parameters are correctly passed to optimizer
         optimizer = self.hparams.optimizer(params=self.parameters())
         if self.hparams.scheduler is not None:
             scheduler = self.hparams.scheduler(optimizer=optimizer)
-            return {
+            opt = {
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
@@ -631,7 +687,27 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     "frequency": 1,
                 },
             }
-        return {"optimizer": optimizer}
+        else:
+            opt = {"optimizer": optimizer}
+
+        if self.loss_comparison == "adversarial":
+            optimizer_d = self.hparams.optimizer(params=self.discriminator.parameters())
+            if self.hparams.scheduler_d is not None:
+                scheduler_d = self.hparams.scheduler(optimizer=optimizer)
+                opt_d = {
+                    "optimizer": optimizer_d,
+                    "lr_scheduler": {
+                        "scheduler": scheduler_d,
+                        "monitor": "val/loss",
+                        "interval": "epoch",
+                        "frequency": 1,
+                    },
+                }
+            else:
+                opt_d = {"optimizer": optimizer_d}
+            return [opt, opt_d]
+        else:
+            return opt
 
     @torch.no_grad()
     def sample(self, n_samples: int, cond: torch.Tensor = None):

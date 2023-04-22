@@ -11,3 +11,9 @@ scheduler:
   _partial_: true
   warmup: 5
   max_iters: 10
+
+optimizer_d:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.00005

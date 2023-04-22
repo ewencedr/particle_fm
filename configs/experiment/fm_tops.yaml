@@ -19,7 +19,7 @@ tags: ["flow_matching", "tops", "30", "test_runs"]
 trainer:
   min_epochs: 3
   max_epochs: 30
-  gradient_clip_val: 0.5
+  # gradient_clip_val: 0.5
 
 model:
   optimizer:
@@ -29,7 +29,7 @@ model:
   hidden_dim: 128
   num_particles: 30
   frequencies: 6
-  use_mass_loss: True
+  use_mass_loss: False
   layers: 8
   n_transforms: 1
   activation: leaky_relu
@@ -50,7 +50,7 @@ model:
   plot_loss_hist_debug: True
   # loss
   loss_type: FM-OT
-  loss_comparison: SWD
+  loss_comparison: adversarial
   # scheduler
   scheduler:
     warmup: ${trainer.min_epochs}
