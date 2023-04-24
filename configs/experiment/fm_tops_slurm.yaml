@@ -49,6 +49,7 @@ model:
   # loss
   loss_type: FM-OT
   loss_comparison: MSE
+  loss_type_d: LSGAN
   # scheduler
   scheduler:
     warmup: ${trainer.min_epochs}

@@ -227,6 +227,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         mask (bool, optional): Use Mask. Defaults to False.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         loss_comparison (str, optional): Which method to use for comparing the two VFs in FM loss. Defaults to "MSE".
+        loss_type_d (str, optional): Loss type for discriminator. Defaults to "BCE".
     """
 
     def __init__(
@@ -262,6 +263,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # loss
         loss_type: str = "FM-OT",
         loss_comparison: str = "MSE",
+        loss_type_d: str = "LSGAN",
         **kwargs,
     ):
         super().__init__()
@@ -283,10 +285,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             raise Warning(
                 "Scheduler for discriminator is not None but loss comparison is not adversarial!"
             )
-        # self.optimizer = optimizer
-        # self.optimizer_d = optimizer_d
-        # self.schedulder = scheduler
-        # self.scheduler_d = scheduler_d
+        if loss_type_d is not None and self.loss_comparison != "adversarial":
+            raise Warning(
+                "Loss type for discriminator is not None but loss comparison is not adversarial!"
+            )
         for _ in range(n_transforms):
             flows.append(
                 CNF(
@@ -342,9 +344,35 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 x = f.encode(x)
         return x
 
-    def adversarial_loss(self, y_hat, y):
-        # TODO LS GAN loss
-        return F.binary_cross_entropy_with_logits(y_hat, y)
+    def adversarial_loss(self, y_hat: torch.Tensor, y: torch.Tensor, loss_type_d: str = "BCE"):
+        """Discriminator loss. Thanks to Copilot for the code.
+
+        Args:
+            y_hat (torch.Tensor): Values.
+            y (torch.Tensor): Values.
+            loss_type_d (str, optional): Possible losses: BCE, LSGAN, WGAN, Hinge. Defaults to "BCE".
+
+        Raises:
+            ValueError: If loss type is not supported.
+
+        Returns:
+            torch.Tensor [1]: Loss.
+        """
+        if loss_type_d == "LSGAN":
+            # LSGAN (https://agustinus.kristia.de/techblog/2017/03/02/least-squares-gan/)
+            loss = 0.5 * torch.mean((y_hat - y) ** 2)
+        elif loss_type_d == "WGAN":
+            # WGAN (https://arxiv.org/abs/1701.07875)
+            loss = -torch.mean(y_hat * y)
+        elif loss_type_d == "BCE":
+            # BCE (https://pytorch.org/docs/stable/generated/torch.nn.BCELoss.html)
+            loss = F.binary_cross_entropy_with_logits(y_hat, y)
+        elif loss_type_d == "Hinge":
+            # Hinge (https://arxiv.org/abs/1705.07215)
+            loss = torch.mean(F.relu(1 - y * y_hat))
+        else:
+            raise NotImplementedError("Loss type not supported!")
+        return loss
 
     def loss(self, x: torch.Tensor):
         v = self.flows[0]
@@ -401,7 +429,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 valid = valid.type_as(v_t)
 
                 # Measure generator's ability to fool the discriminator
-                g_loss = self.adversarial_loss(self.discriminator(v_t), valid)
+                g_loss = self.adversarial_loss(
+                    self.discriminator(v_t), valid, loss_type_d=self.hparams.loss_type_d
+                )
                 self.log("train/g_loss", g_loss, on_step=False, on_epoch=True, prog_bar=True)
                 logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
                 self.manual_backward(g_loss, retain_graph=True)
@@ -420,13 +450,17 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 valid = torch.ones(v_t.size(0), 1)
                 valid = valid.type_as(v_t)
 
-                real_loss = self.adversarial_loss(self.discriminator(u_t), valid)
+                real_loss = self.adversarial_loss(
+                    self.discriminator(u_t), valid, loss_type_d=self.hparams.loss_type_d
+                )
 
                 # how well can it label as fake?
                 fake = torch.zeros(v_t.size(0), 1)
                 fake = valid.type_as(v_t)
 
-                fake_loss = self.adversarial_loss(self.discriminator(v_t), fake)
+                fake_loss = self.adversarial_loss(
+                    self.discriminator(v_t), fake, loss_type_d=self.hparams.loss_type_d
+                )
 
                 # discriminator loss is the average of these
                 d_loss = (real_loss + fake_loss) / 2
