@@ -232,7 +232,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def __init__(
         self,
         optimizer: torch.optim.Optimizer,
-        optimizer_d: torch.optim.Optimizer,
+        optimizer_d: torch.optim.Optimizer = None,
         scheduler: torch.optim.lr_scheduler = None,
         scheduler_d: torch.optim.lr_scheduler = None,
         model: str = "epic",
@@ -275,6 +275,18 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             )
         flows = nn.ModuleList()
         # losses = nn.ModuleList()
+        if optimizer_d is not None and self.loss_comparison != "adversarial":
+            raise Warning(
+                "Optimizer for discriminator is not None but loss comparison is not adversarial!"
+            )
+        if scheduler_d is not None and self.loss_comparison != "adversarial":
+            raise Warning(
+                "Scheduler for discriminator is not None but loss comparison is not adversarial!"
+            )
+        # self.optimizer = optimizer
+        # self.optimizer_d = optimizer_d
+        # self.schedulder = scheduler
+        # self.scheduler_d = scheduler_d
         for _ in range(n_transforms):
             flows.append(
                 CNF(
@@ -373,7 +385,12 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             #    out = p3d.pytorch3d.loss.chamfer_distance(v_t, u_t)
             elif self.loss_comparison == "adversarial":
                 optimizer, optimizer_d = self.optimizers()
-
+                if self.hparams.scheduler is not None:
+                    scheduler = self.lr_schedulers()
+                elif self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
+                    scheduler, scheduler_d = self.lr_schedulers()
+                elif self.hparams.scheduler is None and self.hparams.scheduler_d is not None:
+                    scheduler_d = self.lr_schedulers()
                 # train generator
                 # generate fake vector field
                 self.toggle_optimizer(optimizer)
@@ -384,14 +401,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 valid = valid.type_as(v_t)
 
                 # Measure generator's ability to fool the discriminator
-                # discr = self.discriminator(v_t)
-                # discr.requires_grad = True
-                # valid.requires_grad = True
                 g_loss = self.adversarial_loss(self.discriminator(v_t), valid)
                 self.log("train/g_loss", g_loss, on_step=False, on_epoch=True, prog_bar=True)
-                # g_loss.requires_grad = True
                 logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
                 self.manual_backward(g_loss, retain_graph=True)
+                self.clip_gradients(
+                    optimizer, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
+                )
                 optimizer.step()
                 optimizer.zero_grad()
                 self.untoggle_optimizer(optimizer)
@@ -416,9 +432,24 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 d_loss = (real_loss + fake_loss) / 2
                 self.log("train/d_loss", d_loss, on_step=False, on_epoch=True, prog_bar=True)
                 self.manual_backward(d_loss)
+                self.clip_gradients(
+                    optimizer_d, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
+                )
                 optimizer_d.step()
                 optimizer.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
+
+                if self.trainer.is_last_batch:
+                    if self.hparams.scheduler is not None:
+                        scheduler.step()
+                    elif (
+                        self.hparams.scheduler is not None and self.hparams.scheduler_d is not None
+                    ):
+                        scheduler.step()
+                        scheduler_d.step()
+                    elif self.hparams.scheduler is None and self.hparams.scheduler_d is not None:
+                        scheduler_d.step()
+
                 out = d_loss
             else:
                 raise NotImplementedError

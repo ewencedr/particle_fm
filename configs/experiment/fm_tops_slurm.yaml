@@ -29,7 +29,7 @@ model:
   hidden_dim: 128
   num_particles: 30
   frequencies: 6
-  use_mass_loss: True
+  use_mass_loss: False
   layers: 8
   n_transforms: 1
   activation: leaky_relu
@@ -37,9 +37,9 @@ model:
   # epic
   latent: 16
   return_latent_space: False
-  mass_conditioning: True
-  global_cond_dim: 10
-  local_cond_dim: 1
+  mass_conditioning: False
+  global_cond_dim: 0
+  local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
   # transformer
