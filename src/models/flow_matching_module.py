@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, List
 
 import energyflow as ef
@@ -17,8 +18,6 @@ from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_discriminator, EPiC_generator, Transformer
 from .components.utils import SWD, MMDLoss
-
-# import pytorch3d as p3d
 
 logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
@@ -188,15 +187,6 @@ class FlowMatchingLoss2(nn.Module):
         return (y - u).square().mean()
 
 
-# class UVF(nn.Module):
-#    def __init__(self):
-#        super().__init__()
-#
-#
-#    def forward(self, t: Tensor, x: Tensor) -> Tensor:
-#        return (x_1 - (1-1e-4)*x_0)/(1-(1-1e-4)t)
-
-
 class SetFlowMatchingLitModule(pl.LightningModule):
     """Pytorch Lightning module for training CNFs with Flow Matching loss.
 
@@ -270,23 +260,22 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-        self.loss_comparison = loss_comparison
-        if self.loss_comparison == "adversarial":
+        if loss_comparison == "adversarial":
             self.automatic_optimization = (
                 False  # we will do our own optimization for Adversarial loss
             )
         flows = nn.ModuleList()
         # losses = nn.ModuleList()
-        if optimizer_d is not None and self.loss_comparison != "adversarial":
-            raise Warning(
+        if optimizer_d is not None and self.hparams.loss_comparison != "adversarial":
+            warnings.warn(
                 "Optimizer for discriminator is not None but loss comparison is not adversarial!"
             )
-        if scheduler_d is not None and self.loss_comparison != "adversarial":
-            raise Warning(
+        if scheduler_d is not None and self.hparams.loss_comparison != "adversarial":
+            warnings.warn(
                 "Scheduler for discriminator is not None but loss comparison is not adversarial!"
             )
-        if loss_type_d is not None and self.loss_comparison != "adversarial":
-            raise Warning(
+        if loss_type_d is not None and self.hparams.loss_comparison != "adversarial":
+            warnings.warn(
                 "Loss type for discriminator is not None but loss comparison is not adversarial!"
             )
         for _ in range(n_transforms):
@@ -314,18 +303,15 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             )
             # losses.append(FlowMatchingLoss(flows[-1]))
         self.flows = flows
-        self.use_mass_loss = use_mass_loss
-        self.plot_loss_hist_debug = plot_loss_hist_debug
         self.u_mass = []
         self.v_mass = []
         self.data = []
         self.v_mass_tensor = torch.empty(0, 30, 3)
-        self.loss_type = loss_type
-        if self.loss_comparison == "SWD":
+        if loss_comparison == "SWD":
             self.swd = SWD()
-        elif self.loss_comparison == "MMD":
+        elif loss_comparison == "MMD":
             self.mmd = MMDLoss()
-        elif self.loss_comparison == "adversarial":
+        elif loss_comparison == "adversarial":
             self.discriminator = EPiC_discriminator(
                 feats=features,
                 equiv_layers=layers,
@@ -360,7 +346,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         """
         if loss_type_d == "LSGAN":
             # LSGAN (https://agustinus.kristia.de/techblog/2017/03/02/least-squares-gan/)
-            loss = 0.5 * torch.mean((y_hat - y) ** 2)
+            loss = torch.mean((y_hat - y) ** 2)
         elif loss_type_d == "WGAN":
             # WGAN (https://arxiv.org/abs/1701.07875)
             loss = -torch.mean(y_hat * y)
@@ -375,8 +361,19 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         return loss
 
     def loss(self, x: torch.Tensor):
+        """Loss function.
+
+        Args:
+            x (torch.Tensor): Values.
+
+        Raises:
+            NotImplementedError: If loss type is not supported.
+
+        Returns:
+            _type_: Loss.
+        """
         v = self.flows[0]
-        if self.loss_type == "FM-OT":
+        if self.hparams.loss_type == "FM-OT":
             t = torch.rand_like(x[..., 0]).unsqueeze(-1)
             logger_loss.debug(f"t grad: {t.requires_grad}")
             # t.requires_grad = True
@@ -401,17 +398,14 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
 
             logger_loss.debug(f"v_t: {v_t.shape}")
-            if self.loss_comparison == "MSE":
+            if self.hparams.loss_comparison == "MSE":
                 out = (v_t - u_t).square().mean()
-            elif self.loss_comparison == "SWD":
+            elif self.hparams.loss_comparison == "SWD":
                 out = self.swd(v_t, u_t)
-            elif self.loss_comparison == "MMD":
+            elif self.hparams.loss_comparison == "MMD":
                 # TODO NOT WORKING YET
                 out = self.mmd(v_t, u_t)
-            # elif self.loss_comparison == "chamfer":
-            #    # TODO NOT WORKING YET
-            #    out = p3d.pytorch3d.loss.chamfer_distance(v_t, u_t)
-            elif self.loss_comparison == "adversarial":
+            elif self.hparams.loss_comparison == "adversarial":
                 optimizer, optimizer_d = self.optimizers()
                 if self.hparams.scheduler is not None:
                     scheduler = self.lr_schedulers()
@@ -420,7 +414,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 elif self.hparams.scheduler is None and self.hparams.scheduler_d is not None:
                     scheduler_d = self.lr_schedulers()
                 # train generator
-                # generate fake vector field
                 self.toggle_optimizer(optimizer)
 
                 # ground truth result (ie: all fake)
@@ -430,11 +423,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
                 # Measure generator's ability to fool the discriminator
                 g_loss = self.adversarial_loss(
-                    self.discriminator(v_t), valid, loss_type_d=self.hparams.loss_type_d
+                    self.discriminator(self.flows[0](t.squeeze(-1), y)),
+                    valid,
+                    loss_type_d=self.hparams.loss_type_d,
                 )
                 self.log("train/g_loss", g_loss, on_step=False, on_epoch=True, prog_bar=True)
                 logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
-                self.manual_backward(g_loss, retain_graph=True)
+                self.manual_backward(g_loss)
                 self.clip_gradients(
                     optimizer, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
                 )
@@ -459,7 +454,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 fake = valid.type_as(v_t)
 
                 fake_loss = self.adversarial_loss(
-                    self.discriminator(v_t), fake, loss_type_d=self.hparams.loss_type_d
+                    self.discriminator(self.flows[0](t.squeeze(-1), y)),
+                    fake,
+                    loss_type_d=self.hparams.loss_type_d,
                 )
 
                 # discriminator loss is the average of these
@@ -470,7 +467,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     optimizer_d, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
                 )
                 optimizer_d.step()
-                optimizer.zero_grad()
+                optimizer_d.zero_grad()
                 self.untoggle_optimizer(optimizer_d)
 
                 if self.trainer.is_last_batch:
@@ -488,7 +485,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             else:
                 raise NotImplementedError
             logger_loss.debug(f"out: {out.shape}")
-        elif self.loss_type == "CFM":
+        elif self.hparams.loss_type == "CFM":
             t = torch.rand_like(x[..., 0]).unsqueeze(-1)
             logger_loss.debug(f"t: {t.shape}")
             x_0 = torch.randn_like(x)  # sample from prior
@@ -508,7 +505,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             out = (v_t - u_t).square().mean()
             logger_loss.debug(f"out: {out.shape}")
 
-        if self.use_mass_loss:
+        if self.hparams.use_mass_loss:
             mass_scaling_factor = 0.0001 * 1
             jm_v = jet_masses(v_t)
             jm_u = jet_masses(u_t)
@@ -547,10 +544,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, mask = batch
 
-        if self.use_mass_loss:
+        if self.hparams.use_mass_loss:
             loss, mse_mass, u_mass, v_mass = self.loss(x)
             self.log("train/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
-            if self.plot_loss_hist_debug:
+            if self.hparams.plot_loss_hist_debug:
                 if batch_idx == 0:
                     self.u_mass = []
                     self.v_mass = []
@@ -715,7 +712,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask = batch
-        if self.use_mass_loss:
+        if self.hparams.use_mass_loss:
             loss, mse_mass, u_mass, v_mass = self.loss(x)
             self.log("val/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
         else:
@@ -755,7 +752,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         else:
             opt = {"optimizer": optimizer}
 
-        if self.loss_comparison == "adversarial":
+        if self.hparams.loss_comparison == "adversarial":
             optimizer_d = self.hparams.optimizer(params=self.discriminator.parameters())
             if self.hparams.scheduler_d is not None:
                 scheduler_d = self.hparams.scheduler(optimizer=optimizer)

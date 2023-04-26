@@ -7,8 +7,6 @@ from src.utils.pylogger import get_pylogger
 logger_el = get_pylogger("epic_layer")
 logger_eg = get_pylogger("epic_generator")
 
-# TODO Adversarial training is not working with wrapper_func
-
 
 class EPiC_layer(nn.Module):
     """equivariant layer with global concat & residual connections inside this module  & weight_norm
