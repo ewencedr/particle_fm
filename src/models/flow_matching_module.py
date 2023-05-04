@@ -372,6 +372,14 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         Returns:
             _type_: Loss.
         """
+        # x = (
+        #    jet_masses(x)
+        #    .unsqueeze(-1)
+        #    .unsqueeze(-1)
+        #    .repeat_interleave(30, dim=-2)
+        #    .repeat_interleave(3, dim=-1)
+        # )
+        # print(f"x shape: {x.shape}")
         v = self.flows[0]
         if self.hparams.loss_type == "FM-OT":
             t = torch.rand_like(x[..., 0]).unsqueeze(-1)
@@ -407,7 +415,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 out = self.mmd(v_t, u_t)
             elif self.hparams.loss_comparison == "adversarial":
                 optimizer, optimizer_d = self.optimizers()
-                if self.hparams.scheduler is not None:
+                if self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
                     scheduler = self.lr_schedulers()
                 elif self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
                     scheduler, scheduler_d = self.lr_schedulers()
@@ -471,7 +479,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 self.untoggle_optimizer(optimizer_d)
 
                 if self.trainer.is_last_batch:
-                    if self.hparams.scheduler is not None:
+                    if self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
                         scheduler.step()
                     elif (
                         self.hparams.scheduler is not None and self.hparams.scheduler_d is not None
