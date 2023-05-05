@@ -306,6 +306,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.u_mass = []
         self.v_mass = []
         self.data = []
+        self.data_x = []
         self.v_mass_tensor = torch.empty(0, 30, 3)
         if loss_comparison == "SWD":
             self.swd = SWD()
@@ -525,6 +526,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 mass_mse * mass_scaling_factor,
                 u_t,
                 y,
+                x,
             )
         else:
             return out
@@ -553,13 +555,14 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         x, mask = batch
 
         if self.hparams.use_mass_loss:
-            loss, mse_mass, u_mass, v_mass = self.loss(x)
+            loss, mse_mass, u_mass, v_mass, x = self.loss(x)
             self.log("train/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
             if self.hparams.plot_loss_hist_debug:
                 if batch_idx == 0:
                     self.u_mass = []
                     self.v_mass = []
                     self.data = []
+                    self.data_x = torch.empty(0, 30, 3)
                     self.v_mass_tensor = torch.empty(0, 30, 3)
                 # if batch_idx = 400:
                 #    pass
@@ -567,6 +570,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 # self.v_mass.append(v_mass.cpu().detach())
                 if batch_idx % 50 == 0:
                     self.v_mass_tensor = torch.cat((self.v_mass_tensor, u_mass.cpu().detach()), 0)
+                    self.data_x = torch.cat((self.data_x, x.cpu().detach()), 0)
                 # print(f"vmass tensor: {self.v_mass_tensor.shape}")
                 # self.u_mass.append(u_mass.cpu().detach().numpy())
                 # self.v_mass.append(v_mass.cpu().detach().numpy())
@@ -598,6 +602,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     )
                     # data = self.v_mass_tensor.cpu().detach().numpy()
                     print(f"data: {data.shape}")
+                    self.data_x = self.data_x.numpy()
+                    print(f"data_x: {self.data_x.shape}")
                     # self.v_mass.append(data)
                     # print(self.trainer.current_epoch)
                     # print(f"batch_idx: {batch_idx}")
@@ -631,6 +637,16 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         alpha=0.7,
                         label="Gen",
                     )
+                    ax.hist(
+                        (np.concatenate(self.data_x))[:, i_feat],
+                        histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="x",
+                    )
                     ax.set_xlabel(r"$\eta^\mathrm{rel}$")
                     ax.get_yaxis().set_ticklabels([])
                     ax.set_yscale("log")
@@ -651,6 +667,16 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         ls="--",
                         alpha=0.7,
                         label="Gen",
+                    )
+                    ax.hist(
+                        (np.concatenate(self.data_x))[:, i_feat],
+                        histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="x",
                     )
                     ax.set_xlabel(r"$\phi^\mathrm{rel}$")
                     ax.get_yaxis().set_ticklabels([])
@@ -673,6 +699,16 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         alpha=0.7,
                         label="Gen",
                     )
+                    ax.hist(
+                        (np.concatenate(self.data_x))[:, i_feat],
+                        histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="x",
+                    )
 
                     ax.set_xlabel(r"$p_\mathrm{T}^\mathrm{rel}$")
                     ax.get_yaxis().set_ticklabels([])
@@ -692,6 +728,15 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     jet_mass = jet_masses_ef(
                         np.array([data[:, :, 2], data[:, :, 0], data[:, :, 1]]).transpose(1, 2, 0)
                     )
+                    jet_mass_x = jet_masses_ef(
+                        np.array(
+                            [
+                                self.data_x[:, :, 2],
+                                self.data_x[:, :, 0],
+                                self.data_x[:, :, 1],
+                            ]
+                        ).transpose(1, 2, 0)
+                    )
                     # print(f"data: {data[0]}")
                     # print(f"jet_mass: {jet_mass}")
                     ax.hist(
@@ -703,6 +748,16 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         ls="--",
                         alpha=0.7,
                         label="Gen",
+                    )
+                    ax.hist(
+                        jet_mass_x,
+                        histtype="step",
+                        bins=bins,
+                        density=True,
+                        lw=2,
+                        ls="--",
+                        alpha=0.7,
+                        label="x",
                     )
 
                     ax.set_xlabel(r"Jet mass")
@@ -721,7 +776,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask = batch
         if self.hparams.use_mass_loss:
-            loss, mse_mass, u_mass, v_mass = self.loss(x)
+            loss, mse_mass, u_mass, v_mass, x = self.loss(x)
             self.log("val/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
         else:
             loss = self.loss(x)
