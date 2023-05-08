@@ -440,7 +440,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     valid,
                     loss_type_d=self.hparams.loss_type_d,
                 )
-                self.log("train/g_loss", g_loss, on_step=False, on_epoch=True, prog_bar=True)
+                self.log("train/g_loss", g_loss, on_step=True, on_epoch=True, prog_bar=True)
                 logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
                 self.manual_backward(g_loss)
                 self.clip_gradients(
@@ -466,17 +466,19 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
                 # how well can it label as fake?
                 fake = torch.zeros(v_t.size(0), 1)
-                fake = valid.type_as(v_t)
+                fake = fake.type_as(v_t)
 
                 fake_loss = self.adversarial_loss(
-                    self.discriminator(t.squeeze(-1), self.flows[0](t.squeeze(-1), y)),
+                    self.discriminator(
+                        t.squeeze(-1), self.flows[0](t.squeeze(-1).detach(), y.detach())
+                    ),
                     fake,
                     loss_type_d=self.hparams.loss_type_d,
                 )
 
                 # discriminator loss is the average of these
                 d_loss = (real_loss + fake_loss) * 0.5
-                self.log("train/d_loss", d_loss, on_step=False, on_epoch=True, prog_bar=True)
+                self.log("train/d_loss", d_loss, on_step=True, on_epoch=True, prog_bar=True)
                 self.manual_backward(d_loss)
                 self.clip_gradients(
                     optimizer_d, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
