@@ -307,6 +307,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.v_mass = []
         self.data = []
         self.data_x = []
+        self.data_ut = []
+        self.data_vt = []
         self.v_mass_tensor = torch.empty(0, 30, 3)
         if loss_comparison == "SWD":
             self.swd = SWD()
@@ -401,7 +403,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"y grad: {y.requires_grad}")
             # u_t = (1 - 1e-4) * z - x
-            u_t = (1 - 1e-4) * z - x
+            u_t = (1 - 1e-4) * z - x  # = v_t?
             logger_loss.debug(f"u_t: {u_t.shape}")
             v_t = v(t.squeeze(-1), y)
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
@@ -525,7 +527,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 out,  # + mass_mse * mass_scaling_factor,
                 mass_mse * mass_scaling_factor,
                 u_t,
-                y,
+                v_t,
                 x,
             )
         else:
@@ -562,6 +564,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     self.u_mass = []
                     self.v_mass = []
                     self.data = []
+                    self.data_ut = torch.empty(0, 30, 3)
+                    self.data_vt = torch.empty(0, 30, 3)
                     self.data_x = torch.empty(0, 30, 3)
                     self.v_mass_tensor = torch.empty(0, 30, 3)
                 # if batch_idx = 400:
@@ -571,6 +575,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 if batch_idx % 50 == 0:
                     self.v_mass_tensor = torch.cat((self.v_mass_tensor, u_mass.cpu().detach()), 0)
                     self.data_x = torch.cat((self.data_x, x.cpu().detach()), 0)
+                    self.data_ut = torch.cat((self.data_ut, u_mass.cpu().detach()), 0)
+                    self.data_vt = torch.cat((self.data_vt, v_mass.cpu().detach()), 0)
+
                 # print(f"vmass tensor: {self.v_mass_tensor.shape}")
                 # self.u_mass.append(u_mass.cpu().detach().numpy())
                 # self.v_mass.append(v_mass.cpu().detach().numpy())
@@ -587,185 +594,347 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     print(f"BATCH_IDX {batch_idx}")
                     # print(f"vmass self: {np.array(self.v_mass).shape}")
                     print(f"vmass tensor: {self.v_mass_tensor.shape}")
-                    data = (
-                        odeint(
-                            self.flows[0],
-                            self.v_mass_tensor.cuda(),
-                            None,
-                            1.0,
-                            0.0,
-                            phi=self.parameters(),
+                    plot1 = False
+                    if plot1:
+                        data = (
+                            odeint(
+                                self.flows[0],
+                                self.v_mass_tensor.cuda(),
+                                None,
+                                1.0,
+                                0.0,
+                                phi=self.parameters(),
+                            )
+                            .cpu()
+                            .detach()
+                            .numpy()
                         )
-                        .cpu()
-                        .detach()
-                        .numpy()
-                    )
-                    # data = self.v_mass_tensor.cpu().detach().numpy()
-                    print(f"data: {data.shape}")
-                    self.data_x = self.data_x.numpy()
-                    print(f"data_x: {self.data_x.shape}")
-                    # self.v_mass.append(data)
-                    # print(self.trainer.current_epoch)
-                    # print(f"batch_idx: {batch_idx}")
-                    # print(f"mse_mass: {mse_mass.shape}")
-                    # plt.hist(
-                    #    np.array(self.u_mass).flatten(),
-                    #    bins=100,
-                    #    label="u",
-                    #    histtype="stepfilled",
-                    # )
-                    # data = np.array(self.data)
-                    fig = plt.figure(figsize=(20, 4))
-                    gs = GridSpec(1, 4)
+                        # data = self.v_mass_tensor.cpu().detach().numpy()
+                        print(f"data: {data.shape}")
+                        self.data_x = self.data_x.numpy()
+                        print(f"data_x: {self.data_x.shape}")
+                        # self.v_mass.append(data)
+                        # print(self.trainer.current_epoch)
+                        # print(f"batch_idx: {batch_idx}")
+                        # print(f"mse_mass: {mse_mass.shape}")
+                        # plt.hist(
+                        #    np.array(self.u_mass).flatten(),
+                        #    bins=100,
+                        #    label="u",
+                        #    histtype="stepfilled",
+                        # )
+                        # data = np.array(self.data)
+                        fig = plt.figure(figsize=(20, 4))
+                        gs = GridSpec(1, 4)
 
-                    #####
+                        #####
 
-                    # eta
-                    ax = fig.add_subplot(gs[0])
-                    i_feat = 0
-                    bins = np.linspace(-0.5, 0.5, 50)
-                    # print(f"data1: {data.shape}")
-                    # print(f"data2: {np.concatenate(data).shape}")
-                    # print(f"data type: {type(data)}")
-                    ax.hist(
-                        (np.concatenate(data))[:, i_feat],
-                        histtype="step",
-                        bins=bins,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="Gen",
-                    )
-                    ax.hist(
-                        (np.concatenate(self.data_x))[:, i_feat],
-                        histtype="step",
-                        bins=bins,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="x",
-                    )
-                    ax.set_xlabel(r"$\eta^\mathrm{rel}$")
-                    ax.get_yaxis().set_ticklabels([])
-                    ax.set_yscale("log")
-                    ax.legend()
+                        # eta
+                        ax = fig.add_subplot(gs[0])
+                        i_feat = 0
+                        bins = np.linspace(-0.5, 0.5, 50)
+                        # print(f"data1: {data.shape}")
+                        # print(f"data2: {np.concatenate(data).shape}")
+                        # print(f"data type: {type(data)}")
+                        ax.hist(
+                            (np.concatenate(data))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="Gen",
+                        )
+                        ax.hist(
+                            (np.concatenate(self.data_x))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="x",
+                        )
+                        ax.set_xlabel(r"$\eta^\mathrm{rel}$")
+                        ax.get_yaxis().set_ticklabels([])
+                        ax.set_yscale("log")
+                        ax.legend()
 
-                    # phi
-                    ax = fig.add_subplot(gs[1])
+                        # phi
+                        ax = fig.add_subplot(gs[1])
 
-                    i_feat = 1
+                        i_feat = 1
 
-                    bins = np.linspace(-0.5, 0.5, 50)
-                    ax.hist(
-                        (np.concatenate(data))[:, i_feat],
-                        histtype="step",
-                        bins=bins,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="Gen",
-                    )
-                    ax.hist(
-                        (np.concatenate(self.data_x))[:, i_feat],
-                        histtype="step",
-                        bins=bins,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="x",
-                    )
-                    ax.set_xlabel(r"$\phi^\mathrm{rel}$")
-                    ax.get_yaxis().set_ticklabels([])
-                    ax.set_yscale("log")
-                    ax.legend()
+                        bins = np.linspace(-0.5, 0.5, 50)
+                        ax.hist(
+                            (np.concatenate(data))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="Gen",
+                        )
+                        ax.hist(
+                            (np.concatenate(self.data_x))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="x",
+                        )
+                        ax.set_xlabel(r"$\phi^\mathrm{rel}$")
+                        ax.get_yaxis().set_ticklabels([])
+                        ax.set_yscale("log")
+                        ax.legend()
 
-                    # pt
-                    ax = fig.add_subplot(gs[2])
+                        # pt
+                        ax = fig.add_subplot(gs[2])
 
-                    i_feat = 2
+                        i_feat = 2
 
-                    bins = np.linspace(-0.1, 0.5, 100)
-                    ax.hist(
-                        (np.concatenate(data))[:, i_feat],
-                        histtype="step",
-                        bins=bins,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="Gen",
-                    )
-                    ax.hist(
-                        (np.concatenate(self.data_x))[:, i_feat],
-                        histtype="step",
-                        bins=bins,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="x",
-                    )
+                        bins = np.linspace(-0.1, 0.5, 100)
+                        ax.hist(
+                            (np.concatenate(data))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="Gen",
+                        )
+                        ax.hist(
+                            (np.concatenate(self.data_x))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="x",
+                        )
 
-                    ax.set_xlabel(r"$p_\mathrm{T}^\mathrm{rel}$")
-                    ax.get_yaxis().set_ticklabels([])
-                    ax.set_yscale("log")
-                    ax.legend()
+                        ax.set_xlabel(r"$p_\mathrm{T}^\mathrm{rel}$")
+                        ax.get_yaxis().set_ticklabels([])
+                        ax.set_yscale("log")
+                        ax.legend()
 
-                    # mass
-                    def jet_masses_ef(jets_ary):
-                        jets_p4s = ef.p4s_from_ptyphims(jets_ary)
-                        masses = ef.ms_from_p4s(jets_p4s.sum(axis=1))
-                        return masses
+                        # mass
+                        def jet_masses_ef(jets_ary):
+                            jets_p4s = ef.p4s_from_ptyphims(jets_ary)
+                            masses = ef.ms_from_p4s(jets_p4s.sum(axis=1))
+                            return masses
 
-                    ax = fig.add_subplot(gs[3])
+                        ax = fig.add_subplot(gs[3])
 
-                    bins = np.linspace(0.0, 0.3, 100)
+                        bins = np.linspace(0.0, 0.3, 100)
 
-                    jet_mass = jet_masses_ef(
-                        np.array([data[:, :, 2], data[:, :, 0], data[:, :, 1]]).transpose(1, 2, 0)
-                    )
-                    jet_mass_x = jet_masses_ef(
-                        np.array(
-                            [
-                                self.data_x[:, :, 2],
-                                self.data_x[:, :, 0],
-                                self.data_x[:, :, 1],
-                            ]
-                        ).transpose(1, 2, 0)
-                    )
-                    # print(f"data: {data[0]}")
-                    # print(f"jet_mass: {jet_mass}")
-                    ax.hist(
-                        jet_mass,
-                        histtype="step",
-                        bins=100,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="Gen",
-                    )
-                    ax.hist(
-                        jet_mass_x,
-                        histtype="step",
-                        bins=bins,
-                        density=True,
-                        lw=2,
-                        ls="--",
-                        alpha=0.7,
-                        label="x",
-                    )
+                        jet_mass = jet_masses_ef(
+                            np.array([data[:, :, 2], data[:, :, 0], data[:, :, 1]]).transpose(
+                                1, 2, 0
+                            )
+                        )
+                        jet_mass_x = jet_masses_ef(
+                            np.array(
+                                [
+                                    self.data_x[:, :, 2],
+                                    self.data_x[:, :, 0],
+                                    self.data_x[:, :, 1],
+                                ]
+                            ).transpose(1, 2, 0)
+                        )
+                        # print(f"data: {data[0]}")
+                        # print(f"jet_mass: {jet_mass}")
+                        ax.hist(
+                            jet_mass,
+                            histtype="step",
+                            bins=100,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="Gen",
+                        )
+                        ax.hist(
+                            jet_mass_x,
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="x",
+                        )
 
-                    ax.set_xlabel(r"Jet mass")
-                    ax.set_yscale("log")
-                    ax.legend()
+                        ax.set_xlabel(r"Jet mass")
+                        ax.set_yscale("log")
+                        ax.legend()
 
-                    plt.tight_layout()
-                    plt.show()
+                        plt.tight_layout()
+                        plt.show()
+
+                    plot_ut_vt = True
+                    if plot_ut_vt:
+                        data = self.data_ut.cpu().detach().numpy()
+                        data1 = self.data_vt.cpu().detach().numpy()
+                        fig = plt.figure(figsize=(20, 4))
+                        gs = GridSpec(1, 4)
+
+                        #####
+
+                        # eta
+                        ax = fig.add_subplot(gs[0])
+                        i_feat = 0
+                        bins = np.linspace(-0.5, 0.5, 50)
+                        # print(f"data1: {data.shape}")
+                        # print(f"data2: {np.concatenate(data).shape}")
+                        # print(f"data type: {type(data)}")
+                        ax.hist(
+                            (np.concatenate(data))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="ut",
+                        )
+                        ax.hist(
+                            (np.concatenate(data1))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="vt",
+                        )
+                        ax.set_xlabel(r"$\eta^\mathrm{rel}$")
+                        ax.get_yaxis().set_ticklabels([])
+                        ax.set_yscale("log")
+                        ax.legend()
+
+                        # phi
+                        ax = fig.add_subplot(gs[1])
+
+                        i_feat = 1
+
+                        bins = np.linspace(-0.5, 0.5, 50)
+                        ax.hist(
+                            (np.concatenate(data))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="ut",
+                        )
+                        ax.hist(
+                            (np.concatenate(data1))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="vt",
+                        )
+                        ax.set_xlabel(r"$\phi^\mathrm{rel}$")
+                        ax.get_yaxis().set_ticklabels([])
+                        ax.set_yscale("log")
+                        ax.legend()
+
+                        # pt
+                        ax = fig.add_subplot(gs[2])
+
+                        i_feat = 2
+
+                        bins = np.linspace(-0.1, 0.5, 100)
+                        ax.hist(
+                            (np.concatenate(data))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="ut",
+                        )
+                        ax.hist(
+                            (np.concatenate(data1))[:, i_feat],
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="vt",
+                        )
+
+                        ax.set_xlabel(r"$p_\mathrm{T}^\mathrm{rel}$")
+                        ax.get_yaxis().set_ticklabels([])
+                        ax.set_yscale("log")
+                        ax.legend()
+
+                        # mass
+                        def jet_masses_ef(jets_ary):
+                            jets_p4s = ef.p4s_from_ptyphims(jets_ary)
+                            masses = ef.ms_from_p4s(jets_p4s.sum(axis=1))
+                            return masses
+
+                        ax = fig.add_subplot(gs[3])
+
+                        bins = np.linspace(0.0, 0.3, 100)
+
+                        jet_mass = jet_masses_ef(
+                            np.array([data[:, :, 2], data[:, :, 0], data[:, :, 1]]).transpose(
+                                1, 2, 0
+                            )
+                        )
+                        jet_mass_x = jet_masses_ef(
+                            np.array(
+                                [
+                                    data1[:, :, 2],
+                                    data1[:, :, 0],
+                                    data1[:, :, 1],
+                                ]
+                            ).transpose(1, 2, 0)
+                        )
+                        # print(f"data: {data[0]}")
+                        # print(f"jet_mass: {jet_mass}")
+                        ax.hist(
+                            jet_mass,
+                            histtype="step",
+                            bins=100,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="ut",
+                        )
+                        ax.hist(
+                            jet_mass_x,
+                            histtype="step",
+                            bins=bins,
+                            density=True,
+                            lw=2,
+                            ls="--",
+                            alpha=0.7,
+                            label="vt",
+                        )
+
+                        ax.set_xlabel(r"Jet mass")
+                        ax.set_yscale("log")
+                        ax.legend()
+
+                        plt.tight_layout()
+                        plt.show()
 
         else:
             loss = self.loss(x)
