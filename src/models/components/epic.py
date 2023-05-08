@@ -6,8 +6,10 @@ from src.utils.pylogger import get_pylogger
 
 logger_el = get_pylogger("epic_layer")
 logger_eg = get_pylogger("epic_generator")
+logger_ed = get_pylogger("epic_discriminator")
 
 
+# TODO global time conditioning not working properly
 class EPiC_layer(nn.Module):
     """equivariant layer with global concat & residual connections inside this module  & weight_norm
     ordered: first update global, then local
@@ -373,6 +375,9 @@ class EPiC_discriminator(nn.Module):
         latent (int, optional): Latent space. Defaults to 16.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
+        t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+
     """
 
     def __init__(
@@ -383,6 +388,9 @@ class EPiC_discriminator(nn.Module):
         latent: int = 16,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
+        t_local_cat: bool = False,
+        t_global_cat: bool = False,
+        frequencies: int = 6,
     ):
         super().__init__()
         self.hid_d = hid_d
@@ -391,6 +399,9 @@ class EPiC_discriminator(nn.Module):
         self.latent = latent  # used for latent size of equiv concat
         self.activation = activation
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
+        self.t_local_cat = t_local_cat
+        self.t_global_cat = t_global_cat
+        self.frequencies = frequencies
 
         self.fc_l1 = self.wrapper_func(nn.Linear(self.feats, self.hid_d))
         self.fc_l2 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
@@ -400,13 +411,26 @@ class EPiC_discriminator(nn.Module):
 
         self.nn_list = nn.ModuleList()
         for _ in range(self.equiv_layers):
-            self.nn_list.append(EPiC_layer(self.hid_d, self.hid_d, self.latent))
+            self.nn_list.append(
+                EPiC_layer(
+                    self.hid_d,
+                    self.hid_d,
+                    self.latent,
+                    t_global_cat=t_global_cat,
+                    t_local_cat=t_local_cat,
+                )
+            )
 
         self.fc_g3 = self.wrapper_func(nn.Linear(int(2 * self.hid_d + self.latent), self.hid_d))
         self.fc_g4 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
         self.fc_g5 = self.wrapper_func(nn.Linear(self.hid_d, 1))
 
-    def forward(self, x):
+    def forward(self, t_in, x):
+        if self.t_local_cat:
+            t_in = t_in.unsqueeze(-1).repeat_interleave(2 * self.frequencies, dim=-1)
+        logger_ed.debug(f"t.shape: {t_in.shape}")
+        if self.t_global_cat:
+            raise NotImplementedError("Not implemented yet")
         # local encoding
         x_local = getattr(F, self.activation, lambda x: x)(self.fc_l1(x))
         x_local = getattr(F, self.activation, lambda x: x)(self.fc_l2(x_local) + x_local)
@@ -423,7 +447,7 @@ class EPiC_discriminator(nn.Module):
         # equivariant connections
         for i in range(self.equiv_layers):
             x_global, x_local = self.nn_list[i](
-                None, x_global, x_local
+                t_in, x_global, x_local
             )  # contains residual connection
 
         x_mean = x_local.mean(1, keepdim=False)  # mean over points dim.

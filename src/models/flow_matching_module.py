@@ -322,6 +322,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 latent=latent,
                 activation=activation,
                 wrapper_func=wrapper_func,
+                t_global_cat=t_global_cat,
+                t_local_cat=t_local_cat,
             )
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor = None, reverse: bool = False):
@@ -434,7 +436,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
                 # Measure generator's ability to fool the discriminator
                 g_loss = self.adversarial_loss(
-                    self.discriminator(self.flows[0](t.squeeze(-1), y)),
+                    self.discriminator(t.squeeze(-1), self.flows[0](t.squeeze(-1), y)),
                     valid,
                     loss_type_d=self.hparams.loss_type_d,
                 )
@@ -457,7 +459,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 valid = valid.type_as(v_t)
 
                 real_loss = self.adversarial_loss(
-                    self.discriminator(u_t), valid, loss_type_d=self.hparams.loss_type_d
+                    self.discriminator(t.squeeze(-1), u_t),
+                    valid,
+                    loss_type_d=self.hparams.loss_type_d,
                 )
 
                 # how well can it label as fake?
@@ -465,13 +469,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 fake = valid.type_as(v_t)
 
                 fake_loss = self.adversarial_loss(
-                    self.discriminator(self.flows[0](t.squeeze(-1), y)),
+                    self.discriminator(t.squeeze(-1), self.flows[0](t.squeeze(-1), y)),
                     fake,
                     loss_type_d=self.hparams.loss_type_d,
                 )
 
                 # discriminator loss is the average of these
-                d_loss = (real_loss + fake_loss) / 2
+                d_loss = (real_loss + fake_loss) * 0.5
                 self.log("train/d_loss", d_loss, on_step=False, on_epoch=True, prog_bar=True)
                 self.manual_backward(d_loss)
                 self.clip_gradients(
