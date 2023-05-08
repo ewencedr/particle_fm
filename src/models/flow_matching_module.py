@@ -463,6 +463,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     valid,
                     loss_type_d=self.hparams.loss_type_d,
                 )
+                self.log(
+                    "train/d_real_loss",
+                    real_loss,
+                    on_step=True,
+                    on_epoch=True,
+                    prog_bar=True,
+                )
 
                 # how well can it label as fake?
                 fake = torch.zeros(v_t.size(0), 1)
@@ -475,7 +482,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     fake,
                     loss_type_d=self.hparams.loss_type_d,
                 )
-
+                self.log(
+                    "train/d_fake_loss",
+                    fake_loss,
+                    on_step=True,
+                    on_epoch=True,
+                    prog_bar=True,
+                )
                 # discriminator loss is the average of these
                 d_loss = (real_loss + fake_loss) * 0.5
                 self.log("train/d_loss", d_loss, on_step=True, on_epoch=True, prog_bar=True)
