@@ -420,98 +420,137 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 out = self.mmd(v_t, u_t)
             elif self.hparams.loss_comparison == "adversarial":
                 optimizer, optimizer_d = self.optimizers()
-                if self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
-                    scheduler = self.lr_schedulers()
-                elif self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
-                    scheduler, scheduler_d = self.lr_schedulers()
-                elif self.hparams.scheduler is None and self.hparams.scheduler_d is not None:
-                    scheduler_d = self.lr_schedulers()
-                # train generator
-                self.toggle_optimizer(optimizer)
-
-                # ground truth result (ie: all fake)
-                valid = torch.ones(v_t.size(0), 1)
-                logger_loss.debug(f"valid: {valid.shape}")
-                valid = valid.type_as(v_t)
-
-                # Measure generator's ability to fool the discriminator
-                g_loss = self.adversarial_loss(
-                    self.discriminator(t.squeeze(-1), self.flows[0](t.squeeze(-1), y)),
-                    valid,
-                    loss_type_d=self.hparams.loss_type_d,
-                )
-                self.log("train/g_loss", g_loss, on_step=True, on_epoch=True, prog_bar=True)
-                logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
-                self.manual_backward(g_loss)
-                self.clip_gradients(
-                    optimizer, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
-                )
-                optimizer.step()
-                optimizer.zero_grad()
-                self.untoggle_optimizer(optimizer)
-
-                # train discriminator
-                # Measure discriminator's ability to classify between both vector fields
-                self.toggle_optimizer(optimizer_d)
-
-                # how well can it label as real?
-                valid = torch.ones(v_t.size(0), 1)
-                valid = valid.type_as(v_t)
-
-                real_loss = self.adversarial_loss(
-                    self.discriminator(t.squeeze(-1), u_t),
-                    valid,
-                    loss_type_d=self.hparams.loss_type_d,
-                )
-                self.log(
-                    "train/d_real_loss",
-                    real_loss,
-                    on_step=True,
-                    on_epoch=True,
-                    prog_bar=True,
-                )
-
-                # how well can it label as fake?
-                fake = torch.zeros(v_t.size(0), 1)
-                fake = fake.type_as(v_t)
-
-                fake_loss = self.adversarial_loss(
-                    self.discriminator(
-                        t.squeeze(-1), self.flows[0](t.squeeze(-1).detach(), y.detach())
-                    ),
-                    fake,
-                    loss_type_d=self.hparams.loss_type_d,
-                )
-                self.log(
-                    "train/d_fake_loss",
-                    fake_loss,
-                    on_step=True,
-                    on_epoch=True,
-                    prog_bar=True,
-                )
-                # discriminator loss is the average of these
-                d_loss = (real_loss + fake_loss) * 0.5
-                self.log("train/d_loss", d_loss, on_step=True, on_epoch=True, prog_bar=True)
-                self.manual_backward(d_loss)
-                self.clip_gradients(
-                    optimizer_d, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
-                )
-                optimizer_d.step()
-                optimizer_d.zero_grad()
-                self.untoggle_optimizer(optimizer_d)
-
-                if self.trainer.is_last_batch:
+                if self.trainer.current_epoch < 0:
+                    self.toggle_optimizer(optimizer)
+                    out = (v_t - u_t).square().mean()
+                    self.manual_backward(out)
+                    self.clip_gradients(
+                        optimizer, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
+                    )
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    self.untoggle_optimizer(optimizer)
+                    return out
+                else:
                     if self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
-                        scheduler.step()
+                        scheduler = self.lr_schedulers()
                     elif (
                         self.hparams.scheduler is not None and self.hparams.scheduler_d is not None
                     ):
-                        scheduler.step()
-                        scheduler_d.step()
+                        scheduler, scheduler_d = self.lr_schedulers()
                     elif self.hparams.scheduler is None and self.hparams.scheduler_d is not None:
-                        scheduler_d.step()
+                        scheduler_d = self.lr_schedulers()
+                    # train generator
+                    self.toggle_optimizer(optimizer)
 
-                out = d_loss
+                    # ground truth result (ie: all fake)
+                    valid = torch.ones(v_t.size(0), 1)
+                    # add noise to labels to stabilise training
+                    noise = -torch.rand_like(valid) * 0.05
+                    logger_loss.debug(f"valid: {valid.shape}")
+                    valid = valid.type_as(v_t) + noise.type_as(v_t)
+
+                    # Measure generator's ability to fool the discriminator
+                    g_loss = self.adversarial_loss(
+                        self.discriminator(t.squeeze(-1), self.flows[0](t.squeeze(-1), y)),
+                        valid,
+                        loss_type_d=self.hparams.loss_type_d,
+                    )
+                    self.log(
+                        "train/g_loss",
+                        g_loss,
+                        on_step=True,
+                        on_epoch=True,
+                        prog_bar=True,
+                    )
+                    logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
+                    self.manual_backward(g_loss)
+                    self.clip_gradients(
+                        optimizer, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
+                    )
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    self.untoggle_optimizer(optimizer)
+
+                    # train discriminator
+                    # Measure discriminator's ability to classify between both vector fields
+                    self.toggle_optimizer(optimizer_d)
+
+                    # how well can it label as real?
+                    valid = torch.ones(v_t.size(0), 1)
+                    noise = -torch.rand_like(valid) * 0.05
+                    valid = valid.type_as(v_t) + noise.type_as(v_t)
+
+                    real_loss = self.adversarial_loss(
+                        self.discriminator(t.squeeze(-1), u_t),
+                        valid,
+                        loss_type_d=self.hparams.loss_type_d,
+                    )
+                    self.log(
+                        "train/d_real_loss",
+                        real_loss,
+                        on_step=True,
+                        on_epoch=True,
+                        prog_bar=True,
+                    )
+
+                    # how well can it label as fake?
+                    fake = torch.zeros(v_t.size(0), 1)
+                    noise = torch.rand_like(fake) * 0.05
+                    fake = fake.type_as(v_t) + noise.type_as(v_t)
+
+                    fake_loss = self.adversarial_loss(
+                        self.discriminator(
+                            t.squeeze(-1),
+                            self.flows[0](t.squeeze(-1).detach(), y.detach()),
+                        ),
+                        fake,
+                        loss_type_d=self.hparams.loss_type_d,
+                    )
+                    self.log(
+                        "train/d_fake_loss",
+                        fake_loss,
+                        on_step=True,
+                        on_epoch=True,
+                        prog_bar=True,
+                    )
+                    # discriminator loss is the average of these
+                    d_loss = (real_loss + fake_loss) * 0.5
+                    self.log(
+                        "train/d_loss",
+                        d_loss,
+                        on_step=True,
+                        on_epoch=True,
+                        prog_bar=True,
+                    )
+                    self.manual_backward(d_loss)
+                    self.clip_gradients(
+                        optimizer_d,
+                        gradient_clip_val=0.5,
+                        gradient_clip_algorithm="norm",
+                    )
+                    optimizer_d.step()
+                    optimizer_d.zero_grad()
+                    self.untoggle_optimizer(optimizer_d)
+
+                    if self.trainer.is_last_batch:
+                        if (
+                            self.hparams.scheduler is not None
+                            and self.hparams.scheduler_d is not None
+                        ):
+                            scheduler.step()
+                        elif (
+                            self.hparams.scheduler is not None
+                            and self.hparams.scheduler_d is not None
+                        ):
+                            scheduler.step()
+                            scheduler_d.step()
+                        elif (
+                            self.hparams.scheduler is None and self.hparams.scheduler_d is not None
+                        ):
+                            scheduler_d.step()
+
+                    out = d_loss
             else:
                 raise NotImplementedError
             logger_loss.debug(f"out: {out.shape}")
