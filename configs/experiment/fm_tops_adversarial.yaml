@@ -23,6 +23,8 @@ trainer:
 
 model:
   optimizer:
+    lr: 0.001
+  optimizer_d:
     lr: 0.0001
   model: "epic"
   features: 3
@@ -53,9 +55,7 @@ model:
   loss_comparison: adversarial
   loss_type_d: LSGAN
   # scheduler
-  scheduler:
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
+  scheduler: null
   #scheduler:
 #  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
 #  _partial_: true
