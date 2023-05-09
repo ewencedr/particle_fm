@@ -419,16 +419,23 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 # TODO NOT WORKING YET
                 out = self.mmd(v_t, u_t)
             elif self.hparams.loss_comparison == "adversarial":
+                clip_gradients = False
+                epochs_pretrain_generator = 0
+
                 optimizer, optimizer_d = self.optimizers()
-                if self.trainer.current_epoch < 0:
+                if self.trainer.current_epoch < epochs_pretrain_generator:
                     self.toggle_optimizer(optimizer)
                     out = (v_t - u_t).square().mean()
-                    self.manual_backward(out)
-                    self.clip_gradients(
-                        optimizer, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
-                    )
-                    optimizer.step()
                     optimizer.zero_grad()
+                    self.manual_backward(out)
+                    if clip_gradients:
+                        self.clip_gradients(
+                            optimizer,
+                            gradient_clip_val=0.5,
+                            gradient_clip_algorithm="norm",
+                        )
+                    optimizer.step()
+
                     self.untoggle_optimizer(optimizer)
                     return out
                 else:
@@ -442,7 +449,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         scheduler_d = self.lr_schedulers()
                     # train generator
                     self.toggle_optimizer(optimizer)
-
+                    optimizer.zero_grad()
                     # ground truth result (ie: all fake)
                     valid = torch.ones(v_t.size(0), 1)
                     # add noise to labels to stabilise training
@@ -456,6 +463,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         valid,
                         loss_type_d=self.hparams.loss_type_d,
                     )
+                    if self.hparams.loss_type_d == "LSGAN":
+                        g_loss = g_loss * 0.5
                     self.log(
                         "train/g_loss",
                         g_loss,
@@ -465,17 +474,20 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     )
                     logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
                     self.manual_backward(g_loss)
-                    self.clip_gradients(
-                        optimizer, gradient_clip_val=0.5, gradient_clip_algorithm="norm"
-                    )
+                    if clip_gradients:
+                        self.clip_gradients(
+                            optimizer,
+                            gradient_clip_val=0.5,
+                            gradient_clip_algorithm="norm",
+                        )
                     optimizer.step()
-                    optimizer.zero_grad()
+
                     self.untoggle_optimizer(optimizer)
 
                     # train discriminator
                     # Measure discriminator's ability to classify between both vector fields
                     self.toggle_optimizer(optimizer_d)
-
+                    optimizer_d.zero_grad()
                     # how well can it label as real?
                     valid = torch.ones(v_t.size(0), 1)
                     noise = -torch.rand_like(valid) * 0.05
@@ -524,13 +536,14 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         prog_bar=True,
                     )
                     self.manual_backward(d_loss)
-                    self.clip_gradients(
-                        optimizer_d,
-                        gradient_clip_val=0.5,
-                        gradient_clip_algorithm="norm",
-                    )
+                    if clip_gradients:
+                        self.clip_gradients(
+                            optimizer_d,
+                            gradient_clip_val=0.5,
+                            gradient_clip_algorithm="norm",
+                        )
                     optimizer_d.step()
-                    optimizer_d.zero_grad()
+
                     self.untoggle_optimizer(optimizer_d)
 
                     if self.trainer.is_last_batch:
