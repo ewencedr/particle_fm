@@ -428,7 +428,7 @@ class EPiC_discriminator(nn.Module):
     def forward(self, t_in, x):
         if self.t_local_cat:
             t_in = t_in.unsqueeze(-1).repeat_interleave(2 * self.frequencies, dim=-1)
-        logger_ed.debug(f"t.shape: {t_in.shape}")
+            logger_ed.debug(f"t.shape: {t_in.shape}")
         if self.t_global_cat:
             raise NotImplementedError("Not implemented yet")
         # local encoding
