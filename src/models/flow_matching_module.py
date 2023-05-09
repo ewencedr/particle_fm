@@ -387,9 +387,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # print(f"x shape: {x.shape}")
         v = self.flows[0]
         if self.hparams.loss_type == "FM-OT":
-            t = torch.rand_like(x[..., 0]).unsqueeze(-1)
-            logger_loss.debug(f"t grad: {t.requires_grad}")
-            # t.requires_grad = True
+            # t = torch.rand_like(x[..., 0]).unsqueeze(-1)
+            t = torch.rand_like(torch.ones(x.shape[0]))
+            t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
+            t = t.type_as(x)
+            logger_loss.debug(f"t: {t.shape}")
             logger_loss.debug(f"t grad: {t.requires_grad}")
             torch.set_grad_enabled(True)
             logger_loss.debug(f"t: {t.requires_grad}")
