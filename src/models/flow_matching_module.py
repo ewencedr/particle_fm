@@ -117,15 +117,17 @@ class CNF(nn.Module):
         # logger.debug(f"t.shape0: {t[:3]}")
         logger.debug(f"x.shape1: {x.shape}")
         # t: (batch_size,num_particles)
+        logger.debug(f"t.shape: {t.shape}")
+        logger.debug(f"t: {t[:3]}")
         t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
-        logger.debug(f"t.shape1: {t[:3]}")
+        # logger.debug(f"t.shape1: {t[:3]}")
         t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
-        logger.debug(f"t.shape2: {t[:3]}")
+        # logger.debug(f"t.shape2: {t[:3]}")
         t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
-        logger.debug(f"t.shape3: {t[:3]}")
+        # logger.debug(f"t.shape3: {t[:3]}")
         logger.debug(f"t.shape3: {t.shape}")
         x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
-        logger.debug(f"x.shape2: {x[:3]}")
+        # logger.debug(f"x.shape2: {x[:3]}")
 
         if self.model == "epic":
             x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
@@ -387,6 +389,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # print(f"x shape: {x.shape}")
         v = self.flows[0]
         if self.hparams.loss_type == "FM-OT":
+            sigma = 1e-4
+
             # t = torch.rand_like(x[..., 0]).unsqueeze(-1)
             t = torch.rand_like(torch.ones(x.shape[0]))
             t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
@@ -401,13 +405,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"z grad: {z.requires_grad}")
 
             logger_loss.debug(f"z: {z.shape}")
-            # y = (1 - (1 - 1e-4) * t) * z + t * x
-            y = (1 - t) * x + (1e-4 + (1 - 1e-4) * t) * z
+            y = (1 - (1 - sigma) * t) * z + t * x  # directly from fm paper
+            # y = (1 - t) * x + (sigma + (1 - sigma) * t) * z # 100LOC implementation
             # y = y.clone().detach().requires_grad_(True)
             logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"y grad: {y.requires_grad}")
-            # u_t = (1 - 1e-4) * z - x
-            u_t = (1 - 1e-4) * z - x  # = v_t?
+            u_t = x - (1 - sigma) * z
+            # u_t = (1 - sigma) * z - x  # = v_t?
             logger_loss.debug(f"u_t: {u_t.shape}")
             v_t = v(t.squeeze(-1), y)
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")

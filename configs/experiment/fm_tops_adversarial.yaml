@@ -91,6 +91,7 @@ callbacks:
     w_dists_batches: 2
     mass_conditioning: ${model.mass_conditioning}
     plot_jet_features: True
+    log_w_dists: True
 
 
 task_name: "fm_tops-${model.num_particles}"
