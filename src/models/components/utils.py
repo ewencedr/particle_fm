@@ -73,3 +73,29 @@ class MMDLoss(nn.Module):
         XY = K[:X_size, X_size:].mean()
         YY = K[X_size:, X_size:].mean()
         return XX - 2 * XY + YY
+
+
+def calculate_gradient_penalty(model, t, real_images, fake_images, device):
+    """Calculates the gradient penalty loss for WGAN GP based on
+    https://github.com/Lornatang/WassersteinGAN_GP-
+    PyTorch/blob/master/wgangp_pytorch/utils.py#L39."""
+
+    # Random weight term for interpolation between real and fake data
+    alpha = torch.randn((real_images.size(0), 1, 1), device=device)
+    # Get random interpolation between real and fake data
+    interpolates = (alpha * real_images + ((1 - alpha) * fake_images)).requires_grad_(True)
+    model_interpolates = model(t, interpolates)
+    grad_outputs = torch.ones(model_interpolates.size(), device=device, requires_grad=False)
+
+    # Get gradient w.r.t. interpolates
+    gradients = torch.autograd.grad(
+        outputs=model_interpolates,
+        inputs=interpolates,
+        grad_outputs=grad_outputs,
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True,
+    )[0]
+    gradients = gradients.view(gradients.size(0), -1)
+    gradient_penalty = torch.mean((gradients.norm(2, dim=1) - 1) ** 2)
+    return gradient_penalty

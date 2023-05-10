@@ -17,7 +17,7 @@ from src.models.zuko.utils import odeint
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_discriminator, EPiC_generator, Transformer
-from .components.utils import SWD, MMDLoss
+from .components.utils import SWD, MMDLoss, calculate_gradient_penalty
 
 logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
@@ -337,13 +337,20 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 x = f.encode(x)
         return x
 
-    def adversarial_loss(self, y_hat: torch.Tensor, y: torch.Tensor, loss_type_d: str = "BCE"):
+    def adversarial_loss(
+        self,
+        y_hat: torch.Tensor,
+        y: torch.Tensor,
+        loss_type_d: str = "BCE",
+        generator: bool = True,
+    ):
         """Discriminator loss. Thanks to Copilot for the code.
 
         Args:
             y_hat (torch.Tensor): Values.
             y (torch.Tensor): Values.
             loss_type_d (str, optional): Possible losses: BCE, LSGAN, WGAN, Hinge. Defaults to "BCE".
+            generator (bool, optional): Whether to use generator or discriminator. Defaults to True.
 
         Raises:
             ValueError: If loss type is not supported.
@@ -353,10 +360,17 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         """
         if loss_type_d == "LSGAN":
             # LSGAN (https://agustinus.kristia.de/techblog/2017/03/02/least-squares-gan/)
+            # print(f"y_hat: {y_hat}")
             loss = torch.mean((y_hat - y) ** 2)
+            if generator:
+                loss = loss * 0.5
         elif loss_type_d == "WGAN":
             # WGAN (https://arxiv.org/abs/1701.07875)
-            loss = -torch.mean(y_hat * y)
+            if generator:
+                # print(f"y_hat: {y_hat}")
+                loss = -torch.mean(y_hat)
+                # print(f"loss: {loss}")
+
         elif loss_type_d == "BCE":
             # BCE (https://pytorch.org/docs/stable/generated/torch.nn.BCELoss.html)
             loss = F.binary_cross_entropy_with_logits(y_hat, y)
@@ -406,7 +420,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
             logger_loss.debug(f"z: {z.shape}")
             y = (1 - (1 - sigma) * t) * z + t * x  # directly from fm paper
-            # y = (1 - t) * x + (sigma + (1 - sigma) * t) * z # 100LOC implementation
+            # y = (1 - t) * x + (sigma + (1 - sigma) * t) * z  # 100LOC implementation
             # y = y.clone().detach().requires_grad_(True)
             logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"y grad: {y.requires_grad}")
@@ -425,7 +439,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 # TODO NOT WORKING YET
                 out = self.mmd(v_t, u_t)
             elif self.hparams.loss_comparison == "adversarial":
-                clip_gradients = False
+                clip_gradients = True
                 epochs_pretrain_generator = 0
 
                 optimizer, optimizer_d = self.optimizers()
@@ -453,9 +467,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         scheduler, scheduler_d = self.lr_schedulers()
                     elif self.hparams.scheduler is None and self.hparams.scheduler_d is not None:
                         scheduler_d = self.lr_schedulers()
+
                     # train generator
                     self.toggle_optimizer(optimizer)
-                    optimizer.zero_grad()
+
                     # ground truth result (ie: all fake)
                     valid = torch.ones(v_t.size(0), 1)
                     # add noise to labels to stabilise training
@@ -469,8 +484,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         valid,
                         loss_type_d=self.hparams.loss_type_d,
                     )
-                    if self.hparams.loss_type_d == "LSGAN":
-                        g_loss = g_loss * 0.5
                     self.log(
                         "train/g_loss",
                         g_loss,
@@ -487,53 +500,76 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                             gradient_clip_algorithm="norm",
                         )
                     optimizer.step()
-
+                    optimizer.zero_grad()
                     self.untoggle_optimizer(optimizer)
 
                     # train discriminator
                     # Measure discriminator's ability to classify between both vector fields
                     self.toggle_optimizer(optimizer_d)
-                    optimizer_d.zero_grad()
-                    # how well can it label as real?
-                    valid = torch.ones(v_t.size(0), 1)
-                    noise = -torch.rand_like(valid) * 0.05
-                    valid = valid.type_as(v_t) + noise.type_as(v_t)
 
-                    real_loss = self.adversarial_loss(
-                        self.discriminator(t.squeeze(-1), u_t),
-                        valid,
-                        loss_type_d=self.hparams.loss_type_d,
-                    )
-                    self.log(
-                        "train/d_real_loss",
-                        real_loss,
-                        on_step=True,
-                        on_epoch=True,
-                        prog_bar=True,
-                    )
-
-                    # how well can it label as fake?
-                    fake = torch.zeros(v_t.size(0), 1)
-                    noise = torch.rand_like(fake) * 0.05
-                    fake = fake.type_as(v_t) + noise.type_as(v_t)
-
-                    fake_loss = self.adversarial_loss(
-                        self.discriminator(
+                    if self.hparams.loss_type_d == "WGAN":
+                        fake_data = self.flows[0](t.squeeze(-1).detach(), y.detach())
+                        discr_out_real = self.discriminator(t.squeeze(-1), u_t)
+                        discr_out_fake = self.discriminator(
                             t.squeeze(-1),
-                            self.flows[0](t.squeeze(-1).detach(), y.detach()),
-                        ),
-                        fake,
-                        loss_type_d=self.hparams.loss_type_d,
-                    )
-                    self.log(
-                        "train/d_fake_loss",
-                        fake_loss,
-                        on_step=True,
-                        on_epoch=True,
-                        prog_bar=True,
-                    )
-                    # discriminator loss is the average of these
-                    d_loss = (real_loss + fake_loss) * 0.5
+                            fake_data,
+                        )
+
+                        errD_real = torch.mean(discr_out_real)
+                        errD_fake = torch.mean(discr_out_fake)
+                        gradient_penalty = calculate_gradient_penalty(
+                            self.discriminator,
+                            t.squeeze(-1),
+                            u_t,
+                            fake_data,
+                            device=self.device,
+                        )
+                        # print(f"errD_real: {errD_real}")
+                        # print(f"errD_fake: {errD_fake}")
+                        # print(f"gradient penalty: {gradient_penalty}")
+                        d_loss = -errD_real + errD_fake + gradient_penalty * 10
+                    else:
+                        # how well can it label as real?
+                        valid = torch.ones(v_t.size(0), 1)
+                        noise = -torch.rand_like(valid) * 0.05
+                        valid = valid.type_as(v_t) + noise.type_as(v_t)
+
+                        real_loss = self.adversarial_loss(
+                            self.discriminator(t.squeeze(-1), u_t),
+                            valid,
+                            loss_type_d=self.hparams.loss_type_d,
+                            generator=False,
+                        )
+                        self.log(
+                            "train/d_real_loss",
+                            real_loss,
+                            on_step=True,
+                            on_epoch=True,
+                            prog_bar=True,
+                        )
+
+                        # how well can it label as fake?
+                        fake = torch.zeros(v_t.size(0), 1)
+                        noise = torch.rand_like(fake) * 0.05
+                        fake = fake.type_as(v_t) + noise.type_as(v_t)
+
+                        fake_loss = self.adversarial_loss(
+                            self.discriminator(
+                                t.squeeze(-1),
+                                self.flows[0](t.squeeze(-1).detach(), y.detach()),
+                            ),
+                            fake,
+                            loss_type_d=self.hparams.loss_type_d,
+                        )
+                        self.log(
+                            "train/d_fake_loss",
+                            fake_loss,
+                            on_step=True,
+                            on_epoch=True,
+                            prog_bar=True,
+                        )
+                        # discriminator loss is the average of these
+                        d_loss = (real_loss + fake_loss) * 0.5
                     self.log(
                         "train/d_loss",
                         d_loss,
@@ -549,7 +585,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                             gradient_clip_algorithm="norm",
                         )
                     optimizer_d.step()
-
+                    optimizer_d.zero_grad()
                     self.untoggle_optimizer(optimizer_d)
 
                     if self.trainer.is_last_batch:
