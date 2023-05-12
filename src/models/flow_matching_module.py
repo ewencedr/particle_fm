@@ -419,13 +419,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"z grad: {z.requires_grad}")
 
             logger_loss.debug(f"z: {z.shape}")
-            y = (1 - (1 - sigma) * t) * z + t * x  # directly from fm paper
-            # y = (1 - t) * x + (sigma + (1 - sigma) * t) * z  # 100LOC implementation
+            # y = (1 - (1 - sigma) * t) * z + t * x  # directly from fm paper
+            y = (1 - t) * x + (sigma + (1 - sigma) * t) * z  # 100LOC implementation
             # y = y.clone().detach().requires_grad_(True)
             logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"y grad: {y.requires_grad}")
-            u_t = x - (1 - sigma) * z
-            # u_t = (1 - sigma) * z - x  # = v_t?
+            # u_t = x - (1 - sigma) * z
+            u_t = (1 - sigma) * z - x  # = v_t?
             logger_loss.debug(f"u_t: {u_t.shape}")
             v_t = v(t.squeeze(-1), y)
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
