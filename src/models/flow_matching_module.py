@@ -118,7 +118,7 @@ class CNF(nn.Module):
         logger.debug(f"x.shape1: {x.shape}")
         # t: (batch_size,num_particles)
         logger.debug(f"t.shape: {t.shape}")
-        logger.debug(f"t: {t[:3]}")
+        # logger.debug(f"t: {t[:3]}")
         t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
         # logger.debug(f"t.shape1: {t[:3]}")
         t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
