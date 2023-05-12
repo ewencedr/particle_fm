@@ -9,7 +9,6 @@ logger_eg = get_pylogger("epic_generator")
 logger_ed = get_pylogger("epic_discriminator")
 
 
-# TODO global time conditioning not working properly without local conditioning
 class EPiC_layer(nn.Module):
     """equivariant layer with global concat & residual connections inside this module  & weight_norm
     ordered: first update global, then local
@@ -117,7 +116,9 @@ class EPiC_layer(nn.Module):
             logger_el.debug(f"t shape: {t.shape}")
 
         if not self.t_local_cat:
-            t = torch.Tensor().to(t.device)
+            t_local = torch.Tensor().to(t.device)
+        else:
+            t_local = t
         if self.t_global_cat:
             # prepare t for concat to global
             t_global = self.fc_t(t.clone().reshape(t.shape[0], -1))
@@ -165,11 +166,11 @@ class EPiC_layer(nn.Module):
         # phi p
         logger_el.debug(f"x_localCATglobal.shape: {x_localCATglobal.shape}")
         x_local1 = getattr(F, self.activation, lambda x: x)(
-            self.fc_local1(torch.cat((t, x_localCATglobal, local_cond), dim=-1))
+            self.fc_local1(torch.cat((t_local, x_localCATglobal, local_cond), dim=-1))
         )  # with residual connection before AF
         logger_el.debug(f"x_local1.shape: {x_local1.shape}")
         x_local = getattr(F, self.activation, lambda x: x)(
-            self.fc_local2(torch.cat((t, x_local1, local_cond), dim=-1)) + x_local
+            self.fc_local2(torch.cat((t_local, x_local1, local_cond), dim=-1)) + x_local
         )
 
         return x_global, x_local
@@ -295,10 +296,11 @@ class EPiC_generator(nn.Module):
 
         # time conditioning
         if not self.t_local_cat:
-            t = torch.Tensor().to(t.device)
+            t_local = torch.Tensor().to(t.device)
+        else:
+            t_local = t
         if self.t_global_cat:
             # prepare t for concat to global
-            logger_eg.debug(f"t2: {t.shape}")
             t_global = getattr(F, self.activation, lambda x: x)(
                 self.fc_t(t.clone().reshape(t.shape[0], -1)),
             )
@@ -330,7 +332,7 @@ class EPiC_generator(nn.Module):
             local_cond = torch.Tensor().to(z_local.device)
 
         z_local = getattr(F, self.activation, lambda x: x)(
-            self.local_0(torch.cat((t, z_local, local_cond), dim=-1))
+            self.local_0(torch.cat((t_local, z_local, local_cond), dim=-1))
         )
         logger_eg.debug(f"z_global1: {z_global.shape}")
         z_global = getattr(F, self.activation, lambda x: x)(self.global_0(z_global))
@@ -357,7 +359,7 @@ class EPiC_generator(nn.Module):
         # final local NN to get down to input feats size
         logger_eg.debug(f"z_local2: {z_local.shape}")
         out = self.local_1(
-            torch.cat((t.clone(), z_local.clone(), local_cond.clone()), dim=-1),
+            torch.cat((t_local.clone(), z_local.clone(), local_cond.clone()), dim=-1),
         )
         if self.return_latent_space:
             return out, latent_tensor
