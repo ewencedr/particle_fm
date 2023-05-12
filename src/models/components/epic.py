@@ -9,7 +9,7 @@ logger_eg = get_pylogger("epic_generator")
 logger_ed = get_pylogger("epic_discriminator")
 
 
-# TODO global time conditioning not working properly
+# TODO global time conditioning not working properly without local conditioning
 class EPiC_layer(nn.Module):
     """equivariant layer with global concat & residual connections inside this module  & weight_norm
     ordered: first update global, then local
@@ -298,7 +298,8 @@ class EPiC_generator(nn.Module):
             t = torch.Tensor().to(t.device)
         if self.t_global_cat:
             # prepare t for concat to global
-            t_global = getattr(F, self.activation, lambda x: x), (
+            logger_eg.debug(f"t2: {t.shape}")
+            t_global = getattr(F, self.activation, lambda x: x)(
                 self.fc_t(t.clone().reshape(t.shape[0], -1)),
             )
             logger_eg.debug(f"t_global shape: {t_global.shape}")
