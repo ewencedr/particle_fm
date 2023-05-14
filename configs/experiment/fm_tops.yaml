@@ -39,9 +39,9 @@ model:
   # epic
   latent: 16
   return_latent_space: False
-  mass_conditioning: False
+  mass_conditioning: True
   global_cond_dim: 0
-  local_cond_dim: 0
+  local_cond_dim: 5
   t_local_cat: True
   t_global_cat: True
   # transformer
@@ -67,7 +67,8 @@ data:
   batch_size: 256
   variable_jet_sizes: False
   centering: True
-  normalize: False
+  normalize: True
+  normalize_sigma: 5
   use_calculated_base_distribution: False
 
 callbacks:

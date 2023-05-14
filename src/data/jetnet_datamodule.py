@@ -28,6 +28,7 @@ class JetNetDataModule(LightningDataModule):
         variable_jet_sizes: whether to use variable jet sizes, jets with lesser constituents than num_particles will be zero padded and masked
         centering: whether to center the data
         normalize: Standardise each feature to have zero mean and 5 sigma std deviation
+        normalize_sigma: number of std deviations to use for normalization
         use_calculated_base_distribution: whether to calculate mean and covariance of base distribution from data
 
     A DataModule implements 5 key methods:
@@ -70,6 +71,7 @@ class JetNetDataModule(LightningDataModule):
         # preprocessing
         centering=True,
         normalize=True,
+        normalize_sigma=5,
         use_calculated_base_distribution=True,
     ):
         super().__init__()
@@ -172,14 +174,18 @@ class JetNetDataModule(LightningDataModule):
                 # print(f"Means: {means}")
                 # print(f"Stds: {stds}")
 
-                normalized_dataset_train = normalize_tensor(dataset_train, means, stds)
+                normalized_dataset_train = normalize_tensor(
+                    dataset_train, means, stds, sigma=self.hparams.normalize_sigma
+                )
                 mask_train = np.ma.getmask(normalized_dataset_train) == 0
                 mask_train = mask_train.astype(int)
                 mask_train = torch.tensor(np.expand_dims(mask_train[..., 0], axis=-1))
                 tensor_train = torch.tensor(normalized_dataset_train)
 
                 # Validation
-                normalized_dataset_val = normalize_tensor(dataset_val, means, stds)
+                normalized_dataset_val = normalize_tensor(
+                    dataset_val, means, stds, sigma=self.hparams.normalize_sigma
+                )
                 mask_val = np.ma.getmask(normalized_dataset_val) == 0
                 mask_val = mask_val.astype(int)
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))

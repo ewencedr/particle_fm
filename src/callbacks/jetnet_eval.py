@@ -45,7 +45,6 @@ class JetNetEvaluationCallback(pl.Callback):
         mass_conditioning: bool = False,
         **kwargs,
     ):
-
         super().__init__()
         self.logger = logger
         self.every_n_epochs = every_n_epochs
@@ -84,6 +83,7 @@ class JetNetEvaluationCallback(pl.Callback):
                 save_name=plot_name,
                 labels=["Model"],
                 normalised_data=[trainer.datamodule.hparams.normalize],
+                normalize_sigma=trainer.datamodule.hparams.normalize_sigma,
                 max_particles=trainer.datamodule.hparams.variable_jet_sizes,
                 mask=np.array(trainer.datamodule.mask_test),
                 num_jet_samples=self.num_jet_samples,

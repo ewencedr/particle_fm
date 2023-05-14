@@ -61,7 +61,6 @@ def plot_single_jets(
     gs = GridSpec(4, 4)
 
     for i in tqdm(range(16)):
-
         ax = fig.add_subplot(gs[i])
 
         idx = np.random.randint(len(data))
@@ -608,7 +607,6 @@ def plot_data(
     ax12.set_yscale("log")
 
     if plot_selected_multiplicities:
-
         ax13 = fig.add_subplot(gs[gs_counter + 6])
         data1 = pt_selected_multiplicities_sim["0"].flatten()
         if not plot_data_only:
@@ -837,6 +835,7 @@ def create_and_plot_data(
     variable_jet_sizes_plotting: bool = True,
     save_folder: str = "./logs/plots/",
     normalised_data: list[bool] = [False],
+    normalize_sigma: int = 5,
     means: list[float] = None,
     stds: list[float] = None,
     save_fig: bool = True,
@@ -868,6 +867,7 @@ def create_and_plot_data(
         variable_jet_sizes_plotting (bool, optional): _description_. Defaults to True.
         save_folder (str, optional): _description_. Defaults to "/home/ewencedr/equivariant-flows".
         normalised_data (list, optional): _description_. Defaults to [False].
+        normalize_sigma (int, optional): _description_. Defaults to 5.
         means (_type_, optional): _description_. Defaults to None.
         stds (_type_, optional): _description_. Defaults to None.
         save_fig (bool, optional): _description_. Defaults to True.
@@ -911,6 +911,7 @@ def create_and_plot_data(
         max_particles=max_particles,
         mask=mask,
         normalised_data=normalised_data,
+        normalize_sigma=normalize_sigma,
         means=means,
         stds=stds,
         file_dict=file_dict,
@@ -963,7 +964,6 @@ def plot_loss_curves(
     save_path="/home/ewencedr/equivariant-flows",
     plottype="",
 ):
-
     if not (len(file_paths) == len(labels)):
         raise ValueError("labels has not the same size as file_paths")
 
@@ -1016,7 +1016,6 @@ def do_timing_plots(
     mask=None,
     save_path="/home/ewencedr/equivariant-flows",
 ):
-
     if not (len(models) == len(labels)):
         raise ValueError("labels has not the same size as models")
 
@@ -1070,6 +1069,7 @@ def create_data_for_plotting(
     max_particles: bool = False,
     mask=None,
     normalised_data: list[bool] = [False],
+    normalize_sigma: int = 5,
     means: list[float] = None,
     stds: list[float] = None,
     file_dict: dict = None,
@@ -1099,7 +1099,6 @@ def create_data_for_plotting(
         pt_selected_multiplicities_sim = []
 
     for count, model in enumerate(gen_models):
-
         if type(model) is str:
             print(f"Loading data for model {count+1} of {len(gen_models)}")
             data_temp = load_data_from_file(model, file_dict)[:num_jet_samples]  # pt,eta,phi
@@ -1116,6 +1115,7 @@ def create_data_for_plotting(
                 max_particles=max_particles,
                 mask=mask,
                 normalised_data=normalised_data[count],
+                normalize_sigma=normalize_sigma,
                 means=means,
                 stds=stds,
                 cond=cond,

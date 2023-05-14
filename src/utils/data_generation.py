@@ -8,6 +8,8 @@ from tqdm import tqdm
 
 from src.data.components.utils import inverse_normalize_tensor
 
+# TODO proper docstrings
+
 
 def generate_data(
     model,
@@ -20,6 +22,7 @@ def generate_data(
     max_particles=False,
     mask=None,
     normalised_data=False,
+    normalize_sigma=5,
     means=None,
     stds=None,
     shuffle_mask=False,
@@ -57,7 +60,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(batch_size, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
                 with torch.no_grad():
@@ -65,7 +70,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(batch_size, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
         else:
             if max_particles:
                 if shuffle_mask:
@@ -77,7 +84,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(batch_size, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
                 with torch.no_grad():
@@ -85,7 +94,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(batch_size, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
 
     end_time = time.time()
@@ -107,7 +118,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(remaining_samples, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
                 with torch.no_grad():
@@ -115,7 +128,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(remaining_samples, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
         else:
             if max_particles:
                 with torch.no_grad():
@@ -123,7 +138,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(remaining_samples, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
                 jet_samples_batch = jet_samples_batch * mask_batch
             else:
                 with torch.no_grad():
@@ -131,7 +148,9 @@ def generate_data(
                         model.to(torch.device(device)).sample(remaining_samples, cond_batch).cpu()
                     )
                 if normalised_data:
-                    jet_samples_batch = inverse_normalize_tensor(jet_samples_batch, means, stds)
+                    jet_samples_batch = inverse_normalize_tensor(
+                        jet_samples_batch, means, stds, sigma=normalize_sigma
+                    )
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
     particle_data_sampled = np.array(particle_data_sampled)
     generation_time = end_time - start_time

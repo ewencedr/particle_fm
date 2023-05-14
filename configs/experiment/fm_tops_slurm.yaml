@@ -51,19 +51,20 @@ model:
   loss_comparison: MSE
   loss_type_d: LSGAN
   # scheduler
-  scheduler:
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
   #scheduler:
-#  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-#  _partial_: true
-#  T_max: 100
+  #  warmup: ${trainer.min_epochs}
+  #  max_iters: ${trainer.max_epochs}
+  scheduler:
+    _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+    _partial_: true
+    T_max: ${trainer.max_epochs}
 
 data:
   batch_size: 256
   variable_jet_sizes: False
   centering: True
-  normalize: False
+  normalize: True
+  normalize_sigma: 5
   use_calculated_base_distribution: False
 
 callbacks:
