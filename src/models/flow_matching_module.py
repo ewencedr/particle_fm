@@ -434,6 +434,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"y grad: {y.requires_grad}")
             # u_t = x - (1 - sigma) * z
             u_t = (1 - sigma) * z - x  # = v_t?
+            u_t = u_t * mask
             logger_loss.debug(f"u_t: {u_t.shape}")
             v_t = v(t.squeeze(-1), y, mask=mask)
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
@@ -631,6 +632,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             y = mu_t + sigma_t * torch.randn_like(mu_t)
             logger_loss.debug(f"y: {y.shape}")
             u_t = x_1 - x_0
+            u_t = u_t * mask
             logger_loss.debug(f"u_t: {u_t.shape}")
             v_t = v(t.squeeze(-1), y, mask=mask)
             logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
