@@ -7,6 +7,7 @@ from src.utils.pylogger import get_pylogger
 logger_el = get_pylogger("epic_layer")
 logger_eg = get_pylogger("epic_generator")
 logger_ed = get_pylogger("epic_discriminator")
+logger_emask = get_pylogger("epic_mask")
 
 
 class EPiC_layer(nn.Module):
@@ -77,6 +78,7 @@ class EPiC_layer(nn.Module):
         x_global: torch.Tensor = None,
         x_local: torch.Tensor = None,
         global_cond_in: torch.Tensor = None,
+        mask: torch.Tensor = None,
     ) -> tuple[
         torch.Tensor, torch.Tensor
     ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
@@ -139,14 +141,20 @@ class EPiC_layer(nn.Module):
         else:
             t_global = torch.Tensor().to(t.device)
 
+        # mask
+
+        if mask is None:
+            logger_emask.debug("mask is None")
+            mask = torch.ones_like(x_local[:, :, 0]).unsqueeze(-1)
+
         # Actual forward pass
 
         batch_size, n_points, latent_local = x_local.size()
         latent_global = x_global.size(1)
-
+        logger_emask.debug(f"mask.shape: {mask.shape}")
         # meansum pooling
-        x_pooled_mean = (x_local).mean(1, keepdim=False)
-        x_pooled_sum = (x_local).sum(1, keepdim=False)
+        x_pooled_sum = (x_local * mask).sum(1, keepdim=False)
+        x_pooled_mean = x_pooled_sum / mask.sum(1, keepdim=False)
         x_pooledCATglobal = torch.cat(
             [
                 x_pooled_mean,
@@ -288,6 +296,7 @@ class EPiC_generator(nn.Module):
         z_global: torch.Tensor = None,
         z_local: torch.Tensor = None,
         global_cond_in: torch.Tensor = None,
+        mask: torch.Tensor = None,
     ):  # shape: [batch, points, feats]
         if z_global is None or z_local is None:
             raise ValueError("z_global or z_local is None")
@@ -303,6 +312,9 @@ class EPiC_generator(nn.Module):
             t = torch.Tensor().to(z_global.device)
         else:
             t = t_in
+
+        if mask is None:
+            mask = torch.ones_like(z_local[:, :, 0]).unsqueeze(-1)
 
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
@@ -361,7 +373,7 @@ class EPiC_generator(nn.Module):
         # equivariant connections, each one_hot conditined
         for i in range(self.equiv_layers):
             z_global, z_local = self.nn_list[i](
-                t_in, z_global, z_local, global_cond_in=global_cond_in
+                t_in, z_global, z_local, global_cond_in=global_cond_in, mask=mask
             )  # contains residual connection
 
             z_global, z_local = (
@@ -378,11 +390,13 @@ class EPiC_generator(nn.Module):
             torch.cat((t_local.clone(), z_local.clone(), local_cond.clone()), dim=-1),
         )
         if self.return_latent_space:
-            return out, latent_tensor
+            return out * mask, latent_tensor
         else:
-            return out  # [batch, points, feats]
+            return out * mask  # [batch, points, feats]
 
 
+# TODO add global and local conditioning
+# TODO add mask
 class EPiC_discriminator(nn.Module):
     """EPiC discriminator
     Discriminator: Deep Sets like 3 + 3 layer with residual connections  & weight_norm   & mix(mean/sum/max) pooling  & NO multiple cond.

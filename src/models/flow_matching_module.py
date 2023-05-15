@@ -112,6 +112,7 @@ class CNF(nn.Module):
         t: Tensor,
         x: Tensor,
         cond: Tensor = None,
+        mask: Tensor = None,
     ) -> Tensor:
         logger.debug(f"self.mass_conditioning: {self.mass_conditioning}")
         # logger.debug(f"t.shape0: {t[:3]}")
@@ -138,18 +139,18 @@ class CNF(nn.Module):
                 logger.debug(f"mass.shape: {cond.shape}")
             else:
                 cond = None
-            x = self.net(t, x_global, x_local, cond)
+            x = self.net(t, x_global, x_local, cond, mask)
 
         else:
             x = self.net(x)
 
         return x
 
-    def encode(self, x: Tensor) -> Tensor:
-        return odeint(self, x, None, 0.0, 1.0, phi=self.parameters())
+    def encode(self, x: Tensor, mask: Tensor = None) -> Tensor:
+        return odeint(self, x, None, mask, 0.0, 1.0, phi=self.parameters())
 
-    def decode(self, z: Tensor, cond: Tensor) -> Tensor:
-        return odeint(self, z, cond, 1.0, 0.0, phi=self.parameters())
+    def decode(self, z: Tensor, cond: Tensor, mask: Tensor = None) -> Tensor:
+        return odeint(self, z, cond, mask, 1.0, 0.0, phi=self.parameters())
 
     def log_prob(self, x: Tensor) -> Tensor:
         i = torch.eye(x.shape[-1]).to(x)
@@ -328,13 +329,19 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 t_local_cat=t_local_cat,
             )
 
-    def forward(self, x: torch.Tensor, cond: torch.Tensor = None, reverse: bool = False):
+    def forward(
+        self,
+        x: torch.Tensor,
+        cond: torch.Tensor = None,
+        mask: torch.Tensor = None,
+        reverse: bool = False,
+    ):
         if reverse:
             for f in reversed(self.flows):
-                x = f.decode(x, cond)
+                x = f.decode(x, cond, mask)
         else:
             for f in self.flows:
-                x = f.encode(x)
+                x = f.encode(x, mask)
         return x
 
     def adversarial_loss(
@@ -381,7 +388,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             raise NotImplementedError("Loss type not supported!")
         return loss
 
-    def loss(self, x: torch.Tensor):
+    def loss(self, x: torch.Tensor, mask: torch.Tensor = None):
         """Loss function.
 
         Args:
@@ -427,7 +434,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             # u_t = x - (1 - sigma) * z
             u_t = (1 - sigma) * z - x  # = v_t?
             logger_loss.debug(f"u_t: {u_t.shape}")
-            v_t = v(t.squeeze(-1), y)
+            v_t = v(t.squeeze(-1), y, mask=mask)
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
 
             logger_loss.debug(f"v_t: {v_t.shape}")
@@ -439,6 +446,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 # TODO NOT WORKING YET
                 out = self.mmd(v_t, u_t)
             elif self.hparams.loss_comparison == "adversarial":
+                # TODO mask for adversarial loss
                 clip_gradients = True
                 epochs_pretrain_generator = 0
 
@@ -623,7 +631,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"y: {y.shape}")
             u_t = x_1 - x_0
             logger_loss.debug(f"u_t: {u_t.shape}")
-            v_t = v(t.squeeze(-1), y)
+            v_t = v(t.squeeze(-1), y, mask=mask)
             logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
             logger_loss.debug(f"v_t: {v_t.shape}")
             out = (v_t - u_t).square().mean()
@@ -668,9 +676,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, mask = batch
+        if not self.hparams.mask:
+            mask = None
 
         if self.hparams.use_mass_loss:
-            loss, mse_mass, u_mass, v_mass, x = self.loss(x)
+            loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask)
             self.log("train/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
             if self.hparams.plot_loss_hist_debug:
                 if batch_idx == 0:
@@ -1050,18 +1060,21 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         plt.show()
 
         else:
-            loss = self.loss(x)
+            loss = self.loss(x, mask=mask)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask = batch
+        if not self.hparams.mask:
+            mask = None
+
         if self.hparams.use_mass_loss:
-            loss, mse_mass, u_mass, v_mass, x = self.loss(x)
+            loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask)
             self.log("val/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
         else:
-            loss = self.loss(x)
+            loss = self.loss(x, mask)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 

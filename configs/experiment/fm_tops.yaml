@@ -39,15 +39,15 @@ model:
   # epic
   latent: 16
   return_latent_space: False
-  mass_conditioning: True
+  mass_conditioning: False
   global_cond_dim: 0
-  local_cond_dim: 5
+  local_cond_dim: 0
   t_local_cat: True
   t_global_cat: True
   # transformer
   dropout: 0.0
   heads: 4
-  mask: False
+  mask: True
   # debug
   plot_loss_hist_debug: True
   # loss
@@ -55,17 +55,17 @@ model:
   loss_comparison: MSE
   loss_type_d: LSGAN
   # scheduler
-  scheduler:
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
   #scheduler:
-#  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-#  _partial_: true
-#  T_max: 100
+  #  warmup: ${trainer.min_epochs}
+  #  max_iters: ${trainer.max_epochs}
+  #cosine_annealing:
+  scheduler:
+    T_max: ${trainer.max_epochs}
 
 data:
   batch_size: 256
-  variable_jet_sizes: False
+  num_particles: ${model.num_particles}
+  variable_jet_sizes: ${model.mask}
   centering: True
   normalize: True
   normalize_sigma: 5

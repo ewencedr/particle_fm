@@ -54,14 +54,13 @@ model:
   #scheduler:
   #  warmup: ${trainer.min_epochs}
   #  max_iters: ${trainer.max_epochs}
+  #cosine_annealing:
   scheduler:
-    _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-    _partial_: true
     T_max: ${trainer.max_epochs}
 
 data:
   batch_size: 256
-  variable_jet_sizes: False
+  variable_jet_sizes: ${model.mask}
   centering: True
   normalize: True
   normalize_sigma: 5
