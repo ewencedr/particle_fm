@@ -99,6 +99,7 @@ class CNF(nn.Module):
                 activation=activation,
                 wrapper_func=wrapper_func,
                 frequencies=frequencies,
+                num_points=num_particles,
                 t_local_cat=t_local_cat,
                 t_global_cat=t_global_cat,
                 global_cond_dim=global_cond_dim,
