@@ -80,18 +80,23 @@ class EPiC_layer(nn.Module):
     ) -> tuple[
         torch.Tensor, torch.Tensor
     ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
+        # Check and prepare input
+
         if x_global is None or x_local is None:
             raise ValueError("x_global or x_local is None")
+
         if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
                 f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is {self.local_cond_dim} but no global_cond is given"
             )
+
         if t is None and (self.t_local_cat or self.t_global_cat):
             raise ValueError(
                 f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no t is given"
             )
-        if t is None:
-            t = torch.Tensor().to(x_global.device)
+
+        # conditioning
+
         if global_cond_in is None:
             global_cond = torch.Tensor().to(x_global.device)
 
@@ -110,29 +115,38 @@ class EPiC_layer(nn.Module):
             )
             logger_el.debug(f"local_cond shape: {local_cond.shape}")
 
-        batch_size, n_points, latent_local = x_local.size()
-        latent_global = x_global.size(1)
-        if t is not None:
+        if global_cond_in is not None:
+            logger_el.debug(f"global_cond_in shape: {global_cond_in.shape}")
+            logger_el.debug(
+                f"global_cond_in repeat shape: {global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
+            )
+
+        # time conditioning
+        if t is None:
+            t = torch.Tensor().to(x_global.device)
+        else:
             logger_el.debug(f"t shape: {t.shape}")
 
         if not self.t_local_cat:
             t_local = torch.Tensor().to(t.device)
         else:
             t_local = t
+
         if self.t_global_cat:
             # prepare t for concat to global
             t_global = self.fc_t(t.clone().reshape(t.shape[0], -1))
             logger_el.debug(f"t_global shape: {t_global.shape}")
         else:
             t_global = torch.Tensor().to(t.device)
-        if global_cond_in is not None:
-            logger_el.debug(f"global_cond_in shape: {global_cond_in.shape}")
-            logger_el.debug(
-                f"global_cond_in repeat shape: {global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
-            )
+
+        # Actual forward pass
+
+        batch_size, n_points, latent_local = x_local.size()
+        latent_global = x_global.size(1)
+
         # meansum pooling
-        x_pooled_mean = x_local.mean(1, keepdim=False)
-        x_pooled_sum = x_local.sum(1, keepdim=False)
+        x_pooled_mean = (x_local).mean(1, keepdim=False)
+        x_pooled_sum = (x_local).sum(1, keepdim=False)
         x_pooledCATglobal = torch.cat(
             [
                 x_pooled_mean,
@@ -150,6 +164,7 @@ class EPiC_layer(nn.Module):
         # phi global
         logger_el.debug(f"t.shape: {t.shape}")
         logger_el.debug(f"x_pooledCATglobal.shape: {x_pooledCATglobal.shape}")
+
         x_global1 = getattr(F, self.activation, lambda x: x)(
             self.fc_global1(x_pooledCATglobal)
         )  # new intermediate step
@@ -291,6 +306,7 @@ class EPiC_generator(nn.Module):
 
         batch_size, _, _ = z_local.size()
         latent_tensor = z_global.clone().reshape(batch_size, 1, -1)
+
         logger_eg.debug(f"t: {t.shape}")
         logger_eg.debug(f"z_local: {z_local.shape}")
 
