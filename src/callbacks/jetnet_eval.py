@@ -10,7 +10,6 @@ from src.utils import apply_mpl_styles, create_and_plot_data
 
 # TODO wandb logging video of jets, histograms, annd point clouds
 # TODO wandb log interactive plot
-# TODO remove parameter logging from comet
 # TODO don't break if no logger is used
 # TODO fix efp logging
 class JetNetEvaluationCallback(pl.Callback):
@@ -25,7 +24,6 @@ class JetNetEvaluationCallback(pl.Callback):
         model_name (str, optional): Name for saving the model. Defaults to "model-test".
         calculate_efps (bool, optional): Calculate EFPs for the jets. Defaults to False.
         log_w_dists (bool, optional): Calculate and log wasserstein distances Defaults to False.
-        log_num_parameters (bool, optional): Log parameters of model. Only logged in first epoch. Defaults to True.
         log_times (bool, optional): Log generation times of data. Defaults to True.
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
         mass_conditioning (bool, optional): Condition on mass. Defaults to False.
@@ -41,7 +39,6 @@ class JetNetEvaluationCallback(pl.Callback):
         model_name: str = "model",
         calculate_efps: bool = False,
         log_w_dists: bool = False,
-        log_num_parameters: bool = True,
         log_times: bool = True,
         log_epoch_zero: bool = False,
         mass_conditioning: bool = False,
@@ -52,7 +49,6 @@ class JetNetEvaluationCallback(pl.Callback):
         self.num_jet_samples = num_jet_samples
         self.w_dists_batches = w_dists_batches
         self.log_w_dists = log_w_dists
-        self.log_num_parameters = log_num_parameters
         self.log_times = log_times
         self.log_epoch_zero = log_epoch_zero
 
@@ -159,7 +155,3 @@ class JetNetEvaluationCallback(pl.Callback):
             self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
             self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
             # self.wandb_logger.log({f"epoch{trainer.current_epoch}-fig": fig})
-            # Parameters
-            if self.log_num_parameters and trainer.current_epoch == 0:
-                parameters = count_parameters(pl_module)
-                self.comet_logger.log_hyperparams({"parameters": parameters})
