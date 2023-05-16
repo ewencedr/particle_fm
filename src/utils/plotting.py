@@ -829,12 +829,11 @@ def create_and_plot_data(
     selected_particles: list[int] = [1, 5, 20],
     selected_multiplicities: list[int] = [10, 20, 30, 40, 50, 80],
     plottype: str = "sim_data",
-    mgpu: bool = False,
-    max_particles: bool = False,
+    variable_set_sizes: bool = False,
     mask: np.ndarray = None,
     variable_jet_sizes_plotting: bool = True,
     save_folder: str = "./logs/plots/",
-    normalised_data: list[bool] = [False],
+    normalized_data: list[bool] = [False],
     normalize_sigma: int = 5,
     means: list[float] = None,
     stds: list[float] = None,
@@ -861,12 +860,11 @@ def create_and_plot_data(
         selected_particles (list, optional): _description_. Defaults to [1, 5, 20].
         selected_multiplicities (list, optional): _description_. Defaults to [10, 20, 30, 40, 50, 80].
         plottype (str, optional): _description_. Defaults to "sim_data".
-        mgpu (bool, optional): _description_. Defaults to False.
-        max_particles (bool, optional): _description_. Defaults to False.
+        variable_set_sizes (bool, optional): _description_. Defaults to False.
         mask (_type_, optional): _description_. Defaults to None.
         variable_jet_sizes_plotting (bool, optional): _description_. Defaults to True.
         save_folder (str, optional): _description_. Defaults to "/home/ewencedr/equivariant-flows".
-        normalised_data (list, optional): _description_. Defaults to [False].
+        normalized_data (list, optional): _description_. Defaults to [False].
         normalize_sigma (int, optional): _description_. Defaults to 5.
         means (_type_, optional): _description_. Defaults to None.
         stds (_type_, optional): _description_. Defaults to None.
@@ -885,7 +883,6 @@ def create_and_plot_data(
     Returns:
         _type_: _description_
     """
-    particles_per_jet = sim_data.shape[-2]
     (
         particle_data,
         times,
@@ -903,14 +900,12 @@ def create_and_plot_data(
         gen_models,
         num_jet_samples,
         batch_size,
-        particles_per_jet,
         selected_particles,
         plot_selected_multiplicities=plot_selected_multiplicities,
         selected_multiplicities=selected_multiplicities,
-        mgpu=mgpu,
-        max_particles=max_particles,
+        variable_set_sizes=variable_set_sizes,
         mask=mask,
-        normalised_data=normalised_data,
+        normalized_data=normalized_data,
         normalize_sigma=normalize_sigma,
         means=means,
         stds=stds,
@@ -1011,8 +1006,7 @@ def do_timing_plots(
     jets_to_generate=1000,
     batch_sizes=[256, 256, 265, 256, 256],
     xscale_log=False,
-    mgpu=False,
-    max_particles=False,
+    variable_set_sizes=False,
     mask=None,
     save_path="/home/ewencedr/equivariant-flows",
 ):
@@ -1032,8 +1026,7 @@ def do_timing_plots(
                 jets_to_generate,
                 batch_sizes[i],
                 particles_per_jet[i],
-                mgpu_model=mgpu,
-                max_particles=False,
+                variable_set_sizes=False,
                 mask=None,
             )
             times_temp.append(time / jets_to_generate)
@@ -1061,14 +1054,12 @@ def create_data_for_plotting(
     gen_models,
     num_jet_samples: int = 10000,
     batch_size: int = 10000,
-    particles_per_jet: int = 30,
     selected_particles: list[int] = [1, 3, 10],
     plot_selected_multiplicities: bool = False,
     selected_multiplicities: list[int] = [20, 30, 40],
-    mgpu: bool = False,
-    max_particles: bool = False,
+    variable_set_sizes: bool = False,
     mask=None,
-    normalised_data: list[bool] = [False],
+    normalized_data: list[bool] = [False],
     normalize_sigma: int = 5,
     means: list[float] = None,
     stds: list[float] = None,
@@ -1110,11 +1101,9 @@ def create_data_for_plotting(
                 model,
                 num_jet_samples,
                 batch_size,
-                particles_per_jet=particles_per_jet,
-                mgpu_model=mgpu,
-                max_particles=max_particles,
-                mask=mask,
-                normalised_data=normalised_data[count],
+                variable_set_sizes=variable_set_sizes,
+                mask=torch.tensor(mask),
+                normalized_data=normalized_data[count],
                 normalize_sigma=normalize_sigma,
                 means=means,
                 stds=stds,

@@ -1133,11 +1133,25 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             return opt
 
     @torch.no_grad()
-    def sample(self, n_samples: int, cond: torch.Tensor = None):
+    def sample(self, n_samples: int, cond: torch.Tensor = None, mask: torch.Tensor = None):
+        """Generate Samples.
+
+        Args:
+            n_samples (int): Number of samples to generate.
+            cond (torch.Tensor, optional): Data on which the model is conditioned. Defaults to None.
+            mask (torch.Tensor, optional): Mask for data generation. Defaults to None.
+
+        Returns:
+            torch.Tensor: Generated samples
+        """
         z = torch.randn(n_samples, self.hparams.num_particles, self.hparams.features).to(
             self.device
         )
         if cond is not None:
             cond = cond.to(self.device)
-        samples = self.forward(z, cond=cond, reverse=True)
+        if mask is not None:
+            mask = mask[:n_samples]
+            mask = mask.to(self.device)
+            z = z * mask
+        samples = self.forward(z, cond=cond, mask=mask, reverse=True)
         return samples

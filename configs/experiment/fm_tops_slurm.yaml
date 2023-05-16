@@ -84,7 +84,7 @@ callbacks:
     logger: 0
     every_n_epochs: 200
     num_jet_samples: 10000
-    batch_size: 1000
+    batch_size: 256
     plot_w_dists: False
     w_dists_batches: 5
     mass_conditioning: ${model.mass_conditioning}

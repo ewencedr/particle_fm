@@ -88,8 +88,8 @@ callbacks:
   jetnet_eval:
     logger: 0
     every_n_epochs: 3
-    num_jet_samples: 200
-    batch_size: 100
+    num_jet_samples: 256
+    batch_size: 256
     plot_w_dists: False
     w_dists_batches: 2
     log_w_dists: True
