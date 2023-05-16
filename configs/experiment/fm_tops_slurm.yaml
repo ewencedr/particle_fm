@@ -60,6 +60,7 @@ model:
 
 data:
   batch_size: 256
+  num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}
   centering: True
   normalize: True
@@ -81,7 +82,6 @@ callbacks:
     mode: "min"
 
   jetnet_eval:
-    logger: 0
     every_n_epochs: 200
     num_jet_samples: 10000
     batch_size: 256
