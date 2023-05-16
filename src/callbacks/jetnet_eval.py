@@ -1,20 +1,23 @@
 import numpy as np
 import pytorch_lightning as pl
+import wandb
+from pytorch_lightning.loggers import WandbLogger
 
 from src.data.components import calculate_all_wasserstein_metrics
 from src.data.components.utils import count_parameters, jet_masses
 from src.utils import apply_mpl_styles, create_and_plot_data
 
 
-# TODO add wandb logging
-# TODO fix w_dists_batches
+# TODO wandb logging video of jets, histograms, annd point clouds
+# TODO wandb log interactive plot
+# TODO remove parameter logging from comet
+# TODO don't break if no logger is used
 # TODO fix efp logging
 class JetNetEvaluationCallback(pl.Callback):
     """Create a callback to evaluate the model on the test dataset of the JetNet dataset and log
-    the results to a selected logger.
+    the results to loggers. Currently supported are CometLogger and WandbLogger.
 
     Args:
-        logger (int, optional): Number of Logger in List to use for logging. Defaults to 1.
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
         num_jet_samples (int, optional): How many jet samples to generate. Defaults to 25000.
         w_dists_batches (int, optional): How many batches to calculate Wasserstein distances. Jet samples for each batch are num_jet_samples // w_dists_batches. Defaults to 5.
@@ -31,7 +34,6 @@ class JetNetEvaluationCallback(pl.Callback):
 
     def __init__(
         self,
-        logger: int = 1,
         every_n_epochs: int = 10,
         num_jet_samples: int = 25000,
         w_dists_batches: int = 5,
@@ -46,7 +48,6 @@ class JetNetEvaluationCallback(pl.Callback):
         **kwargs,
     ):
         super().__init__()
-        self.logger = logger
         self.every_n_epochs = every_n_epochs
         self.num_jet_samples = num_jet_samples
         self.w_dists_batches = w_dists_batches
@@ -64,6 +65,18 @@ class JetNetEvaluationCallback(pl.Callback):
 
         self.image_path = image_path
         apply_mpl_styles()
+
+        # loggers
+        self.comet_logger = None
+        self.wandb_logger = None
+
+    def on_train_start(self, trainer, pl_module) -> None:
+        # get loggers
+        for logger in trainer.loggers:
+            if isinstance(logger, pl.loggers.CometLogger):
+                self.comet_logger = logger.experiment
+            elif isinstance(logger, pl.loggers.WandbLogger):
+                self.wandb_logger = logger.experiment
 
     def on_train_epoch_end(self, trainer, pl_module):
         # Skip for all other epochs
@@ -124,27 +137,29 @@ class JetNetEvaluationCallback(pl.Callback):
                     num_batches=self.w_dists_batches,
                     calculate_efps=self.calculate_efps,
                 )
-
+                # TODO log both properly in comet
                 # Wasserstein Metrics
                 text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
-                trainer.loggers[self.logger].experiment.log_text(text)
-                trainer.loggers[self.logger].experiment.log_metrics(w_dists)
+                self.comet_logger.log_text(text)
+                self.comet_logger.log_metrics(w_dists)
+                self.wandb_logger.log({"Wasserstein Metrics": w_dists})
 
                 text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean']}+-{w_dists_1b['w1m_std']}, W1p: {w_dists_1b['w1p_mean']}+-{w_dists_1b['w1p_std']}, W1efp: {w_dists_1b['w1efp_mean']}+-{w_dists_1b['w1efp_std']}"
-                trainer.loggers[self.logger].experiment.log_text(text_1b)
-                trainer.loggers[self.logger].experiment.log_metrics(w_dists_1b)
+                self.comet_logger.log_text(text_1b)
+                self.comet_logger.log_metrics(w_dists_1b)
+                self.wandb_logger.log({"Wasserstein Metrics": w_dists})
 
             # Jet genereation time
             if self.log_times:
-                trainer.loggers[self.logger].experiment.log_metrics({"Jet generation time": times})
+                self.comet_logger.log_metrics({"Jet generation time": times})
+                self.wandb_logger.log({"Jet generation time": times})
 
             # Histogram Plots
             img_path = f"{self.image_path}{plot_name}.png"
-            trainer.loggers[self.logger].experiment.log_image(
-                img_path, name=f"epoch{trainer.current_epoch}"
-            )
-
+            self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
+            self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
+            # self.wandb_logger.log({f"epoch{trainer.current_epoch}-fig": fig})
             # Parameters
             if self.log_num_parameters and trainer.current_epoch == 0:
                 parameters = count_parameters(pl_module)
-                trainer.loggers[self.logger].log_hyperparams({"parameters": parameters})
+                self.comet_logger.log_hyperparams({"parameters": parameters})
