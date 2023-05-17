@@ -72,19 +72,6 @@ data:
   use_calculated_base_distribution: False
 
 callbacks:
-  model_checkpoint:
-    dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_loss_{val/loss:.5f}"
-    monitor: "val/loss"
-    mode: "min"
-    save_last: True
-    auto_insert_metric_name: False
-
-  #early_stopping:
-  #  monitor: "val/loss"
-  #  patience: 2000
-  #  mode: "min"
-
   jetnet_eval:
     every_n_epochs: 3
     num_jet_samples: 2
@@ -94,6 +81,34 @@ callbacks:
     log_w_dists: True
     mass_conditioning: ${model.mass_conditioning}
 
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}_loss_{val/loss:.5f}"
+    monitor: "val/loss"
+    mode: "min"
+    save_last: True
+    auto_insert_metric_name: False
+
+  model_checkpoint2:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}_w1m_{w1m_mean:.8f}"
+    monitor: "w1m_mean"
+    mode: "min"
+    auto_insert_metric_name: False
+    every_n_epochs: 4 # ${callbacks.jetnet_eval.every_n_epochs}+1
+
+  model_checkpoint3:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}_w1p_{w1p_mean:.8f}"
+    monitor: "w1p_mean"
+    mode: "min"
+    auto_insert_metric_name: False
+    every_n_epochs: 4
+
+  #early_stopping:
+  #  monitor: "val/loss"
+  #  patience: 2000
+  #  mode: "min"
 
 task_name: "fm_tops-${model.num_particles}"
 

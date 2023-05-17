@@ -1,5 +1,7 @@
 defaults:
   - model_checkpoint.yaml
+  - model_checkpoint2.yaml
+  - model_checkpoint3.yaml
   #- early_stopping.yaml
   - model_summary.yaml
   - rich_progress_bar.yaml
@@ -12,6 +14,20 @@ model_checkpoint:
   monitor: "val/loss"
   mode: "min"
   save_last: True
+  auto_insert_metric_name: False
+
+model_checkpoint2:
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "epoch_{epoch:03d}_w1m_{w1m_mean:.8f}"
+  monitor: "w1m_mean"
+  mode: "min"
+  auto_insert_metric_name: False
+
+model_checkpoint3:
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "epoch_{epoch:03d}_w1p_{w1p_mean:.8f}"
+  monitor: "w1p_mean"
+  mode: "min"
   auto_insert_metric_name: False
 
 #early_stopping:

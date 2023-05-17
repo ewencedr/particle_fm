@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
 from torch import Tensor

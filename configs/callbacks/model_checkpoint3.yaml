@@ -2,7 +2,7 @@
 
 # Save the model periodically by monitoring a quantity.
 # Look at the above link for more detailed information.
-model_checkpoint:
+model_checkpoint3:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
   dirpath: null # directory to save the model file
   filename: null # checkpoint filename

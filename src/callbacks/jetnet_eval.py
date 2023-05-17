@@ -7,6 +7,7 @@ from src.data.components.utils import jet_masses
 from src.utils import apply_mpl_styles, create_and_plot_data
 
 
+# TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
 # TODO fix efp logging
 class JetNetEvaluationCallback(pl.Callback):
@@ -70,6 +71,21 @@ class JetNetEvaluationCallback(pl.Callback):
                 self.comet_logger = logger.experiment
             elif isinstance(logger, pl.loggers.WandbLogger):
                 self.wandb_logger = logger.experiment
+                self.wandb_logger.define_metric("train/loss", summary="min")
+                self.wandb_logger.define_metric("val/loss", summary="min")
+                self.wandb_logger.define_metric("val/w1m_mean", summary="min")
+                self.wandb_logger.define_metric("val/w1p_mean", summary="min")
+                self.wandb_logger.define_metric("val/w1efp_mean", summary="min")
+                self.wandb_logger.define_metric("val/w1m_std", summary="min")
+                self.wandb_logger.define_metric("val/w1p_std", summary="min")
+                self.wandb_logger.define_metric("val/w1efp_std", summary="min")
+                self.wandb_logger.define_metric("val/w1m_mean_1b", summary="min")
+                self.wandb_logger.define_metric("val/w1p_mean_1b", summary="min")
+                self.wandb_logger.define_metric("val/w1efp_mean_1b", summary="min")
+                self.wandb_logger.define_metric("val/w1m_std_1b", summary="min")
+                self.wandb_logger.define_metric("val/w1p_std_1b", summary="min")
+                self.wandb_logger.define_metric("val/w1efp_std_1b", summary="min")
+                self.wandb_logger.define_metric("val/jet_generation_time", summary="min")
 
     def on_train_epoch_end(self, trainer, pl_module):
         # Skip for all other epochs
@@ -148,7 +164,8 @@ class JetNetEvaluationCallback(pl.Callback):
                 if self.wandb_logger is not None:
                     self.wandb_logger.log({"Wasserstein Metrics": w_dists})
                     self.wandb_logger.log({"Wasserstein Metrics 1b": w_dists_1b})
-
+                self.log("w1m_mean", w_dists["w1m_mean"])
+                self.log("w1p_mean", w_dists["w1p_mean"])
             # Jet genereation time
             if self.log_times:
                 if self.comet_logger is not None:
