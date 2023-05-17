@@ -1,16 +1,13 @@
 import numpy as np
 import pytorch_lightning as pl
 import wandb
-from pytorch_lightning.loggers import WandbLogger
 
 from src.data.components import calculate_all_wasserstein_metrics
-from src.data.components.utils import count_parameters, jet_masses
+from src.data.components.utils import jet_masses
 from src.utils import apply_mpl_styles, create_and_plot_data
 
 
-# TODO wandb logging video of jets, histograms, annd point clouds
-# TODO wandb log interactive plot
-# TODO don't break if no logger is used
+# TODO wandb logging video of jets, histograms, and point clouds
 # TODO fix efp logging
 class JetNetEvaluationCallback(pl.Callback):
     """Create a callback to evaluate the model on the test dataset of the JetNet dataset and log
@@ -136,22 +133,29 @@ class JetNetEvaluationCallback(pl.Callback):
                 # TODO log both properly in comet
                 # Wasserstein Metrics
                 text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
-                self.comet_logger.log_text(text)
-                self.comet_logger.log_metrics(w_dists)
-                self.wandb_logger.log({"Wasserstein Metrics": w_dists})
-
                 text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean']}+-{w_dists_1b['w1m_std']}, W1p: {w_dists_1b['w1p_mean']}+-{w_dists_1b['w1p_std']}, W1efp: {w_dists_1b['w1efp_mean']}+-{w_dists_1b['w1efp_std']}"
-                self.comet_logger.log_text(text_1b)
-                self.comet_logger.log_metrics(w_dists_1b)
-                self.wandb_logger.log({"Wasserstein Metrics": w_dists})
+                if self.comet_logger is not None:
+                    self.comet_logger.log_text(text)
+                    self.comet_logger.log_metrics(w_dists)
+                    self.comet_logger.log_text(text_1b)
+                    self.comet_logger.log_metrics(w_dists_1b)
+                if self.wandb_logger is not None:
+                    self.wandb_logger.log({"Wasserstein Metrics": w_dists})
+                    self.wandb_logger.log({"Wasserstein Metrics 1b": w_dists_1b})
 
             # Jet genereation time
             if self.log_times:
-                self.comet_logger.log_metrics({"Jet generation time": times})
-                self.wandb_logger.log({"Jet generation time": times})
+                if self.comet_logger is not None:
+                    self.comet_logger.log_metrics({"Jet generation time": times})
+                if self.comet_logger is not None:
+                    self.wandb_logger.log({"Jet generation time": times})
 
             # Histogram Plots
             img_path = f"{self.image_path}{plot_name}.png"
-            self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
-            self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
-            # self.wandb_logger.log({f"epoch{trainer.current_epoch}-fig": fig})
+            if self.comet_logger is not None:
+                self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
+            if self.wandb_logger is not None:
+                self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
+                # directly log matplotlib figure
+                # does not work properly
+                # self.wandb_logger.log({f"epoch{trainer.current_epoch}-fig": fig})
