@@ -76,10 +76,10 @@ callbacks:
     save_last: True
     auto_insert_metric_name: False
 
-  early_stopping:
-    monitor: "val/loss"
-    patience: 2000
-    mode: "min"
+  #early_stopping:
+  #  monitor: "val/loss"
+  #  patience: 2000
+  #  mode: "min"
 
   jetnet_eval:
     every_n_epochs: 200

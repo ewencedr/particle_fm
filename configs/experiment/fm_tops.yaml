@@ -80,14 +80,14 @@ callbacks:
     save_last: True
     auto_insert_metric_name: False
 
-  early_stopping:
-    monitor: "val/loss"
-    patience: 2000
-    mode: "min"
+  #early_stopping:
+  #  monitor: "val/loss"
+  #  patience: 2000
+  #  mode: "min"
 
   jetnet_eval:
     every_n_epochs: 3
-    num_jet_samples: 256
+    num_jet_samples: 2
     batch_size: 256
     plot_w_dists: False
     w_dists_batches: 2
@@ -103,6 +103,6 @@ logger:
     tags: ${tags}
     group: "fm_tops"
     name: ${task_name}
-  #comet:
-  #  experiment_name: ${task_name}
-  #  project_name: "test_runs"
+  comet:
+    experiment_name: ${task_name}
+    project_name: "test_runs"
