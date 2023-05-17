@@ -81,7 +81,9 @@ class JetNetEvaluationCallback(pl.Callback):
                 cond = jet_masses(trainer.datamodule.tensor_test).unsqueeze(-1)
             else:
                 cond = None
+
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
+
             fig, particle_data, times = create_and_plot_data(
                 np.array(trainer.datamodule.tensor_test),
                 [pl_module],
@@ -110,7 +112,7 @@ class JetNetEvaluationCallback(pl.Callback):
 
             if self.log_w_dists:
                 # 1 batch
-                w_dists_1b = calculate_all_wasserstein_metrics(
+                w_dists_1b_temp = calculate_all_wasserstein_metrics(
                     trainer.datamodule.tensor_test[..., :3],
                     particle_data,
                     trainer.datamodule.mask_test,
@@ -119,6 +121,10 @@ class JetNetEvaluationCallback(pl.Callback):
                     num_batches=1,
                     calculate_efps=self.calculate_efps,
                 )
+                # create new dict with _1b suffix to not log the same values twice
+                w_dists_1b = {}
+                for key, value in w_dists_1b_temp.items():
+                    w_dists_1b[key + "_1b"] = value
 
                 # divide into batches
                 w_dists = calculate_all_wasserstein_metrics(
@@ -130,10 +136,10 @@ class JetNetEvaluationCallback(pl.Callback):
                     num_batches=self.w_dists_batches,
                     calculate_efps=self.calculate_efps,
                 )
-                # TODO log both properly in comet
+
                 # Wasserstein Metrics
                 text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
-                text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean']}+-{w_dists_1b['w1m_std']}, W1p: {w_dists_1b['w1p_mean']}+-{w_dists_1b['w1p_std']}, W1efp: {w_dists_1b['w1efp_mean']}+-{w_dists_1b['w1efp_std']}"
+                text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean_1b']}+-{w_dists_1b['w1m_std_1b']}, W1p: {w_dists_1b['w1p_mean_1b']}+-{w_dists_1b['w1p_std_1b']}, W1efp: {w_dists_1b['w1efp_mean_1b']}+-{w_dists_1b['w1efp_std_1b']}"
                 if self.comet_logger is not None:
                     self.comet_logger.log_text(text)
                     self.comet_logger.log_metrics(w_dists)
@@ -156,6 +162,3 @@ class JetNetEvaluationCallback(pl.Callback):
                 self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
             if self.wandb_logger is not None:
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
-                # directly log matplotlib figure
-                # does not work properly
-                # self.wandb_logger.log({f"epoch{trainer.current_epoch}-fig": fig})
