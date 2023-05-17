@@ -147,7 +147,7 @@ class JetNetEvaluationCallback(pl.Callback):
             if self.log_times:
                 if self.comet_logger is not None:
                     self.comet_logger.log_metrics({"Jet generation time": times})
-                if self.comet_logger is not None:
+                if self.wandb_logger is not None:
                     self.wandb_logger.log({"Jet generation time": times})
 
             # Histogram Plots
