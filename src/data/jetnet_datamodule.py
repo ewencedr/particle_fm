@@ -1,18 +1,10 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import numpy as np
 import torch
 from jetnet.datasets import JetNet
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import (
-    ConcatDataset,
-    DataLoader,
-    Dataset,
-    TensorDataset,
-    random_split,
-)
-from torchvision.datasets import MNIST
-from torchvision.transforms import transforms
+from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 
 from .components import center_jets, get_base_distribution, mask_data, normalize_tensor
 
@@ -20,16 +12,20 @@ from .components import center_jets, get_base_distribution, mask_data, normalize
 class JetNetDataModule(LightningDataModule):
     """LightningDataModule for JetNet dataset.
 
-    args:
-        val_fraction: fraction of data to use for validation
-        test_fraction: fraction of data to use for test
-        jet_type: type of jet to use
-        num_particles: number of particles to use (max 150)
-        variable_jet_sizes: whether to use variable jet sizes, jets with lesser constituents than num_particles will be zero padded and masked
-        centering: whether to center the data
-        normalize: Standardise each feature to have zero mean and 5 sigma std deviation
-        normalize_sigma: number of std deviations to use for normalization
-        use_calculated_base_distribution: whether to calculate mean and covariance of base distribution from data
+    Args:
+        data_dir (str, optional): Path to data directory. Defaults to "data/".
+        val_fraction (float, optional): Fraction of data to use for validation. Between 0 and 1. Defaults to 0.15.
+        test_fraction (float, optional): Fraction of data to use for testing. Between 0 and 1. Defaults to 0.15.
+        batch_size (int, optional): Batch size. Defaults to 256.
+        num_workers (int, optional): Number of workers for dataloader. Defaults to 32.
+        pin_memory (bool, optional): Pin memory for dataloader. Defaults to False.
+        jet_type (str, optional): Type of jets. Options: g, q, t, w, z. Defaults to "t".
+        num_particles (number, optional): Number of particles to use (max 150). Defaults to 150.
+        variable_jet_sizes (bool, optional): Use variable jet sizes, jets with lesser constituents than num_particles will be zero padded and masked.
+        centering (bool, optional): Center the data. Defaults to True.
+        normalize (bool, optional): Standardise each feature to have zero mean and normalize_sisgma std deviation. Defaults to True.
+        normalize_sigma (int, optional): Number of std deviations to use for normalization. Defaults to 5.
+        use_calculated_base_distribution (bool, optional): Calculate mean and covariance of base distribution from data. Defaults to True.
 
     A DataModule implements 5 key methods:
 
@@ -95,7 +91,7 @@ class JetNetDataModule(LightningDataModule):
 
     @property
     def num_classes(self):
-        return 10
+        pass
 
     def get_data_args(self) -> Dict[str, Any]:
         if self.hparams.num_particles != 30 and self.hparams.num_particles != 150:
@@ -171,9 +167,6 @@ class JetNetDataModule(LightningDataModule):
                 means = np.ma.mean(dataset_train, axis=(0, 1))
                 stds = np.ma.std(dataset_train, axis=(0, 1))
 
-                # print(f"Means: {means}")
-                # print(f"Stds: {stds}")
-
                 normalized_dataset_train = normalize_tensor(
                     dataset_train, means, stds, sigma=self.hparams.normalize_sigma
                 )
@@ -194,8 +187,7 @@ class JetNetDataModule(LightningDataModule):
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
 
-            # Validation without
-
+            # Validation without normalization
             unnormalized_tensor_val = torch.tensor(dataset_val)
             unnormalized_mask_val = np.ma.getmask(dataset_val) == 0
             unnormalized_mask_val = unnormalized_mask_val.astype(int)
