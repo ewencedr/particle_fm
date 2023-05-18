@@ -25,6 +25,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_times (bool, optional): Log generation times of data. Defaults to True.
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
         mass_conditioning (bool, optional): Condition on mass. Defaults to False.
+        data_type (str, optional): Type of data to plot. Options are 'test' and 'val'. Defaults to "test".
         **kwargs: Arguments for create_and_plot_data
     """
 
@@ -40,6 +41,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_times: bool = True,
         log_epoch_zero: bool = False,
         mass_conditioning: bool = False,
+        data_type: str = "test",
         **kwargs,
     ):
         super().__init__()
@@ -55,6 +57,7 @@ class JetNetEvaluationCallback(pl.Callback):
         # Parameters for plotting
         self.model_name = model_name
         self.calculate_efps = calculate_efps
+        self.data_type = data_type
         self.kwargs = kwargs
 
         self.image_path = image_path
@@ -71,21 +74,6 @@ class JetNetEvaluationCallback(pl.Callback):
                 self.comet_logger = logger.experiment
             elif isinstance(logger, pl.loggers.WandbLogger):
                 self.wandb_logger = logger.experiment
-                self.wandb_logger.define_metric("train/loss", summary="min")
-                self.wandb_logger.define_metric("val/loss", summary="min")
-                self.wandb_logger.define_metric("val/w1m_mean", summary="min")
-                self.wandb_logger.define_metric("val/w1p_mean", summary="min")
-                self.wandb_logger.define_metric("val/w1efp_mean", summary="min")
-                self.wandb_logger.define_metric("val/w1m_std", summary="min")
-                self.wandb_logger.define_metric("val/w1p_std", summary="min")
-                self.wandb_logger.define_metric("val/w1efp_std", summary="min")
-                self.wandb_logger.define_metric("val/w1m_mean_1b", summary="min")
-                self.wandb_logger.define_metric("val/w1p_mean_1b", summary="min")
-                self.wandb_logger.define_metric("val/w1efp_mean_1b", summary="min")
-                self.wandb_logger.define_metric("val/w1m_std_1b", summary="min")
-                self.wandb_logger.define_metric("val/w1p_std_1b", summary="min")
-                self.wandb_logger.define_metric("val/w1efp_std_1b", summary="min")
-                self.wandb_logger.define_metric("val/jet_generation_time", summary="min")
 
     def on_train_epoch_end(self, trainer, pl_module):
         # Skip for all other epochs
@@ -98,10 +86,18 @@ class JetNetEvaluationCallback(pl.Callback):
             else:
                 cond = None
 
+            # Get background data for plotting and calculating Wasserstein distances
+            if self.data_type == "test":
+                background_data = np.array(trainer.datamodule.tensor_test)
+                background_mask = np.array(trainer.datamodule.mask_test)
+            elif self.data_type == "val":
+                background_data = np.array(trainer.datamodule.tensor_val)
+                background_mask = np.array(trainer.datamodule.mask_val)
+
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
 
             fig, particle_data, times = create_and_plot_data(
-                np.array(trainer.datamodule.tensor_test),
+                background_data,
                 [pl_module],
                 cond=cond,
                 save_name=plot_name,
@@ -109,7 +105,7 @@ class JetNetEvaluationCallback(pl.Callback):
                 normalized_data=[trainer.datamodule.hparams.normalize],
                 normalize_sigma=trainer.datamodule.hparams.normalize_sigma,
                 variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
-                mask=np.array(trainer.datamodule.mask_test),
+                mask=background_mask,
                 num_jet_samples=self.num_jet_samples,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
@@ -129,9 +125,9 @@ class JetNetEvaluationCallback(pl.Callback):
             if self.log_w_dists:
                 # 1 batch
                 w_dists_1b_temp = calculate_all_wasserstein_metrics(
-                    trainer.datamodule.tensor_test[..., :3],
+                    background_data[..., :3],
                     particle_data,
-                    trainer.datamodule.mask_test,
+                    background_mask,
                     mask_data,
                     num_eval_samples=self.num_jet_samples,
                     num_batches=1,
@@ -144,9 +140,9 @@ class JetNetEvaluationCallback(pl.Callback):
 
                 # divide into batches
                 w_dists = calculate_all_wasserstein_metrics(
-                    trainer.datamodule.tensor_test[..., :3],
+                    background_data[..., :3],
                     particle_data,
-                    trainer.datamodule.mask_test,
+                    background_mask,
                     mask_data,
                     num_eval_samples=self.num_jet_samples // self.w_dists_batches,
                     num_batches=self.w_dists_batches,

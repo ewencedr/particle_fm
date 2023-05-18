@@ -8,3 +8,9 @@ jetnet_eval:
   model_name: "model-test"
   #plotting
   batch_size: 1000
+  calculate_efps: False
+  log_w_dists: False
+  log_times: True
+  log_epoch_zero: False
+  mass_conditioning: False
+  data_type: "test"

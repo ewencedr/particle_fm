@@ -29,7 +29,7 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 150
+  num_particles: 30
   frequencies: 6
   use_mass_loss: False
   layers: 6
@@ -80,6 +80,7 @@ callbacks:
     w_dists_batches: 2
     log_w_dists: True
     mass_conditioning: ${model.mass_conditioning}
+    data_type: "test"
 
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints
