@@ -184,7 +184,10 @@ class JetNetDataModule(LightningDataModule):
 
                 # Validation
                 normalized_dataset_val = normalize_tensor(
-                    dataset_val, means, stds, sigma=self.hparams.normalize_sigma
+                    np.ma.copy(dataset_val),
+                    means,
+                    stds,
+                    sigma=self.hparams.normalize_sigma,
                 )
                 mask_val = np.ma.getmask(normalized_dataset_val) == 0
                 mask_val = mask_val.astype(int)
