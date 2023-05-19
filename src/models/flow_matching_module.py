@@ -410,7 +410,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         #    .repeat_interleave(3, dim=-1)
         # )
         # print(f"x shape: {x.shape}")
-        v = self.flows[0]
+        # v = self.flows[0]
         if self.hparams.loss_type == "FM-OT":
             sigma = 1e-4
 
@@ -437,7 +437,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             u_t = (1 - sigma) * z - x  # = v_t?
             u_t = u_t * mask
             logger_loss.debug(f"u_t: {u_t.shape}")
-            v_t = v(t.squeeze(-1), y, mask=mask)
+            temp = y.clone()
+            for v in self.flows:
+                temp = v(t.squeeze(-1), temp, mask=mask)
+            v_t = temp.clone()
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
 
             logger_loss.debug(f"v_t: {v_t.shape}")
