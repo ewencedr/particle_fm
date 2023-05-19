@@ -84,7 +84,6 @@ class JetNetEvaluationCallback(pl.Callback):
         if not self.log_epoch_zero and trainer.current_epoch == 0:
             log_epoch = False
 
-        print(f"type(self.every_n_epochs): {type(self.every_n_epochs)}")
         # determine if logging should happen
         log = False
         if type(self.every_n_epochs) is int:
