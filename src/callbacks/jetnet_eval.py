@@ -4,6 +4,7 @@ import wandb
 
 from src.data.components import calculate_all_wasserstein_metrics
 from src.data.components.utils import jet_masses
+from src.schedulers.logging_scheduler import custom1
 from src.utils import apply_mpl_styles, create_and_plot_data
 
 
@@ -67,6 +68,8 @@ class JetNetEvaluationCallback(pl.Callback):
         self.comet_logger = None
         self.wandb_logger = None
 
+        self.available_custom_logging_scheduler = {"custom1": custom1}
+
     def on_train_start(self, trainer, pl_module) -> None:
         # get loggers
         for logger in trainer.loggers:
@@ -80,7 +83,23 @@ class JetNetEvaluationCallback(pl.Callback):
         log_epoch = True
         if not self.log_epoch_zero and trainer.current_epoch == 0:
             log_epoch = False
-        if trainer.current_epoch % self.every_n_epochs == 0 and log_epoch:
+
+        print(f"type(self.every_n_epochs): {type(self.every_n_epochs)}")
+        # determine if logging should happen
+        log = False
+        if type(self.every_n_epochs) is int:
+            if trainer.current_epoch % self.every_n_epochs == 0 and log_epoch:
+                log = True
+        else:
+            try:
+                custom_logging_schedule = self.available_custom_logging_scheduler[
+                    self.every_n_epochs
+                ]
+                log = custom_logging_schedule(trainer.current_epoch)
+            except KeyError:
+                raise KeyError("Custom logging schedule not available.")
+
+        if log:
             if self.mass_conditioning:
                 cond = jet_masses(trainer.datamodule.tensor_test).unsqueeze(-1)
             else:

@@ -73,7 +73,7 @@ data:
 
 callbacks:
   jetnet_eval:
-    every_n_epochs: 3
+    every_n_epochs: custom1
     num_jet_samples: 2
     batch_size: 256
     plot_w_dists: False
