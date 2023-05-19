@@ -45,7 +45,7 @@ model:
   # transformer
   dropout: 0.0
   heads: 4
-  mask: False
+  mask: True
   # loss
   loss_type: FM-OT
   loss_comparison: MSE

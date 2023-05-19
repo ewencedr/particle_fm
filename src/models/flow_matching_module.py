@@ -12,9 +12,9 @@ from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
 from torch import Tensor
 from torch.distributions import Normal
+from zuko.utils import odeint
 
 from src.data.components.utils import jet_masses
-from src.models.zuko.utils import odeint
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_discriminator, EPiC_generator, Transformer
@@ -22,6 +22,19 @@ from .components.utils import SWD, MMDLoss, calculate_gradient_penalty
 
 logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
+
+
+class ode_wrapper(torch.nn.Module):
+    """Wraps model to ode solver compatible format."""
+
+    def __init__(self, model, cond, mask):
+        super().__init__()
+        self.model = model
+        self.cond = cond
+        self.mask = mask
+
+    def forward(self, t, x):
+        return self.model(t, x, cond=self.cond, mask=self.mask)
 
 
 class CNF(nn.Module):
@@ -149,10 +162,12 @@ class CNF(nn.Module):
         return x
 
     def encode(self, x: Tensor, mask: Tensor = None) -> Tensor:
-        return odeint(self, x, None, mask, 0.0, 1.0, phi=self.parameters())
+        wrapped_cnf = ode_wrapper(model=self, cond=None, mask=mask)
+        return odeint(wrapped_cnf, x, 0.0, 1.0, phi=self.parameters())
 
     def decode(self, z: Tensor, cond: Tensor, mask: Tensor = None) -> Tensor:
-        return odeint(self, z, cond, mask, 1.0, 0.0, phi=self.parameters())
+        wrapped_cnf = ode_wrapper(model=self, cond=cond, mask=mask)
+        return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
 
     def log_prob(self, x: Tensor) -> Tensor:
         i = torch.eye(x.shape[-1]).to(x)
