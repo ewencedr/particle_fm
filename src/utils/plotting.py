@@ -814,6 +814,7 @@ def plot_data(
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
+    plt.close(fig)
     return fig
 
 
