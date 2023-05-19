@@ -108,6 +108,7 @@ def plot_data(
     save_fig: bool = True,
     save_folder: str = "logs/plots/",
     save_name: str = "plot",
+    close_fig: bool = False,
 ) -> plt.figure:
     """Create a plot of multiple histograms to compare one dataset with other datasets.
 
@@ -137,6 +138,7 @@ def plot_data(
         save_fig (bool, optional): Save the fig. Defaults to True.
         save_folder (str, optional): Folder for saving the fig if save_fig==True. Defaults to "logs/plots/".
         save_name (str, optional): Filename for saving the fig if save_fig==True. Defaults to "plot".
+        close_fig (bool, optional): Close the fig after saving it. Defaults to False.
 
     Returns:
         _type_: Figure
@@ -814,7 +816,8 @@ def plot_data(
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
-    plt.close(fig)
+    if close_fig:
+        plt.close(fig)
     return fig
 
 
@@ -846,6 +849,7 @@ def create_and_plot_data(
     bins: int = 100,
     sim_data_label: str = "JetNet",
     file_dict: dict = None,
+    close_fig: bool = False,
 ):
     """Generate data for plotting and plot it.
 
@@ -877,6 +881,7 @@ def create_and_plot_data(
         bins (int, optional): _description_. Defaults to 100.
         sim_data_label (str, optional): _description_. Defaults to "JetNet".
         file_dict (_type_, optional): _description_. Defaults to None.
+        close_fig (bool, optional): Close fig after saving. Defaults to False.
 
     Raises:
         AssertionError: _description_
@@ -948,6 +953,7 @@ def create_and_plot_data(
         save_fig=save_fig,
         variable_jet_sizes_plotting=variable_jet_sizes_plotting,
         bins=bins,
+        close_fig=close_fig,
     )
     return fig, particle_data, times
 

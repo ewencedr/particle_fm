@@ -130,6 +130,7 @@ class JetNetEvaluationCallback(pl.Callback):
                 save_folder=self.image_path,
                 print_parameters=False,
                 plot_efps=self.calculate_efps,
+                close_fig=True,
                 **self.kwargs,
             )
 
