@@ -16,3 +16,14 @@ def custom5000epochs(current_epoch: int):
     elif current_epoch <= 5000:
         return True
     return False
+
+
+def custom10000epochs(current_epoch: int):
+    if current_epoch == 100:
+        return True
+    if current_epoch <= 9500:
+        if current_epoch % 500 == 0:
+            return True
+    elif current_epoch <= 10000:
+        return True
+    return False
