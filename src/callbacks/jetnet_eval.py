@@ -4,7 +4,7 @@ import wandb
 
 from src.data.components import calculate_all_wasserstein_metrics
 from src.data.components.utils import jet_masses
-from src.schedulers.logging_scheduler import custom1
+from src.schedulers.logging_scheduler import custom1, custom5000epochs
 from src.utils import apply_mpl_styles, create_and_plot_data
 
 
@@ -68,7 +68,10 @@ class JetNetEvaluationCallback(pl.Callback):
         self.comet_logger = None
         self.wandb_logger = None
 
-        self.available_custom_logging_scheduler = {"custom1": custom1}
+        self.available_custom_logging_scheduler = {
+            "custom1": custom1,
+            "custom5000epochs": custom5000epochs,
+        }
 
     def on_train_start(self, trainer, pl_module) -> None:
         # get loggers
