@@ -465,6 +465,7 @@ def plot_data(
                 range=[x_min, x_max],
                 label=f"{labels[count]}",
             )
+    ax8.set_yscale("log")
     ax8.set_xlabel("Particle Multiplicity")
 
     ax9 = fig.add_subplot(gs[gs_counter + 2])
