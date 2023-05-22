@@ -29,11 +29,11 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 30
+  num_particles: 150
   frequencies: 6
   use_mass_loss: False
   layers: 6
-  n_transforms: 4
+  n_transforms: 1
   activation: leaky_relu
   wrapper_func: weight_norm
   # epic
@@ -96,7 +96,7 @@ callbacks:
     monitor: "w1m_mean"
     mode: "min"
     auto_insert_metric_name: False
-    every_n_epochs: 4 # ${callbacks.jetnet_eval.every_n_epochs}+1
+    every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
 
   model_checkpoint3:
     dirpath: ${paths.output_dir}/checkpoints
@@ -104,7 +104,7 @@ callbacks:
     monitor: "w1p_mean"
     mode: "min"
     auto_insert_metric_name: False
-    every_n_epochs: 4
+    every_n_epochs: 1
 
   #early_stopping:
   #  monitor: "val/loss"

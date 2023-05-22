@@ -153,6 +153,8 @@ class EPiC_layer(nn.Module):
         latent_global = x_global.size(1)
         logger_emask.debug(f"mask.shape: {mask.shape}")
         # meansum pooling
+        # print(f"mask.shape: {mask.shape}")
+        # print(f"x_local.shape: {x_local.shape}")
         x_pooled_sum = (x_local * mask).sum(1, keepdim=False)
         x_pooled_mean = x_pooled_sum / mask.sum(1, keepdim=False)
         x_pooledCATglobal = torch.cat(

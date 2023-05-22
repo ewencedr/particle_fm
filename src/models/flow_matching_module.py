@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import wandb
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
+from scipy.integrate import solve_ivp
 from torch import Tensor
 from torch.distributions import Normal
 from zuko.utils import odeint
@@ -129,6 +130,21 @@ class CNF(nn.Module):
         cond: Tensor = None,
         mask: Tensor = None,
     ) -> Tensor:
+        # if type(t) == float:
+        #    t = torch.Tensor([t]).to(self.frequencies.device)
+        #    print(f"x.shape: {x.shape}")
+        #    x = (
+        #        torch.Tensor(x)
+        #        .to(self.frequencies.device)
+        #        .repeat_interleave(30, dim=-1)
+        #        .unsqueeze(-1)
+        #        .repeat_interleave(3, dim=-1)
+        #    )
+        #    print(f"x.shape2: {x.shape}")
+        #    print(f"type(t): {type(t)}")
+        # print(f"x.shape: {x.shape}")
+        # print(f"t shape: {t.shape}")
+        # print(f"t: {t}")
         logger.debug(f"self.mass_conditioning: {self.mass_conditioning}")
         # logger.debug(f"t.shape0: {t[:3]}")
         logger.debug(f"x.shape1: {x.shape}")
@@ -137,6 +153,7 @@ class CNF(nn.Module):
         # logger.debug(f"t: {t[:3]}")
         t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
         # logger.debug(f"t.shape1: {t[:3]}")
+
         t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
         # logger.debug(f"t.shape2: {t[:3]}")
         t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
@@ -168,6 +185,7 @@ class CNF(nn.Module):
     def decode(self, z: Tensor, cond: Tensor, mask: Tensor = None) -> Tensor:
         wrapped_cnf = ode_wrapper(model=self, cond=cond, mask=mask)
         return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
+        # return solve_ivp(wrapped_cnf, [1.0, 0.0], z[:, 0, 0].cpu(), vectorized=True)
 
     def log_prob(self, x: Tensor) -> Tensor:
         i = torch.eye(x.shape[-1]).to(x)
@@ -700,6 +718,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         x, mask = batch
         if not self.hparams.mask:
             mask = None
+        if self.trainer.current_epoch == 0:
+            # Just to have something logged so that the checkpoint callback doesn't fail
+            self.log("w1m_mean", 0.005)
+            self.log("w1p_mean", 0.005)
 
         if self.hparams.use_mass_loss:
             loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask)
@@ -1089,6 +1111,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask = batch
+        if self.trainer.current_epoch == 0:
+            # Just to have something logged so that the checkpoint callback doesn't fail
+            self.log("w1m_mean", 0.005)
+            self.log("w1p_mean", 0.005)
         if not self.hparams.mask:
             mask = None
 
