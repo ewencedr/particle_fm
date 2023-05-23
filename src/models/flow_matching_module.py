@@ -181,7 +181,7 @@ class CNF(nn.Module):
 
     def encode(self, x: Tensor, mask: Tensor = None) -> Tensor:
         wrapped_cnf = ode_wrapper(model=self, cond=None, mask=mask)
-        node = NeuralODE(wrapped_cnf, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+        node = NeuralODE(wrapped_cnf, solver="rk4", sensitivity="adjoint")
         t_span = torch.linspace(0.0, 1.0, 100)
         traj = node.trajectory(x, t_span)
         return traj[-1]
@@ -189,7 +189,7 @@ class CNF(nn.Module):
 
     def decode(self, z: Tensor, cond: Tensor, mask: Tensor = None) -> Tensor:
         wrapped_cnf = ode_wrapper(model=self, cond=cond, mask=mask)
-        node = NeuralODE(wrapped_cnf, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+        node = NeuralODE(wrapped_cnf, solver="rk4", sensitivity="adjoint")
         t_span = torch.linspace(1.0, 0.0, 5)
         traj = node.trajectory(z, t_span)
         # print(f"traj.shape: {traj.shape}")
