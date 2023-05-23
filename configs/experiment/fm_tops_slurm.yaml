@@ -19,7 +19,7 @@ tags: ["flow_matching", "tops", "30"]
 trainer:
   min_epochs: 200
   max_epochs: 2000
-  # gradient_clip_val: 0.5
+  gradient_clip_val: 0.5
 
 model:
   optimizer:
