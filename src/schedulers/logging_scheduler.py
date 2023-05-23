@@ -27,3 +27,13 @@ def custom10000epochs(current_epoch: int):
     elif current_epoch <= 10000:
         return True
     return False
+
+
+def nolog10000(current_epoch: int):
+    if current_epoch == 200:
+        return True
+    if current_epoch <= 9500:
+        return False
+    elif current_epoch <= 10000:
+        return True
+    return False

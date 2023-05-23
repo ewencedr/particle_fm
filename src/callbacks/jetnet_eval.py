@@ -8,6 +8,7 @@ from src.schedulers.logging_scheduler import (
     custom1,
     custom5000epochs,
     custom10000epochs,
+    nolog10000,
 )
 from src.utils import apply_mpl_styles, create_and_plot_data
 
@@ -76,6 +77,7 @@ class JetNetEvaluationCallback(pl.Callback):
             "custom1": custom1,
             "custom5000epochs": custom5000epochs,
             "custom10000epochs": custom10000epochs,
+            "nolog10000": nolog10000,
         }
 
     def on_train_start(self, trainer, pl_module) -> None:
