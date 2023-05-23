@@ -23,7 +23,7 @@ pytest          # tests
 # sh            # for running bash commands in some tests (linux/macos only)
 
 # --------- torchdyn --------- #
-torchdyn
+torchdyn==1.0.3
 
 # --------- jetnet --------- #
 jetnet
