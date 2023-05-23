@@ -13,6 +13,7 @@ from matplotlib.gridspec import GridSpec
 from scipy.integrate import solve_ivp
 from torch import Tensor
 from torch.distributions import Normal
+from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
 from src.data.components.utils import jet_masses
@@ -180,11 +181,21 @@ class CNF(nn.Module):
 
     def encode(self, x: Tensor, mask: Tensor = None) -> Tensor:
         wrapped_cnf = ode_wrapper(model=self, cond=None, mask=mask)
-        return odeint(wrapped_cnf, x, 0.0, 1.0, phi=self.parameters())
+        node = NeuralODE(wrapped_cnf, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+        t_span = torch.linspace(0.0, 1.0, 100)
+        traj = node.trajectory(x, t_span)
+        return traj[-1]
+        # return odeint(wrapped_cnf, x, 0.0, 1.0, phi=self.parameters())
 
     def decode(self, z: Tensor, cond: Tensor, mask: Tensor = None) -> Tensor:
         wrapped_cnf = ode_wrapper(model=self, cond=cond, mask=mask)
-        return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
+        node = NeuralODE(wrapped_cnf, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+        t_span = torch.linspace(1.0, 0.0, 5)
+        traj = node.trajectory(z, t_span)
+        # print(f"traj.shape: {traj.shape}")
+        # print(f"type(traj): {type(traj)}")
+        return traj[-1]
+        # return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
         # return solve_ivp(wrapped_cnf, [1.0, 0.0], z[:, 0, 0].cpu(), vectorized=True)
 
     def log_prob(self, x: Tensor) -> Tensor:
