@@ -55,7 +55,6 @@ class EPiC_layer(nn.Module):
         t_global_dim = latent_dim if self.t_global_cat else 0
 
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
-
         self.fc_global1 = self.wrapper_func(
             nn.Linear(
                 int(2 * hid_dim) + latent_dim + t_global_dim + self.global_cond_dim,
@@ -152,9 +151,8 @@ class EPiC_layer(nn.Module):
         batch_size, n_points, latent_local = x_local.size()
         latent_global = x_global.size(1)
         logger_emask.debug(f"mask.shape: {mask.shape}")
+
         # meansum pooling
-        # print(f"mask.shape: {mask.shape}")
-        # print(f"x_local.shape: {x_local.shape}")
         x_pooled_sum = (x_local * mask).sum(1, keepdim=False)
         x_pooled_mean = x_pooled_sum / mask.sum(1, keepdim=False)
         x_pooledCATglobal = torch.cat(
