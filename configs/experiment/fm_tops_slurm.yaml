@@ -23,7 +23,7 @@ trainer:
 
 model:
   optimizer:
-    lr: 0.002
+    lr: 0.0008
   model: "epic"
   features: 3
   hidden_dim: 128
