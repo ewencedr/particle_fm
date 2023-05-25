@@ -26,6 +26,7 @@ def generate_data(
     stds=None,
     shuffle_mask: bool = False,
     ode_solver: str = "dopri5_zuko",
+    ode_steps: int = 100,
 ):
     """Generate data with a model in batches and measure time.
 
@@ -43,6 +44,7 @@ def generate_data(
         stds (_type_, optional): Standard deviations for normalized data. Defaults to None.
         shuffle_mask (bool, optional): Shuffle mask during generation. Defaults to False.
         ode_solver (str, optional): ODE solver for sampling. Defaults to "dopri5_zuko".
+        ode_steps (int, optional): Number of steps for ODE solver. Defaults to 100.
 
     Raises:
         ValueError: _description_
@@ -80,6 +82,7 @@ def generate_data(
                     cond_batch,
                     mask_batch,
                     ode_solver=ode_solver,
+                    ode_steps=ode_steps,
                 )
                 .cpu()
             )
@@ -111,7 +114,13 @@ def generate_data(
         with torch.no_grad():
             jet_samples_batch = (
                 model.to(torch.device(device))
-                .sample(remaining_samples, cond_batch, mask_batch, ode_solver=ode_solver)
+                .sample(
+                    remaining_samples,
+                    cond_batch,
+                    mask_batch,
+                    ode_solver=ode_solver,
+                    ode_steps=ode_steps,
+                )
                 .cpu()
             )
         if normalized_data:

@@ -852,6 +852,7 @@ def create_and_plot_data(
     file_dict: dict = None,
     close_fig: bool = False,
     ode_solver: str = "dopri5_zuko",
+    ode_steps: int = 100,
 ):
     """Generate data for plotting and plot it.
 
@@ -885,6 +886,7 @@ def create_and_plot_data(
         file_dict (_type_, optional): _description_. Defaults to None.
         close_fig (bool, optional): Close fig after saving. Defaults to False.
         ode_solver (str, optional): ODE solver used for sampling. Defaults to "dopri5_zuko".
+        ode_steps (int, optional): Number of steps for ODE solver. Defaults to 100.
 
     Raises:
         AssertionError: _description_
@@ -922,6 +924,7 @@ def create_and_plot_data(
         calculate_efps=plot_efps,
         cond=cond,
         ode_solver=ode_solver,
+        ode_steps=ode_steps,
     )
 
     if print_parameters:
@@ -1021,6 +1024,7 @@ def do_timing_plots(
     mask=None,
     save_path="/home/ewencedr/equivariant-flows",
     ode_solver: str = "dopri5_zuko",
+    ode_steps: int = 100,
 ):
     if not (len(models) == len(labels)):
         raise ValueError("labels has not the same size as models")
@@ -1041,6 +1045,7 @@ def do_timing_plots(
                 variable_set_sizes=False,
                 mask=None,
                 ode_solver=ode_solver,
+                ode_steps=ode_steps,
             )
             times_temp.append(time / jets_to_generate)
         times.append(times_temp)
@@ -1080,6 +1085,7 @@ def create_data_for_plotting(
     calculate_efps: bool = False,
     cond: torch.Tensor = None,
     ode_solver: str = "dopri5_zuko",
+    ode_steps: int = 100,
 ):
     data = []
     times = []
@@ -1123,6 +1129,7 @@ def create_data_for_plotting(
                 stds=stds,
                 cond=cond,
                 ode_solver=ode_solver,
+                ode_steps=ode_steps,
             )
         jet_data_temp = calculate_jet_features(data_temp)
         efps_temp = []
