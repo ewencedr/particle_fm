@@ -189,6 +189,7 @@ class CNF(nn.Module):
         return traj[-1]
         # return odeint(wrapped_cnf, x, 0.0, 1.0, phi=self.parameters())
 
+    # TODO make code cleaner by not repeating code, add code to encode and use config to configure ode_solver
     def decode(
         self,
         z: Tensor,
@@ -202,6 +203,42 @@ class CNF(nn.Module):
             return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
         elif ode_solver == "rk4":
             node = NeuralODE(wrapped_cnf, solver="rk4", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "dopri5":  # adaptive
+            node = NeuralODE(
+                wrapped_cnf,
+                solver="dopri5",
+                atol=1e-4,
+                rtol=1e-4,
+                seminorm=True,
+            )
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "euler":
+            node = NeuralODE(wrapped_cnf, solver="euler", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "midpoint":
+            node = NeuralODE(wrapped_cnf, solver="midpoint", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "tsit5":  # adaptive
+            node = NeuralODE(wrapped_cnf, solver="tsit5", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "ieuler":
+            node = NeuralODE(wrapped_cnf, solver="ieuler", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "alf":
+            node = NeuralODE(wrapped_cnf, solver="alf", sensitivity="adjoint")
             t_span = torch.linspace(1.0, 0.0, ode_steps)
             traj = node.trajectory(z, t_span)
             return traj[-1]
