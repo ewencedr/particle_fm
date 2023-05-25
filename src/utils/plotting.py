@@ -851,6 +851,7 @@ def create_and_plot_data(
     sim_data_label: str = "JetNet",
     file_dict: dict = None,
     close_fig: bool = False,
+    ode_solver: str = "dopri5_zuko",
 ):
     """Generate data for plotting and plot it.
 
@@ -883,6 +884,7 @@ def create_and_plot_data(
         sim_data_label (str, optional): _description_. Defaults to "JetNet".
         file_dict (_type_, optional): _description_. Defaults to None.
         close_fig (bool, optional): Close fig after saving. Defaults to False.
+        ode_solver (str, optional): ODE solver used for sampling. Defaults to "dopri5_zuko".
 
     Raises:
         AssertionError: _description_
@@ -919,6 +921,7 @@ def create_and_plot_data(
         file_dict=file_dict,
         calculate_efps=plot_efps,
         cond=cond,
+        ode_solver=ode_solver,
     )
 
     if print_parameters:
@@ -1017,6 +1020,7 @@ def do_timing_plots(
     variable_set_sizes=False,
     mask=None,
     save_path="/home/ewencedr/equivariant-flows",
+    ode_solver: str = "dopri5_zuko",
 ):
     if not (len(models) == len(labels)):
         raise ValueError("labels has not the same size as models")
@@ -1036,6 +1040,7 @@ def do_timing_plots(
                 particles_per_jet[i],
                 variable_set_sizes=False,
                 mask=None,
+                ode_solver=ode_solver,
             )
             times_temp.append(time / jets_to_generate)
         times.append(times_temp)
@@ -1074,6 +1079,7 @@ def create_data_for_plotting(
     file_dict: dict = None,
     calculate_efps: bool = False,
     cond: torch.Tensor = None,
+    ode_solver: str = "dopri5_zuko",
 ):
     data = []
     times = []
@@ -1116,6 +1122,7 @@ def create_data_for_plotting(
                 means=means,
                 stds=stds,
                 cond=cond,
+                ode_solver=ode_solver,
             )
         jet_data_temp = calculate_jet_features(data_temp)
         efps_temp = []
