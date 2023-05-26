@@ -1,12 +1,15 @@
 """Generation of data with the models."""
 
 import time
+from typing import Mapping
 
 import numpy as np
 import torch
 from tqdm import tqdm
 
 from src.data.components.utils import inverse_normalize_tensor
+
+# TODO put ODE solver in config
 
 
 def generate_data(
@@ -22,6 +25,8 @@ def generate_data(
     means=None,
     stds=None,
     shuffle_mask: bool = False,
+    ode_solver: str = "dopri5_zuko",
+    ode_steps: int = 100,
 ):
     """Generate data with a model in batches and measure time.
 
@@ -38,6 +43,8 @@ def generate_data(
         means (_type_, optional): Means for normalized data. Defaults to None.
         stds (_type_, optional): Standard deviations for normalized data. Defaults to None.
         shuffle_mask (bool, optional): Shuffle mask during generation. Defaults to False.
+        ode_solver (str, optional): ODE solver for sampling. Defaults to "dopri5_zuko".
+        ode_steps (int, optional): Number of steps for ODE solver. Defaults to 100.
 
     Raises:
         ValueError: _description_
@@ -69,7 +76,15 @@ def generate_data(
             mask_batch = None
         with torch.no_grad():
             jet_samples_batch = (
-                model.to(torch.device(device)).sample(batch_size, cond_batch, mask_batch).cpu()
+                model.to(torch.device(device))
+                .sample(
+                    batch_size,
+                    cond_batch,
+                    mask_batch,
+                    ode_solver=ode_solver,
+                    ode_steps=ode_steps,
+                )
+                .cpu()
             )
         if normalized_data:
             jet_samples_batch = inverse_normalize_tensor(
@@ -99,7 +114,13 @@ def generate_data(
         with torch.no_grad():
             jet_samples_batch = (
                 model.to(torch.device(device))
-                .sample(remaining_samples, cond_batch, mask_batch)
+                .sample(
+                    remaining_samples,
+                    cond_batch,
+                    mask_batch,
+                    ode_solver=ode_solver,
+                    ode_steps=ode_steps,
+                )
                 .cpu()
             )
         if normalized_data:
@@ -109,6 +130,7 @@ def generate_data(
         if variable_set_sizes:
             jet_samples_batch = jet_samples_batch * mask_batch
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
+
     particle_data_sampled = np.array(particle_data_sampled)
     generation_time = end_time - start_time
     return particle_data_sampled, generation_time

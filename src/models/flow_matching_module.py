@@ -13,6 +13,7 @@ from matplotlib.gridspec import GridSpec
 from scipy.integrate import solve_ivp
 from torch import Tensor
 from torch.distributions import Normal
+from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
 from src.data.components.utils import jet_masses
@@ -178,14 +179,73 @@ class CNF(nn.Module):
 
         return x
 
-    def encode(self, x: Tensor, mask: Tensor = None) -> Tensor:
+    def encode(
+        self, x: Tensor, mask: Tensor = None, ode_solver: str = "dopri5_zuko", ode_steps: int = 100
+    ) -> Tensor:
         wrapped_cnf = ode_wrapper(model=self, cond=None, mask=mask)
-        return odeint(wrapped_cnf, x, 0.0, 1.0, phi=self.parameters())
+        node = NeuralODE(wrapped_cnf, solver="rk4", sensitivity="adjoint")
+        t_span = torch.linspace(0.0, 1.0, 100)
+        traj = node.trajectory(x, t_span)
+        return traj[-1]
+        # return odeint(wrapped_cnf, x, 0.0, 1.0, phi=self.parameters())
 
-    def decode(self, z: Tensor, cond: Tensor, mask: Tensor = None) -> Tensor:
+    # TODO make code cleaner by not repeating code, add code to encode and use config to configure ode_solver
+    def decode(
+        self,
+        z: Tensor,
+        cond: Tensor,
+        mask: Tensor = None,
+        ode_solver: str = "dopri5_zuko",
+        ode_steps: int = 100,
+    ) -> Tensor:
         wrapped_cnf = ode_wrapper(model=self, cond=cond, mask=mask)
-        return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
+        if ode_solver == "dopri5_zuko":
+            return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
+        elif ode_solver == "rk4":
+            node = NeuralODE(wrapped_cnf, solver="rk4", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "dopri5":  # adaptive
+            node = NeuralODE(
+                wrapped_cnf,
+                solver="dopri5",
+                atol=1e-4,
+                rtol=1e-4,
+                seminorm=True,
+            )
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "euler":
+            node = NeuralODE(wrapped_cnf, solver="euler", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "midpoint":
+            node = NeuralODE(wrapped_cnf, solver="midpoint", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "tsit5":  # adaptive
+            node = NeuralODE(wrapped_cnf, solver="tsit5", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "ieuler":
+            node = NeuralODE(wrapped_cnf, solver="ieuler", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        elif ode_solver == "alf":
+            node = NeuralODE(wrapped_cnf, solver="alf", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        # elif solver == "scipy":
         # return solve_ivp(wrapped_cnf, [1.0, 0.0], z[:, 0, 0].cpu(), vectorized=True)
+        else:
+            raise NotImplementedError(f"Solver {ode_solver} not implemented")
 
     def log_prob(self, x: Tensor) -> Tensor:
         i = torch.eye(x.shape[-1]).to(x)
@@ -370,13 +430,15 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         cond: torch.Tensor = None,
         mask: torch.Tensor = None,
         reverse: bool = False,
+        ode_solver: str = "dopri5_zuko",
+        ode_steps: int = 100,
     ):
         if reverse:
             for f in reversed(self.flows):
-                x = f.decode(x, cond, mask)
+                x = f.decode(x, cond, mask, ode_solver=ode_solver, ode_steps=ode_steps)
         else:
             for f in self.flows:
-                x = f.encode(x, mask)
+                x = f.encode(x, mask, ode_solver=ode_solver, ode_steps=ode_steps)
         return x
 
     def adversarial_loss(
@@ -1178,13 +1240,21 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             return opt
 
     @torch.no_grad()
-    def sample(self, n_samples: int, cond: torch.Tensor = None, mask: torch.Tensor = None):
+    def sample(
+        self,
+        n_samples: int,
+        cond: torch.Tensor = None,
+        mask: torch.Tensor = None,
+        ode_solver: str = "dopri5_zuko",
+        ode_steps: int = 100,
+    ):
         """Generate Samples.
 
         Args:
             n_samples (int): Number of samples to generate.
             cond (torch.Tensor, optional): Data on which the model is conditioned. Defaults to None.
             mask (torch.Tensor, optional): Mask for data generation. Defaults to None.
+            ode_solver (str, optonal): ODE solver to use. Defaults to "dopri5_zuko".
 
         Returns:
             torch.Tensor: Generated samples
@@ -1198,5 +1268,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             mask = mask[:n_samples]
             mask = mask.to(self.device)
             z = z * mask
-        samples = self.forward(z, cond=cond, mask=mask, reverse=True)
+        samples = self.forward(
+            z, cond=cond, mask=mask, reverse=True, ode_solver=ode_solver, ode_steps=ode_steps
+        )
         return samples
