@@ -350,6 +350,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         plot_loss_hist_debug: bool = False,
         # loss
         loss_type: str = "FM-OT",
+        sigma: float = 1e-4,
         loss_comparison: str = "MSE",
         loss_type_d: str = "LSGAN",
         **kwargs,
@@ -507,8 +508,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # print(f"x shape: {x.shape}")
         # v = self.flows[0]
         if self.hparams.loss_type == "FM-OT":
-            sigma = 1e-4
-
             # t = torch.rand_like(x[..., 0]).unsqueeze(-1)
             t = torch.rand_like(torch.ones(x.shape[0]))
             t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
@@ -523,13 +522,15 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"z grad: {z.requires_grad}")
 
             logger_loss.debug(f"z: {z.shape}")
-            # y = (1 - (1 - sigma) * t) * z + t * x  # directly from fm paper
-            y = (1 - t) * x + (sigma + (1 - sigma) * t) * z  # 100LOC implementation
+            # y = (1 - (1 - self.hparams.sigma) * t) * z + t * x  # directly from fm paper
+            y = (1 - t) * x + (
+                self.hparams.sigma + (1 - self.hparams.sigma) * t
+            ) * z  # 100LOC implementation
             # y = y.clone().detach().requires_grad_(True)
             logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"y grad: {y.requires_grad}")
-            # u_t = x - (1 - sigma) * z
-            u_t = (1 - sigma) * z - x  # = v_t?
+            # u_t = x - (1 - self.hparams.sigma) * z
+            u_t = (1 - self.hparams.sigma) * z - x  # = v_t?
             u_t = u_t * mask
             logger_loss.debug(f"u_t: {u_t.shape}")
             temp = y.clone()
