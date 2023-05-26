@@ -189,8 +189,8 @@ class JetNetEvaluationCallback(pl.Callback):
                 if self.wandb_logger is not None:
                     self.wandb_logger.log({"Wasserstein Metrics": w_dists})
                     self.wandb_logger.log({"Wasserstein Metrics 1b": w_dists_1b})
-                self.log("w1m_mean", w_dists["w1m_mean"])
-                self.log("w1p_mean", w_dists["w1p_mean"])
+                self.log("w1m_mean_1b", w_dists_1b["w1m_mean_1b"])
+                self.log("w1p_mean_1b", w_dists_1b["w1p_mean_1b"])
             # Jet genereation time
             if self.log_times:
                 if self.comet_logger is not None:

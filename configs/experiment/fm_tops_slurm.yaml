@@ -14,11 +14,11 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops", "30"]
+tags: ["flow_matching", "tops"]
 
 trainer:
-  min_epochs: 200
-  max_epochs: 2000
+  min_epochs: 1000
+  max_epochs: 10000
   gradient_clip_val: 0.5
 
 model:
@@ -70,15 +70,15 @@ data:
 
 callbacks:
   jetnet_eval:
-    every_n_epochs: 200
-    num_jet_samples: 10000
+    every_n_epochs: custom10000epochs
+    num_jet_samples: 25000
     batch_size: 256
     plot_w_dists: False
     w_dists_batches: 5
     mass_conditioning: ${model.mass_conditioning}
     plot_jet_features: True
     log_w_dists: True
-    data_type: "test"
+    data_type: "val"
 
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints
@@ -91,18 +91,18 @@ callbacks:
   model_checkpoint2:
     dirpath: ${paths.output_dir}/checkpoints
     filename: "epoch_{epoch:03d}_w1m_{w1m_mean:.8f}"
-    monitor: "w1m_mean"
+    monitor: "w1m_mean_1b"
     mode: "min"
     auto_insert_metric_name: False
-    every_n_epochs: 201 # ${callbacks.jetnet_eval.every_n_epochs}+1
+    every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
 
   model_checkpoint3:
     dirpath: ${paths.output_dir}/checkpoints
     filename: "epoch_{epoch:03d}_w1p_{w1p_mean:.8f}"
-    monitor: "w1p_mean"
+    monitor: "w1p_mean_1b"
     mode: "min"
     auto_insert_metric_name: False
-    every_n_epochs: 201 # ${callbacks.jetnet_eval.every_n_epochs}+1
+    every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
 
   #early_stopping:
   #  monitor: "val/loss"
