@@ -47,7 +47,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_times: bool = True,
         log_epoch_zero: bool = False,
         mass_conditioning: bool = False,
-        data_type: str = "test",
+        data_type: str = "val",
         **kwargs,
     ):
         super().__init__()

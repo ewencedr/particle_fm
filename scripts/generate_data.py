@@ -43,9 +43,9 @@ def main(params):
     apply_mpl_styles()
 
     # generate data
-    mask = np.copy(val_mask)
-    for _ in range(params.n_samples // len(val_mask)):
-        mask = np.concatenate([mask, val_mask])
+    mask = np.copy(test_mask)
+    for _ in range(params.n_samples // len(test_mask)):
+        mask = np.concatenate([mask, test_mask])
     data, generation_time = generate_data(
         model=model,
         num_jet_samples=params.n_samples,
