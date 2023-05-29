@@ -22,7 +22,7 @@ rich            # beautiful text formatting in terminal
 pytest          # tests
 # sh            # for running bash commands in some tests (linux/macos only)
 
-torchdyn==1.0.3
+torchdyn==1.0.4
 zuko
 jetnet
 energyflow
