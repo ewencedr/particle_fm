@@ -4,6 +4,7 @@ import time
 from typing import Mapping
 
 import numpy as np
+import numpy.ma as ma
 import torch
 from tqdm import tqdm
 
@@ -55,6 +56,10 @@ def generate_data(
     """
     if variable_set_sizes and mask is None:
         raise ValueError("Please use mask when using variable_set_sizes=True")
+    if len(mask) != num_jet_samples:
+        raise ValueError(
+            f"Mask should have the same length as num_jet_samples ({len(mask)} != {num_jet_samples})"
+        )
     print(f"Generating data. Device: {torch.device(device)}")
     particle_data_sampled = torch.Tensor()
     start_time = 0

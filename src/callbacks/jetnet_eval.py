@@ -145,22 +145,20 @@ class JetNetEvaluationCallback(pl.Callback):
             )
 
             particle_data = particle_data[0]
-            mask_data = np.ma.masked_where(
-                particle_data[:, :, 0] == 0,
-                particle_data[:, :, 0],
-            )
+            mask_data = (particle_data[..., 0] == 0).astype(int)
             mask_data = np.expand_dims(mask_data, axis=-1)
-
+            mask_data = 1 - mask_data
             if self.log_w_dists:
                 # 1 batch
                 w_dists_1b_temp = calculate_all_wasserstein_metrics(
-                    background_data[..., :3],
+                    background_data[: len(particle_data), :, :3],
                     particle_data,
-                    background_mask,
+                    background_mask[: len(particle_data)],
                     mask_data,
                     num_eval_samples=self.num_jet_samples,
                     num_batches=1,
                     calculate_efps=self.calculate_efps,
+                    use_masks=False,
                 )
                 # create new dict with _1b suffix to not log the same values twice
                 w_dists_1b = {}
@@ -169,13 +167,14 @@ class JetNetEvaluationCallback(pl.Callback):
 
                 # divide into batches
                 w_dists = calculate_all_wasserstein_metrics(
-                    background_data[..., :3],
+                    background_data[: len(particle_data), :, :3],
                     particle_data,
-                    background_mask,
+                    background_mask[: len(particle_data)],
                     mask_data,
                     num_eval_samples=self.num_jet_samples // self.w_dists_batches,
                     num_batches=self.w_dists_batches,
                     calculate_efps=self.calculate_efps,
+                    use_masks=False,
                 )
 
                 # Wasserstein Metrics

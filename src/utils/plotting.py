@@ -1098,6 +1098,7 @@ def create_data_for_plotting(
     pt_selected_multiplicities = []
     w_dist_m = []
     sim_data = sim_data_in[:num_jet_samples]
+    mask = mask[:num_jet_samples]
     if cond is not None:
         cond = cond[:num_jet_samples]
     jet_data_sim = calculate_jet_features(sim_data)

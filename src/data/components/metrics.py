@@ -14,6 +14,7 @@ def calculate_all_wasserstein_metrics(
     num_eval_samples=10000,
     num_batches=5,
     calculate_efps=True,
+    use_masks=False,
 ):
     """Calculate the Wasserstein distances w1m, w1p and w1efp with standard deviations.
 
@@ -22,6 +23,10 @@ def calculate_all_wasserstein_metrics(
         particle_data2 (_type_): _description_
         mask1 (_type_): _description_
         mask2 (_type_): _description_
+        num_eval_samples (int, optional): _description_. Defaults to 10000.
+        num_batches (int, optional): _description_. Defaults to 5.
+        calculate_efps (bool, optional): _description_. Defaults to True.
+        use_masks (bool, optional): Use mask for w1m calculation. Otherwise exclude zero padded values. Defaults to False.
 
     Returns:
         w1m_mean, w1p_mean, w1efp_mean, w1m_std, w1p_std, w1efp_std
@@ -29,8 +34,9 @@ def calculate_all_wasserstein_metrics(
 
     particle_data1 = particle_data1[..., :3]
     particle_data2 = particle_data2[..., :3]
-    mask1 = np.array(mask1)
-    mask2 = np.array(mask2)
+    if not use_masks:
+        mask1 = None
+        mask2 = None
 
     w1m_mean, w1m_std = w1m(
         particle_data1,
@@ -44,7 +50,7 @@ def calculate_all_wasserstein_metrics(
     w1p_mean, w1p_std = w1p(
         particle_data1,  # real_jets
         particle_data2,  # fake_jets
-        mask1,
+        mask1=mask1,
         mask2=mask2,
         exclude_zeros=True,
         num_particle_features=3,
@@ -152,7 +158,7 @@ def w1p(
 ):
     """
     adapted such that jet1 = real_jets, jet2 = fake_jets
-    no more random choice, rather compairng the whole test sets to batches of fake data
+    no more random choice, rather comparing the whole test sets to batches of fake data
     """
     assert len(jets1.shape) == 3 and len(jets2.shape) == 3, "input jets format is incorrect"
 
@@ -187,13 +193,17 @@ def w1p(
     rand2 = np.random.permutation(len(jets2))
     jets1 = jets1[rand1]
     jets2 = jets2[rand2]
+    if mask1 is not None:
+        mask1 = mask1[rand1]
+    if mask2 is not None:
+        mask2 = mask2[rand2]
 
     if exclude_zeros:
         zeros1 = np.linalg.norm(jets1[:, :, :num_particle_features], axis=2) == 0
-        mask1 = ~zeros1 if mask1 is None else mask1 * ~zeros1
+        mask1 = ~zeros1 if mask1 is None else mask1  # * ~zeros1
 
         zeros2 = np.linalg.norm(jets2[:, :, :num_particle_features], axis=2) == 0
-        mask2 = ~zeros2 if mask2 is None else mask2 * ~zeros2
+        mask2 = ~zeros2 if mask2 is None else mask2  # * ~zeros2
 
     w1s = []
     i = 0
