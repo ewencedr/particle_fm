@@ -91,7 +91,7 @@ callbacks:
 
   model_checkpoint2:
     dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_w1m_{w1m_mean:.8f}"
+    filename: "epoch_{epoch:03d}_w1m_{w1m_mean_1b:.8f}"
     monitor: "w1m_mean_1b"
     mode: "min"
     auto_insert_metric_name: False
@@ -99,7 +99,7 @@ callbacks:
 
   model_checkpoint3:
     dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_w1p_{w1p_mean:.8f}"
+    filename: "epoch_{epoch:03d}_w1p_{w1p_mean_1b:.8f}"
     monitor: "w1p_mean_1b"
     mode: "min"
     auto_insert_metric_name: False

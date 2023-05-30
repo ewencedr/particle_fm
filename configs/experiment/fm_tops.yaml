@@ -75,7 +75,7 @@ data:
 
 callbacks:
   jetnet_eval:
-    every_n_epochs: 5
+    every_n_epochs: 3
     num_jet_samples: 2
     batch_size: 256
     plot_w_dists: False
@@ -94,16 +94,16 @@ callbacks:
 
   model_checkpoint2:
     dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_w1m_{w1m_mean:.8f}"
-    monitor: "w1m_mean"
+    filename: "epoch_{epoch:03d}_w1m_{w1m_mean_1b:.8f}"
+    monitor: "w1m_mean_1b"
     mode: "min"
     auto_insert_metric_name: False
     every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
 
   model_checkpoint3:
     dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_w1p_{w1p_mean:.8f}"
-    monitor: "w1p_mean"
+    filename: "epoch_{epoch:03d}_w1p_{w1p_mean_1b:.8f}"
+    monitor: "w1p_mean_1b"
     mode: "min"
     auto_insert_metric_name: False
     every_n_epochs: 1
