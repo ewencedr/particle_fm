@@ -172,8 +172,9 @@ def plot_data(
     gs_counter = 0
     ax1 = fig.add_subplot(gs[gs_counter])
     data1 = sim_data[:, :, 2].flatten()
+    data1 = data1[data1 != 0]
     if not plot_data_only:
-        data = [d[:, :, 2].flatten() for d in particle_data]
+        data = [d[:, :, 2].flatten()[d[:, :, 2].flatten() != 0] for d in particle_data]
         x_min, x_max = (
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
@@ -205,8 +206,9 @@ def plot_data(
 
     ax2 = fig.add_subplot(gs[gs_counter + 1])
     data1 = sim_data[:, :, 0].flatten()
+    data1 = data1[data1 != 0]
     if not plot_data_only:
-        data = [d[:, :, 0].flatten() for d in particle_data]
+        data = [d[:, :, 0].flatten()[d[:, :, 0].flatten() != 0] for d in particle_data]
         x_min, x_max = (
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
@@ -244,8 +246,9 @@ def plot_data(
     ax3 = fig.add_subplot(gs[gs_counter + 2])
 
     data1 = sim_data[:, :, 1].flatten()
+    data1 = data1[data1 != 0]
     if not plot_data_only:
-        data = [d[:, :, 1].flatten() for d in particle_data]
+        data = [d[:, :, 1].flatten()[d[:, :, 1].flatten() != 0] for d in particle_data]
         x_min, x_max = (
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
@@ -1131,6 +1134,7 @@ def create_data_for_plotting(
                 ode_solver=ode_solver,
                 ode_steps=ode_steps,
             )
+
         jet_data_temp = calculate_jet_features(data_temp)
         efps_temp = []
         if calculate_efps:
