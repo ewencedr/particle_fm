@@ -44,7 +44,7 @@ model:
   global_cond_dim: 0
   local_cond_dim: 0
   t_local_cat: True
-  t_global_cat: True
+  t_global_cat: False
   # transformer
   dropout: 0.0
   heads: 4
@@ -56,6 +56,7 @@ model:
   sigma: 1e-4
   loss_comparison: MSE
   loss_type_d: LSGAN
+  t_emb: gaussian
   # scheduler
   #scheduler:
   #  warmup: ${trainer.min_epochs}
@@ -113,7 +114,7 @@ callbacks:
   #  patience: 2000
   #  mode: "min"
 
-task_name: "fm_tops-${model.num_particles}"
+task_name: "fm_tops-${model.num_particles}-1"
 
 logger:
   wandb:

@@ -51,6 +51,7 @@ model:
   sigma: 1e-4
   loss_comparison: MSE
   loss_type_d: LSGAN
+  t_emb: sincos
   # scheduler
   #scheduler:
   #  warmup: ${trainer.min_epochs}

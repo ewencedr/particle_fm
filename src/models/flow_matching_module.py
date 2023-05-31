@@ -26,6 +26,28 @@ logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
 
 
+class GaussianFourierProjection(nn.Module):
+    """Gaussian random features for encoding time steps.
+
+    Inspired by https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing#scrollTo=YyQtV7155Nht
+    """
+
+    def __init__(self, embed_dim, scale=30.0):
+        super().__init__()
+        # Randomly sample weights during initialization. These weights are fixed
+        # during optimization and are not trainable.
+        self.W = nn.Parameter(torch.randn(embed_dim // 2) * scale, requires_grad=False)
+
+    def forward(self, x):
+        # logger.debug(f"GFP w: {self.W.shape}")
+        # logger.debug(f"x[:,None]{x[:, None].shape}")
+        # logger.debug(f"self.W[None,:]:{self.W[None,:].shape}")
+        x_proj = x[..., None] * self.W[None, ...] * 2 * np.pi
+        # logger.debug(f"x_proj: {x_proj.shape}")
+        # logger.debug(f"torch cat: {torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1).shape}")
+        return torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1)
+
+
 class ode_wrapper(torch.nn.Module):
     """Wraps model to ode solver compatible format."""
 
@@ -61,6 +83,7 @@ class CNF(nn.Module):
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+        t_emb (str, optional): Embedding for time. Defaults to "sincos".
     """
 
     def __init__(
@@ -83,6 +106,7 @@ class CNF(nn.Module):
         wrapper_func: str = "weight_norm",
         t_local_cat: bool = False,
         t_global_cat: bool = False,
+        t_emb: str = "sincos",
     ):
         super().__init__()
         self.model = model
@@ -123,6 +147,14 @@ class CNF(nn.Module):
             )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
+        self.activation = activation
+        self.t_emb = t_emb
+        # Gaussian random feature embedding layer for time
+        if self.t_emb == "gaussian":
+            self.embed = nn.Sequential(
+                GaussianFourierProjection(embed_dim=hidden_dim), nn.Linear(hidden_dim, hidden_dim)
+            )
+            self.linear = nn.Linear(hidden_dim, 2 * frequencies)
 
     def forward(
         self,
@@ -131,35 +163,38 @@ class CNF(nn.Module):
         cond: Tensor = None,
         mask: Tensor = None,
     ) -> Tensor:
-        # if type(t) == float:
-        #    t = torch.Tensor([t]).to(self.frequencies.device)
-        #    print(f"x.shape: {x.shape}")
-        #    x = (
-        #        torch.Tensor(x)
-        #        .to(self.frequencies.device)
-        #        .repeat_interleave(30, dim=-1)
-        #        .unsqueeze(-1)
-        #        .repeat_interleave(3, dim=-1)
-        #    )
-        #    print(f"x.shape2: {x.shape}")
-        #    print(f"type(t): {type(t)}")
-        # print(f"x.shape: {x.shape}")
-        # print(f"t shape: {t.shape}")
-        # print(f"t: {t}")
-        logger.debug(f"self.mass_conditioning: {self.mass_conditioning}")
-        # logger.debug(f"t.shape0: {t[:3]}")
-        logger.debug(f"x.shape1: {x.shape}")
-        # t: (batch_size,num_particles)
-        logger.debug(f"t.shape: {t.shape}")
-        # logger.debug(f"t: {t[:3]}")
-        t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
-        # logger.debug(f"t.shape1: {t[:3]}")
 
-        t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
-        # logger.debug(f"t.shape2: {t[:3]}")
-        t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
-        # logger.debug(f"t.shape3: {t[:3]}")
-        logger.debug(f"t.shape3: {t.shape}")
+        # time embedding
+        if self.t_emb == "sincos":
+            logger.debug(f"t.shape: {t.shape}")
+            t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
+            logger.debug(f"t.shape1: {t.shape}")
+
+            t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
+            # logger.debug(f"t.shape2: {t[:3]}")
+            t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
+            logger.debug(f"t.shape3: {t.shape}")
+        elif self.t_emb == "gaussian":
+            # Obtain the Gaussian random feature embedding for t
+            # logger.debug(f"t.shape: {t.shape}")
+            test = False
+            # different shape for training and sampling
+            if len(t.shape) == 2:
+                t = t[:, 0]
+                test = True
+            # logger.debug(f"t:{t[:3]}")
+            # logger.debug(f"t.shape: {t.shape}")
+            t = getattr(F, self.activation, lambda x: x)(self.embed(t))
+            # logger.debug(f"t2.shape: {t.shape}")
+            t = self.linear(t).unsqueeze(1)
+            logger.debug(f"t3.shape: {t.shape}")
+            t = t.expand(*x.shape[:-1], -1)
+            # if test:
+            #    t = t.unsqueeze(1).repeat_interleave(x.shape[1], dim=1)
+            logger.debug(f"t4.shape: {t.shape}")
+        else:
+            raise NotImplementedError(f"t_emb={self.t_emb} not implemented")
+
         x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
         # logger.debug(f"x.shape2: {x[:3]}")
 
@@ -316,6 +351,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         loss_comparison (str, optional): Which method to use for comparing the two VFs in FM loss. Defaults to "MSE".
         loss_type_d (str, optional): Loss type for discriminator. Defaults to "BCE".
+        t_emb (str, optional): Embedding for time. Defaults to "sincos".
     """
 
     def __init__(
@@ -353,6 +389,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         sigma: float = 1e-4,
         loss_comparison: str = "MSE",
         loss_type_d: str = "LSGAN",
+        t_emb: str = "sincos",
         **kwargs,
     ):
         super().__init__()
@@ -398,6 +435,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     wrapper_func=wrapper_func,
                     t_global_cat=t_global_cat,
                     t_local_cat=t_local_cat,
+                    t_emb=t_emb,
                 )
             )
             # losses.append(FlowMatchingLoss(flows[-1]))
