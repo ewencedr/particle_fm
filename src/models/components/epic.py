@@ -22,7 +22,7 @@ class EPiC_layer(nn.Module):
         local_cond_dim (int, optional): Local conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
         activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
-        frequencies (int, optional): Frequencies for time. Defaults to 6.
+        frequencies (int, optional): Frequencies for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
         num_points (int, optional): Number of points in set. Defaults to 30.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
@@ -80,7 +80,6 @@ class EPiC_layer(nn.Module):
         torch.Tensor, torch.Tensor
     ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
         # Check and prepare input
-
         if x_global is None or x_local is None:
             raise ValueError("x_global or x_local is None")
 
@@ -216,7 +215,7 @@ class EPiC_generator(nn.Module):
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
-        frequencies (int, optional): Frequencies for time. Defaults to 6.
+        frequencies (int, optional): Frequencies for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
         num_points (int, optional): Number of points in set. Defaults to 30.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
@@ -279,6 +278,7 @@ class EPiC_generator(nn.Module):
                     t_local_cat=t_local_cat,
                     global_cond_dim=global_cond_dim,
                     local_cond_dim=local_cond_dim,
+                    frequencies=frequencies,
                 )
             )
 

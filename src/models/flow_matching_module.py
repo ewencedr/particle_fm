@@ -68,7 +68,7 @@ class CNF(nn.Module):
         features (int): Data features. Defaults to 3.
         model (str, optional): Use Transformer or EPiC Generator as architecture. Defaults to "transformer".
         num_particles (int, optional): Set cardinality. Defaults to 150.
-        frequencies (int, optional): Frequency for time. Defaults to 6.
+        frequencies (int, optional): Frequency for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
         hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
         layers (int, optional): Number of Layers to use. Defaults to 8.
         mass_conditioning (bool, optional): Condition the model on the jet mass. Defaults to False.
@@ -332,7 +332,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         features (int, optional): Features of data. Defaults to 3.
         hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
         num_particles (int, optional): Set cardinality. Defaults to 150.
-        frequencies (int, optional): Time frequencies. Defaults to 6.
+        frequencies (int, optional): Time frequencies. Basically half the size of the time vector that is added to the model. Defaults to 6.
         use_mass_loss (bool, optional): Add mass term to loss. Defaults to True.
         layers (int, optional): Number of layers. Defaults to 8.
         n_transforms (int, optional): Number of flow transforms. Defaults to 1.
