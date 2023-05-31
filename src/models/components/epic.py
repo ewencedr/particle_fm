@@ -52,7 +52,7 @@ class EPiC_layer(nn.Module):
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
         t_local_dim = 2 * frequencies if self.t_local_cat else 0
-        t_global_dim = latent_dim if self.t_global_cat else 0
+        t_global_dim = 2 * frequencies if self.t_global_cat else 0
 
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
         self.fc_global1 = self.wrapper_func(
@@ -68,8 +68,6 @@ class EPiC_layer(nn.Module):
         self.fc_local2 = self.wrapper_func(
             nn.Linear(hid_dim + t_local_dim + self.local_cond_dim, hid_dim)
         )
-        if self.t_global_cat:
-            self.fc_t = self.wrapper_func(nn.Linear(2 * frequencies * self.num_points, latent_dim))
 
     def forward(
         self,
@@ -135,7 +133,9 @@ class EPiC_layer(nn.Module):
 
         if self.t_global_cat:
             # prepare t for concat to global
-            t_global = self.fc_t(t.clone().reshape(t.shape[0], -1))
+            logger_el.debug(f"t shape: {t.shape}")
+            logger_el.debug(f"t: {t[:3]}")
+            t_global = t.clone()[:, 0, :]
             logger_el.debug(f"t_global shape: {t_global.shape}")
         else:
             t_global = torch.Tensor().to(t.device)
@@ -254,7 +254,7 @@ class EPiC_generator(nn.Module):
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
         t_local_dim = 2 * frequencies if self.t_local_cat else 0
-        t_global_dim = self.latent if self.t_global_cat else 0
+        t_global_dim = 2 * frequencies if self.t_global_cat else 0
 
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
         self.local_0 = self.wrapper_func(
@@ -285,10 +285,6 @@ class EPiC_generator(nn.Module):
         self.local_1 = self.wrapper_func(
             nn.Linear(self.hid_d + t_local_dim + self.local_cond_dim, self.feats),
         )
-        if self.t_global_cat:
-            self.fc_t = self.wrapper_func(
-                nn.Linear(2 * frequencies * self.num_points, self.latent)
-            )
 
     def forward(
         self,
@@ -329,9 +325,7 @@ class EPiC_generator(nn.Module):
             t_local = t
         if self.t_global_cat:
             # prepare t for concat to global
-            t_global = getattr(F, self.activation, lambda x: x)(
-                self.fc_t(t.clone().reshape(t.shape[0], -1)),
-            )
+            t_global = t.clone()[:, 0, :]
             logger_eg.debug(f"t_global shape: {t_global.shape}")
             z_global = torch.cat([z_global, t_global], 1)
         logger_eg.debug(f"z_global shape: {z_global.shape}")

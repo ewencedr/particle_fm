@@ -6,4 +6,4 @@ defaults:
   # - mlflow.yaml
   # - neptune.yaml
   # - tensorboard.yaml
-  - wandb.yaml
+  # - wandb.yaml
