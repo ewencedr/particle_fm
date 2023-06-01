@@ -6,6 +6,7 @@ defaults:
   - model_summary.yaml
   - rich_progress_bar.yaml
   - jetnet_eval.yaml
+  - ema.yaml
   - _self_
 
 model_checkpoint:
