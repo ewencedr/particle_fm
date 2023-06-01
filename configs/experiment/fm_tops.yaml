@@ -18,7 +18,7 @@ tags: ["flow_matching", "tops", "30", "test_runs"]
 
 trainer:
   min_epochs: 3
-  max_epochs: 30
+  max_epochs: 15
   gradient_clip_val: 0.5
   # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
@@ -76,7 +76,7 @@ data:
 
 callbacks:
   jetnet_eval:
-    every_n_epochs: 3
+    every_n_epochs: 10
     num_jet_samples: 2
     batch_size: 256
     plot_w_dists: False
@@ -92,6 +92,7 @@ callbacks:
     mode: "min"
     save_last: True
     auto_insert_metric_name: False
+    save_top_k: 2
 
   model_checkpoint2:
     dirpath: ${paths.output_dir}/checkpoints
@@ -100,6 +101,7 @@ callbacks:
     mode: "min"
     auto_insert_metric_name: False
     every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
+    save_top_k: 2
 
   model_checkpoint3:
     dirpath: ${paths.output_dir}/checkpoints
@@ -108,6 +110,7 @@ callbacks:
     mode: "min"
     auto_insert_metric_name: False
     every_n_epochs: 1
+    save_top_k: 2
 
   #early_stopping:
   #  monitor: "val/loss"

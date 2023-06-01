@@ -1,9 +1,12 @@
 # Code in this file is adapted from:
 # https://github.com/NVIDIA/NeMo/pull/5169
 # https://github.com/BioinfoMachineLearning/bio-diffusion/blob/e4bad15139815e562a27fb94dab0c31907522bc5/src/utils/__init__.py#L71
+# https://github.com/NVIDIA/NeMo/blob/be0804f61e82dd0f63da7f9fe8a4d8388e330b18/nemo/utils/exp_manager.py#L744
 import os
 import os.path
+import re
 import warnings
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pytorch_lightning as pl
@@ -16,7 +19,7 @@ from pytorch_lightning.utilities.types import STEP_OUTPUT
 
 from src.utils.pylogger import get_pylogger
 
-log = get_pylogger(__name__)
+log = get_pylogger("EMA")
 
 
 class EMA(Callback):
@@ -174,8 +177,10 @@ class EMA(Callback):
 
 class EMAModelCheckpoint(ModelCheckpoint):
     """Light wrapper around Lightning's `ModelCheckpoint` to, upon request, save an EMA copy of the
-    model as well.
+    model as well. Should only be used with `EMACallback`. Should only work for trainings with a
+    single GPU. save_top_k is not supported for custom save names, hardcoded for val/loss only.
 
+    #TODO add other metrics
     Adapted from: https://github.com/NVIDIA/NeMo/blob/be0804f61e82dd0f63da7f9fe8a4d8388e330b18/nemo/utils/exp_manager.py#L744
     """
 
@@ -201,6 +206,79 @@ class EMAModelCheckpoint(ModelCheckpoint):
                 rank_zero_info(f"Saving EMA weights to separate checkpoint {filepath}")
             super()._save_checkpoint(trainer, filepath)
             ema_callback.restore_original_weights(trainer.lightning_module)
+            if self.save_top_k != -1:
+                self.topk_check_previous_run_ema()
 
     def _ema_format_filepath(self, filepath: str) -> str:
         return filepath.replace(self.FILE_EXTENSION, f"-EMA{self.FILE_EXTENSION}")
+
+    def topk_check_previous_run_ema(self):
+        self.best_k_models_ema = {}
+        self.kth_best_model_path_ema = ""
+        self.best_model_score_ema = None
+        self.best_model_path_ema = ""
+        self.model_parallel_size_ema = None
+
+        checkpoints = list(Path(self.dirpath).rglob("*-EMA.ckpt"))
+        log.debug(f"checkpoints: {checkpoints}")
+        for checkpoint in checkpoints:
+            checkpoint = str(checkpoint)
+            if "last" in checkpoint:
+                continue
+            if self.monitor == "val/loss":
+                index = (
+                    checkpoint.find("loss") + len("loss") + 1
+                )  # Find monitor in str + 1 for '='
+            else:
+                index = (
+                    checkpoint.find(self.monitor) + len(self.monitor) + 1
+                )  # Find monitor in str + 1 for '='
+            log.debug(f"self.monitor: {self.monitor}")
+            log.debug(f"index: {index}")
+            log.debug(f"checkpoint[index:]: {checkpoint[index:]}")
+            if index != -1:
+                match = re.search("[A-z]", checkpoint[index:])
+                log.debug(f"match: {match}")
+                if match:
+                    value = checkpoint[
+                        index : index + match.start() - 1
+                    ]  # -1 due to separator hyphen
+                    log.debug(f"value: {value}")
+                    self.best_k_models_ema[checkpoint] = float(value)
+        if len(self.best_k_models_ema) < 1:
+            return  # No saved checkpoints yet
+
+        _reverse = False if self.mode == "min" else True
+
+        best_k_models_ema = sorted(
+            self.best_k_models_ema, key=self.best_k_models_ema.get, reverse=_reverse
+        )
+
+        log.debug(f"best_k_models_ema: {best_k_models_ema}")
+
+        # This section should be ok as rank zero will delete all excess checkpoints, since all other ranks are
+        # instantiated after rank zero. models_to_delete should be 0 for all other ranks.
+        if self.model_parallel_size_ema is not None:
+            models_to_delete = (
+                len(best_k_models_ema) - self.model_parallel_size_ema * self.save_top_k
+            )
+        else:
+            models_to_delete = len(best_k_models_ema) - self.save_top_k
+        log.debug(f"Number of models to delete: {models_to_delete}")
+        for _ in range(models_to_delete):
+            model = best_k_models_ema.pop(-1)
+            self.best_k_models_ema.pop(model)
+            self._del_model_without_trainer(model)
+            log.debug(f"Removed checkpoint: {model}")
+
+        self.kth_best_model_path_ema = best_k_models_ema[-1]
+        self.best_model_path_ema = best_k_models_ema[0]
+        self.best_model_score_ema = self.best_k_models_ema[self.best_model_path_ema]
+
+    def _del_model_without_trainer(self, filepath: str) -> None:
+        try:
+            self._fs.rm(filepath)
+            if self.verbose:
+                log.info(f"Removed checkpoint: {filepath}")
+        except Exception as ex:
+            log.info(f"Tried to remove checkpoint: {filepath} but failed with exception: {ex}")
