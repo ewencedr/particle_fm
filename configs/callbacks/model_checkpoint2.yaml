@@ -3,7 +3,7 @@
 # Save the model periodically by monitoring a quantity.
 # Look at the above link for more detailed information.
 model_checkpoint2:
-  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  _target_: src.callbacks.ema.EMAModelCheckpoint
   dirpath: null # directory to save the model file
   filename: null # checkpoint filename
   monitor: null # name of the logged metric which determines when model is improving

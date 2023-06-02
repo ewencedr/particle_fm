@@ -18,7 +18,7 @@ tags: ["flow_matching", "tops", "30", "test_runs"]
 
 trainer:
   min_epochs: 3
-  max_epochs: 15
+  max_epochs: 30
   gradient_clip_val: 0.5
   # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
@@ -44,7 +44,7 @@ model:
   global_cond_dim: 0
   local_cond_dim: 0
   t_local_cat: True
-  t_global_cat: True
+  t_global_cat: False
   # transformer
   dropout: 0.0
   heads: 4
@@ -76,7 +76,7 @@ data:
 
 callbacks:
   jetnet_eval:
-    every_n_epochs: 10
+    every_n_epochs: 3
     num_jet_samples: 2
     batch_size: 256
     plot_w_dists: False

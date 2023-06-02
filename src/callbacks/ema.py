@@ -178,15 +178,15 @@ class EMA(Callback):
 class EMAModelCheckpoint(ModelCheckpoint):
     """Light wrapper around Lightning's `ModelCheckpoint` to, upon request, save an EMA copy of the
     model as well. Should only be used with `EMACallback`. Should only work for trainings with a
-    single GPU. save_top_k is not supported for custom save names, hardcoded for val/loss only.
+    single GPU. For custom checkpoint names use the metric map.
 
-    #TODO add other metrics
     Adapted from: https://github.com/NVIDIA/NeMo/blob/be0804f61e82dd0f63da7f9fe8a4d8388e330b18/nemo/utils/exp_manager.py#L744
     """
 
     def __init__(self, **kwargs):
         # call the parent class constructor with the provided kwargs
         super().__init__(**kwargs)
+        self.metric_map = {"val/loss": "loss", "w1m_mean_1b": "w1m", "w1p_mean_1b": "w1p"}
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
@@ -207,12 +207,12 @@ class EMAModelCheckpoint(ModelCheckpoint):
             super()._save_checkpoint(trainer, filepath)
             ema_callback.restore_original_weights(trainer.lightning_module)
             if self.save_top_k != -1:
-                self.topk_check_previous_run_ema()
+                self.topk_check_ema()
 
     def _ema_format_filepath(self, filepath: str) -> str:
         return filepath.replace(self.FILE_EXTENSION, f"-EMA{self.FILE_EXTENSION}")
 
-    def topk_check_previous_run_ema(self):
+    def topk_check_ema(self):
         self.best_k_models_ema = {}
         self.kth_best_model_path_ema = ""
         self.best_model_score_ema = None
@@ -225,15 +225,16 @@ class EMAModelCheckpoint(ModelCheckpoint):
             checkpoint = str(checkpoint)
             if "last" in checkpoint:
                 continue
-            if self.monitor == "val/loss":
-                index = (
-                    checkpoint.find("loss") + len("loss") + 1
-                )  # Find monitor in str + 1 for '='
+
+            if self.monitor in self.metric_map:
+                monitor = self.metric_map[self.monitor]
+                if monitor not in checkpoint:
+                    continue
             else:
-                index = (
-                    checkpoint.find(self.monitor) + len(self.monitor) + 1
-                )  # Find monitor in str + 1 for '='
-            log.debug(f"self.monitor: {self.monitor}")
+                monitor = self.monitor
+
+            index = checkpoint.find(monitor) + len(monitor) + 1  # Find monitor in str + 1 for '='
+            log.debug(f"-----monitor: {monitor}")
             log.debug(f"index: {index}")
             log.debug(f"checkpoint[index:]: {checkpoint[index:]}")
             if index != -1:
