@@ -26,6 +26,7 @@ class EPiC_layer(nn.Module):
         num_points (int, optional): Number of points in set. Defaults to 30.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+        dropout (float, optional): Dropout rate. Defaults to 0.0.
     """
 
     def __init__(
@@ -41,6 +42,7 @@ class EPiC_layer(nn.Module):
         wrapper_func: str = "weight_norm",
         frequencies: int = 6,
         num_points: int = 30,
+        dropout: float = 0.0,
     ):
         super().__init__()
         self.activation = activation
@@ -68,6 +70,8 @@ class EPiC_layer(nn.Module):
         self.fc_local2 = self.wrapper_func(
             nn.Linear(hid_dim + t_local_dim + self.local_cond_dim, hid_dim)
         )
+
+        self.do = nn.Dropout(dropout)
 
     def forward(
         self,
@@ -179,6 +183,7 @@ class EPiC_layer(nn.Module):
         x_global = getattr(F, self.activation, lambda x: x)(
             self.fc_global2(x_global1) + x_global
         )  # with residual connection before AF
+        x_global = self.do(x_global)
 
         x_global2local = x_global.view(-1, 1, latent_global).repeat(
             1, n_points, 1
@@ -194,6 +199,7 @@ class EPiC_layer(nn.Module):
         x_local = getattr(F, self.activation, lambda x: x)(
             self.fc_local2(torch.cat((t_local, x_local1, local_cond), dim=-1)) + x_local
         )
+        x_local = self.do(x_local)
 
         return x_global, x_local
 
@@ -219,6 +225,7 @@ class EPiC_generator(nn.Module):
         num_points (int, optional): Number of points in set. Defaults to 30.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+        dropout (float, optional): Dropout rate. Defaults to 0.0.
     """
 
     def __init__(
@@ -237,6 +244,7 @@ class EPiC_generator(nn.Module):
         num_points: int = 30,
         t_local_cat: bool = False,
         t_global_cat: bool = False,
+        dropout: float = 0.0,
     ):
         super().__init__()
         self.activation = activation
@@ -279,12 +287,15 @@ class EPiC_generator(nn.Module):
                     global_cond_dim=global_cond_dim,
                     local_cond_dim=local_cond_dim,
                     frequencies=frequencies,
+                    dropout=dropout,
                 )
             )
 
         self.local_1 = self.wrapper_func(
             nn.Linear(self.hid_d + t_local_dim + self.local_cond_dim, self.feats),
         )
+
+        self.do = nn.Dropout(dropout)
 
     def forward(
         self,
@@ -356,10 +367,13 @@ class EPiC_generator(nn.Module):
         z_local = getattr(F, self.activation, lambda x: x)(
             self.local_0(torch.cat((t_local, z_local, local_cond), dim=-1))
         )
+        z_local = self.do(z_local)
+
         logger_eg.debug(f"z_global1: {z_global.shape}")
         z_global = getattr(F, self.activation, lambda x: x)(self.global_0(z_global))
         logger_eg.debug(f"z_global2: {z_global.shape}")
         z_global = getattr(F, self.activation, lambda x: x)(self.global_1(z_global))
+        z_global = self.do(z_global)
 
         latent_tensor = torch.cat([latent_tensor, z_global.clone().reshape(batch_size, 1, -1)], 1)
 

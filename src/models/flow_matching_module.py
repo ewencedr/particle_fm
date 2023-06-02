@@ -144,6 +144,7 @@ class CNF(nn.Module):
                 t_global_cat=t_global_cat,
                 global_cond_dim=global_cond_dim,
                 local_cond_dim=local_cond_dim,
+                dropout=dropout,
             )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)

@@ -42,8 +42,10 @@ model:
   local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
-  # transformer
+
   dropout: 0.0
+
+  # transformer
   heads: 4
   mask: True
   # loss
@@ -82,6 +84,7 @@ callbacks:
     log_w_dists: True
     data_type: "val"
     use_ema: True
+    ode_solver: "midpoint"
 
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints

@@ -45,8 +45,10 @@ model:
   local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
+
+  dropout: 0.1
+
   # transformer
-  dropout: 0.0
   heads: 4
   mask: True
   # debug
@@ -85,6 +87,7 @@ callbacks:
     mass_conditioning: ${model.mass_conditioning}
     data_type: "test"
     use_ema: True
+    ode_solver: "midpoint"
 
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints
