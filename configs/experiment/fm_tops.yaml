@@ -84,6 +84,7 @@ callbacks:
     log_w_dists: True
     mass_conditioning: ${model.mass_conditioning}
     data_type: "test"
+    use_ema: True
 
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints

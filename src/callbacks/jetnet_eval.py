@@ -1,3 +1,6 @@
+import warnings
+from typing import Optional
+
 import numpy as np
 import pytorch_lightning as pl
 import wandb
@@ -12,12 +15,17 @@ from src.schedulers.logging_scheduler import (
     nolog10000,
 )
 from src.utils import apply_mpl_styles, create_and_plot_data
+from src.utils.pylogger import get_pylogger
 
+from .ema import EMA
+
+log = get_pylogger("JetNetEvaluationCallback")
 
 # TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
 # TODO fix efp logging
-# TODO use EMA for logging
+
+
 class JetNetEvaluationCallback(pl.Callback):
     """Create a callback to evaluate the model on the test dataset of the JetNet dataset and log
     the results to loggers. Currently supported are CometLogger and WandbLogger.
@@ -34,6 +42,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
         mass_conditioning (bool, optional): Condition on mass. Defaults to False.
         data_type (str, optional): Type of data to plot. Options are 'test' and 'val'. Defaults to "test".
+        use_ema (bool, optional): Use exponential moving average weights for logging. Defaults to False.
         **kwargs: Arguments for create_and_plot_data
     """
 
@@ -50,6 +59,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_epoch_zero: bool = False,
         mass_conditioning: bool = False,
         data_type: str = "val",
+        use_ema: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -59,6 +69,7 @@ class JetNetEvaluationCallback(pl.Callback):
         self.log_w_dists = log_w_dists
         self.log_times = log_times
         self.log_epoch_zero = log_epoch_zero
+        self.use_ema = use_ema
 
         self.mass_conditioning = mass_conditioning
 
@@ -75,6 +86,7 @@ class JetNetEvaluationCallback(pl.Callback):
         self.comet_logger = None
         self.wandb_logger = None
 
+        # available custom logging schedulers
         self.available_custom_logging_scheduler = {
             "custom1": custom1,
             "custom5000epochs": custom5000epochs,
@@ -90,6 +102,15 @@ class JetNetEvaluationCallback(pl.Callback):
                 self.comet_logger = logger.experiment
             elif isinstance(logger, pl.loggers.WandbLogger):
                 self.wandb_logger = logger.experiment
+
+        # get ema callback
+        self.ema_callback = self._get_ema_callback(trainer)
+        if self.ema_callback is None and self.use_ema:
+            warnings.warn(
+                "JetNet Evaluation Callbacks was told to use EMA weights, but EMA callback was not found. Using normal weights."
+            )
+        elif self.ema_callback is not None and self.use_ema:
+            log.info("Using EMA weights for logging.")
 
     def on_train_epoch_end(self, trainer, pl_module):
         # Skip for all other epochs
@@ -127,6 +148,16 @@ class JetNetEvaluationCallback(pl.Callback):
 
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
 
+            # Get EMA weights if available
+            if (
+                self.ema_callback is not None
+                and self.ema_callback.ema_initialized
+                and self.use_ema
+            ):
+                self.ema_callback.replace_model_weights(pl_module)
+            elif self.ema_callback and self.use_ema:
+                warnings.warn("EMA Callback is not initialized. Using normal weights.")
+
             fig, particle_data, times = create_and_plot_data(
                 background_data,
                 [pl_module],
@@ -147,10 +178,19 @@ class JetNetEvaluationCallback(pl.Callback):
                 **self.kwargs,
             )
 
+            # Get normal weights back after sampling
+            if (
+                self.ema_callback is not None
+                and self.ema_callback.ema_initialized
+                and self.use_ema
+            ):
+                self.ema_callback.restore_original_weights(pl_module)
+
             particle_data = particle_data[0]
             mask_data = (particle_data[..., 0] == 0).astype(int)
             mask_data = np.expand_dims(mask_data, axis=-1)
             mask_data = 1 - mask_data
+
             if self.log_w_dists:
                 # 1 batch
                 w_dists_1b_temp = calculate_all_wasserstein_metrics(
@@ -193,6 +233,7 @@ class JetNetEvaluationCallback(pl.Callback):
                     self.wandb_logger.log({"Wasserstein Metrics 1b": w_dists_1b})
                 self.log("w1m_mean_1b", w_dists_1b["w1m_mean_1b"])
                 self.log("w1p_mean_1b", w_dists_1b["w1p_mean_1b"])
+
             # Jet genereation time
             if self.log_times:
                 if self.comet_logger is not None:
@@ -206,3 +247,10 @@ class JetNetEvaluationCallback(pl.Callback):
                 self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
             if self.wandb_logger is not None:
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
+
+    def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
+        ema_callback = None
+        for callback in trainer.callbacks:
+            if isinstance(callback, EMA):
+                ema_callback = callback
+        return ema_callback

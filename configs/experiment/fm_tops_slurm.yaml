@@ -81,6 +81,7 @@ callbacks:
     plot_jet_features: True
     log_w_dists: True
     data_type: "val"
+    use_ema: True
 
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints

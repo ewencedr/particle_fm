@@ -5,8 +5,8 @@ defaults:
   #- early_stopping.yaml
   - model_summary.yaml
   - rich_progress_bar.yaml
-  - jetnet_eval.yaml
   - ema.yaml
+  - jetnet_eval.yaml
   - _self_
 
 model_checkpoint:
@@ -38,3 +38,6 @@ model_checkpoint3:
 
 model_summary:
   max_depth: -1
+
+jetnet_eval:
+  use_ema: True

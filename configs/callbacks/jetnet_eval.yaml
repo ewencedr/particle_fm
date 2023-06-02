@@ -6,6 +6,7 @@ jetnet_eval:
   w_dists_batches: 5
   image_path: ${paths.log_dir}callback_logs/
   model_name: "model-test"
+  use_ema: False
   #plotting
   batch_size: 1000
   calculate_efps: False
