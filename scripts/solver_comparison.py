@@ -42,9 +42,6 @@ def main(params):
     apply_mpl_styles()
 
     ode_solver_adaptive = [
-        "dopri5_zuko",
-        "dopri5",
-        "tsit5",
         "rk4",
         "euler",
         "midpoint",

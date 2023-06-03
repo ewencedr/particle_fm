@@ -5,7 +5,7 @@ defaults:
   #- early_stopping.yaml
   - model_summary.yaml
   - rich_progress_bar.yaml
-  - ema.yaml
+  # - ema.yaml
   - jetnet_eval.yaml
   - _self_
 

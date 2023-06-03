@@ -58,7 +58,7 @@ model:
   #scheduler:
   #  warmup: ${trainer.min_epochs}
   #  max_iters: ${trainer.max_epochs}
-  #cosine_annealing:
+  cosine_annealing:
   scheduler:
     T_max: ${trainer.max_epochs}
   gpus: 1

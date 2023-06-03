@@ -820,10 +820,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         x, mask = batch
         if not self.hparams.mask:
             mask = None
-        if self.trainer.current_epoch == 0:
-            # Just to have something logged so that the checkpoint callback doesn't fail
-            self.log("w1m_mean_1b", 0.005)
-            self.log("w1p_mean_1b", 0.005)
 
         if self.hparams.use_mass_loss:
             loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask)

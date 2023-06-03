@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pytorch_lightning as pl
@@ -96,6 +96,10 @@ class JetNetEvaluationCallback(pl.Callback):
         }
 
     def on_train_start(self, trainer, pl_module) -> None:
+        # log something, so that metrics exists and the checkpoint callback doesn't crash
+        self.log("w1m_mean_1b", 0.005)
+        self.log("w1p_mean_1b", 0.005)
+
         # get loggers
         for logger in trainer.loggers:
             if isinstance(logger, pl.loggers.CometLogger):
