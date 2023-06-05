@@ -94,6 +94,7 @@ def plot_data(
     plot_jet_features: bool = False,
     plot_w_dists: bool = False,
     w_dist_m: float = 0,
+    mass_linear: bool = True,
     plot_efps: bool = True,
     variable_jet_sizes_plotting: bool = True,
     selected_particles: list[int] = [1, 5, 20],
@@ -124,6 +125,7 @@ def plot_data(
         plot_jet_features (bool, optional): Plot Jet Features. Defaults to False.
         plot_w_dists (bool, optional): Plot wasserstein distances inside of jet mass plot. Defaults to False.
         w_dist_m (float, optional): wasserstein distances to be plotted if plot_w_dists==True. Defaults to 0.
+        mass_linear (bool, optional): Plot jet mass in linear scale. Defaults to True.
         plot_efps (bool, optional): Plot EFPs. Defaults to True.
         variable_jet_sizes_plotting (bool, optional): Plot p_t distributions of selected jets. Count by p_t. Defaults to True.
         selected_particles (list, optional): Highest p_t particles for which the distributions are plotted if variable_jet_sizes_plotting==True. Defaults to [1, 5, 20].
@@ -434,7 +436,8 @@ def plot_data(
                 )
 
     ax7.set_xlabel("Jet Mass")
-    ax7.set_yscale("log")
+    if not mass_linear:
+        ax7.set_yscale("log")
 
     ax8 = fig.add_subplot(gs[gs_counter + 1])
     data1 = np.sum(sim_data[:, :, 3], axis=1)
@@ -850,6 +853,7 @@ def create_and_plot_data(
     print_parameters: bool = True,
     plot_jet_features: bool = False,
     plot_w_dists: bool = False,
+    mass_linear: bool = True,
     bins: int = 100,
     sim_data_label: str = "JetNet",
     file_dict: dict = None,
@@ -884,6 +888,7 @@ def create_and_plot_data(
         print_parameters (bool, optional): _description_. Defaults to True.
         plot_jet_features (bool, optional): _description_. Defaults to True.
         plot_w_dists (bool, optional): _description_. Defaults to True.
+        mass_linear (bool, optional): Plot mass distribution in linear scale. Defaults to True.
         bins (int, optional): _description_. Defaults to 100.
         sim_data_label (str, optional): _description_. Defaults to "JetNet".
         file_dict (_type_, optional): _description_. Defaults to None.
@@ -957,6 +962,7 @@ def create_and_plot_data(
         pt_selected_particles_sim=pt_selected_particles_sim,
         pt_selected_multiplicities_sim=pt_selected_multiplicities_sim,
         w_dist_m=w_dist_m,
+        mass_linear=mass_linear,
         save_folder=save_folder,
         save_name=save_name,
         plottype=plottype,
