@@ -767,7 +767,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"u_t: {u_t.shape}")
 
-            v_t = v(t.squeeze(-1), y, mask=mask)
+            temp = y.clone()
+            for v in self.flows:
+                temp = v(t.squeeze(-1), temp, mask=mask)
+            v_t = temp.clone()
+
             out = (v_t - u_t).square().mean()
 
             logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
