@@ -757,7 +757,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"x_0: {x_0.shape}")
             logger_loss.debug(f"x_1: {x_1.shape}")
 
-            mu_t = t * x_1 + (1 - t) * x_0
+            mu_t = (1 - t) * x_1 + t * x_0
             y = mu_t + sigma_t * torch.randn_like(mu_t)
 
             u_t = x_1 - x_0
