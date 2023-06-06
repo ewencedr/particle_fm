@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Optional
 
 import numpy as np
 import pytorch_lightning as pl
+import torch
 import wandb
 
 from src.data.components import calculate_all_wasserstein_metrics
@@ -165,9 +166,11 @@ class JetNetEvaluationCallback(pl.Callback):
             elif self.data_type == "val":
                 background_data = np.array(trainer.datamodule.tensor_val)
                 background_mask = np.array(trainer.datamodule.mask_val)
-            if self.datasets_multiplier > 1:
-                background_data = np.repeat(background_data, self.datasets_multiplier, axis=0)
-                background_mask = np.repeat(background_mask, self.datasets_multiplier, axis=0)
+            # if self.datasets_multiplier > 1:
+            #    background_data = np.repeat(background_data, self.datasets_multiplier, axis=0)
+            #    background_mask = np.repeat(background_mask, self.datasets_multiplier, axis=0)
+            big_mask = np.repeat(background_mask, 5, axis=0)
+            big_data = np.repeat(background_data, 5, axis=0)
 
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
 
@@ -192,28 +195,41 @@ class JetNetEvaluationCallback(pl.Callback):
             #        background_mask_plot = background_mask[: len(trainer.datamodule.mask_val)]
             #        jet_samples_plot = len(trainer.datamodule.tensor_val)
             # else:
-            background_data_plot = background_data
-            background_mask_plot = background_mask
-            jet_samples_plot = self.num_jet_samples
+            # background_data_plot = background_data
+            # background_mask_plot = background_mask
+            # jet_samples_plot = self.num_jet_samples
 
-            fig, particle_data, times = create_and_plot_data(
-                background_data_plot,
-                [pl_module],
-                cond=cond,
-                save_name=plot_name,
-                labels=["Model"],
-                normalized_data=[trainer.datamodule.hparams.normalize],
-                normalize_sigma=trainer.datamodule.hparams.normalize_sigma,
-                variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
-                mask=background_mask_plot,
-                num_jet_samples=jet_samples_plot,
+            # fig, particle_data, times = create_and_plot_data(
+            #    background_data_plot,
+            #    [pl_module],
+            #    cond=cond,
+            #    save_name=plot_name,
+            #    labels=["Model"],
+            #    normalized_data=[trainer.datamodule.hparams.normalize],
+            #    normalize_sigma=trainer.datamodule.hparams.normalize_sigma,
+            #    variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
+            #    mask=background_mask_plot,
+            #    num_jet_samples=jet_samples_plot,
+            #    means=trainer.datamodule.means,
+            #    stds=trainer.datamodule.stds,
+            #    save_folder=self.image_path,
+            #    print_parameters=False,
+            #    plot_efps=self.calculate_efps,
+            #    close_fig=True,
+            #    **self.kwargs,
+            # )
+
+            data, generation_time = generate_data(
+                pl_module,
+                5 * len(background_mask),
+                batch_size=256,
+                variable_set_sizes=True,
+                mask=torch.tensor(big_mask),
+                normalized_data=trainer.datamodule.hparams.normalize,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
-                save_folder=self.image_path,
-                print_parameters=False,
-                plot_efps=self.calculate_efps,
-                close_fig=True,
-                **self.kwargs,
+                ode_solver="midpoint",
+                ode_steps=100,
             )
 
             # Get normal weights back after sampling
@@ -224,68 +240,81 @@ class JetNetEvaluationCallback(pl.Callback):
             ):
                 self.ema_callback.restore_original_weights(pl_module)
 
-            particle_data = particle_data[0]
-            mask_data = (particle_data[..., 0] == 0).astype(int)
-            mask_data = np.expand_dims(mask_data, axis=-1)
-            mask_data = 1 - mask_data
+            w_dists_big = calculate_all_wasserstein_metrics(
+                background_data[..., :3],
+                data,
+                None,
+                None,
+                num_eval_samples=len(background_data),
+                num_batches=5,
+                calculate_efps=False,
+                use_masks=False,
+            )
+            self.log("w1m_mean_1b", w_dists_big["w1m_mean"])
+            self.log("w1p_mean_1b", w_dists_big["w1p_mean"])
 
-            if self.log_w_dists:
-                # 1 batch
-                # ! Do this properly
-                w_dists_1b_temp = calculate_all_wasserstein_metrics(
-                    background_data[: len(trainer.datamodule.tensor_val), :, :3],
-                    particle_data,
-                    None,
-                    None,
-                    num_eval_samples=len(trainer.datamodule.tensor_val),
-                    num_batches=self.datasets_multiplier,
-                    calculate_efps=True,
-                    use_masks=False,
-                )
-                # create new dict with _1b suffix to not log the same values twice
-                w_dists_1b = {}
-                for key, value in w_dists_1b_temp.items():
-                    w_dists_1b[key + "_1b"] = value
+            # particle_data = particle_data[0]
+            # mask_data = (particle_data[..., 0] == 0).astype(int)
+            # mask_data = np.expand_dims(mask_data, axis=-1)
+            # mask_data = 1 - mask_data
 
-                # divide into batches
-                w_dists = calculate_all_wasserstein_metrics(
-                    background_data[: len(particle_data), :, :3],
-                    particle_data,
-                    background_mask[: len(particle_data)],
-                    mask_data,
-                    num_eval_samples=self.num_jet_samples // self.w_dists_batches,
-                    num_batches=self.w_dists_batches,
-                    calculate_efps=self.calculate_efps,
-                    use_masks=False,
-                )
-
-                # Wasserstein Metrics
-                text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
-                text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean_1b']}+-{w_dists_1b['w1m_std_1b']}, W1p: {w_dists_1b['w1p_mean_1b']}+-{w_dists_1b['w1p_std_1b']}, W1efp: {w_dists_1b['w1efp_mean_1b']}+-{w_dists_1b['w1efp_std_1b']}"
-                if self.comet_logger is not None:
-                    self.comet_logger.log_text(text)
-                    self.comet_logger.log_metrics(w_dists)
-                    self.comet_logger.log_text(text_1b)
-                    self.comet_logger.log_metrics(w_dists_1b)
-                if self.wandb_logger is not None:
-                    self.wandb_logger.log({"Wasserstein Metrics": w_dists})
-                    self.wandb_logger.log({"Wasserstein Metrics 1b": w_dists_1b})
-                self.log("w1m_mean_1b", w_dists_1b["w1m_mean_1b"])
-                self.log("w1p_mean_1b", w_dists_1b["w1p_mean_1b"])
+            # if self.log_w_dists:
+            #    # 1 batch
+            #    # ! Do this properly
+            #    w_dists_1b_temp = calculate_all_wasserstein_metrics(
+            #        background_data[: len(trainer.datamodule.tensor_val), :, :3],
+            #        particle_data,
+            #        None,
+            #        None,
+            #        num_eval_samples=len(trainer.datamodule.tensor_val),
+            #        num_batches=self.datasets_multiplier,
+            #        calculate_efps=True,
+            #        use_masks=False,
+            #    )
+            #    # create new dict with _1b suffix to not log the same values twice
+            #    w_dists_1b = {}
+            #    for key, value in w_dists_1b_temp.items():
+            #        w_dists_1b[key + "_1b"] = value
+            #
+            #    # divide into batches
+            #    w_dists = calculate_all_wasserstein_metrics(
+            #        background_data[: len(particle_data), :, :3],
+            #        particle_data,
+            #        background_mask[: len(particle_data)],
+            #        mask_data,
+            #        num_eval_samples=self.num_jet_samples // self.w_dists_batches,
+            #        num_batches=self.w_dists_batches,
+            #        calculate_efps=self.calculate_efps,
+            #        use_masks=False,
+            #    )
+            #
+            #    # Wasserstein Metrics
+            #    text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+            #    text_1b = f"1 BATCH W-Dist epoch:{trainer.current_epoch} W1m: {w_dists_1b['w1m_mean_1b']}+-{w_dists_1b['w1m_std_1b']}, W1p: {w_dists_1b['w1p_mean_1b']}+-{w_dists_1b['w1p_std_1b']}, W1efp: {w_dists_1b['w1efp_mean_1b']}+-{w_dists_1b['w1efp_std_1b']}"
+            #    if self.comet_logger is not None:
+            #        self.comet_logger.log_text(text)
+            #        self.comet_logger.log_metrics(w_dists)
+            #        self.comet_logger.log_text(text_1b)
+            #        self.comet_logger.log_metrics(w_dists_1b)
+            #    if self.wandb_logger is not None:
+            #        self.wandb_logger.log({"Wasserstein Metrics": w_dists})
+            #        self.wandb_logger.log({"Wasserstein Metrics 1b": w_dists_1b})
+            #    self.log("w1m_mean_1b", w_dists_1b["w1m_mean_1b"])
+            #    self.log("w1p_mean_1b", w_dists_1b["w1p_mean_1b"])
 
             # Jet genereation time
-            if self.log_times:
-                if self.comet_logger is not None:
-                    self.comet_logger.log_metrics({"Jet generation time": times})
-                if self.wandb_logger is not None:
-                    self.wandb_logger.log({"Jet generation time": times})
+            # if self.log_times:
+            #    if self.comet_logger is not None:
+            #        self.comet_logger.log_metrics({"Jet generation time": times})
+            #    if self.wandb_logger is not None:
+            #        self.wandb_logger.log({"Jet generation time": times})
 
             # Histogram Plots
-            img_path = f"{self.image_path}{plot_name}.png"
-            if self.comet_logger is not None:
-                self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
-            if self.wandb_logger is not None:
-                self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
+            # img_path = f"{self.image_path}{plot_name}.png"
+            # if self.comet_logger is not None:
+            #    self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
+            # if self.wandb_logger is not None:
+            #    self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
