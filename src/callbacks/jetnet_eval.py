@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import numpy as np
 import pytorch_lightning as pl
@@ -15,6 +15,7 @@ from src.schedulers.logging_scheduler import (
     nolog10000,
 )
 from src.utils import apply_mpl_styles, create_and_plot_data
+from src.utils.data_generation import generate_data
 from src.utils.pylogger import get_pylogger
 
 from .ema import EMA
@@ -24,6 +25,7 @@ log = get_pylogger("JetNetEvaluationCallback")
 # TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
 # TODO fix efp logging
+# ! High statistics are hardcoded, generation should be done in a separate function
 
 
 class JetNetEvaluationCallback(pl.Callback):
@@ -32,7 +34,7 @@ class JetNetEvaluationCallback(pl.Callback):
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
-        num_jet_samples (int, optional): How many jet samples to generate. Defaults to 25000.
+        num_jet_samples (int, optional): How many jet samples to generate. Negative values define the amount of times the whole dataset is taken, e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
         w_dists_batches (int, optional): How many batches to calculate Wasserstein distances. Jet samples for each batch are num_jet_samples // w_dists_batches. Defaults to 5.
         image_path (str, optional): Folder where the images are saved. Defaults to "/beegfs/desy/user/ewencedr/comet_logs".
         model_name (str, optional): Name for saving the model. Defaults to "model-test".
@@ -48,8 +50,8 @@ class JetNetEvaluationCallback(pl.Callback):
 
     def __init__(
         self,
-        every_n_epochs: int = 10,
-        num_jet_samples: int = 25000,
+        every_n_epochs: int | Callable = 10,
+        num_jet_samples: int = -1,
         w_dists_batches: int = 5,
         image_path: str = "./logs/callback_images/",
         model_name: str = "model",
@@ -64,7 +66,7 @@ class JetNetEvaluationCallback(pl.Callback):
     ):
         super().__init__()
         self.every_n_epochs = every_n_epochs
-        self.num_jet_samples = num_jet_samples
+        self.num_jet_samples = -5  # ! FIX
         self.w_dists_batches = w_dists_batches
         self.log_w_dists = log_w_dists
         self.log_times = log_times
@@ -99,6 +101,20 @@ class JetNetEvaluationCallback(pl.Callback):
         # log something, so that metrics exists and the checkpoint callback doesn't crash
         self.log("w1m_mean_1b", 0.005)
         self.log("w1p_mean_1b", 0.005)
+
+        # set number of jet samples if negative
+        if self.num_jet_samples < 0:
+            self.datasets_multiplier = abs(self.num_jet_samples)
+            if self.data_type == "test":
+                self.num_jet_samples = len(trainer.datamodule.tensor_test) * abs(
+                    self.num_jet_samples
+                )
+            if self.data_type == "val":
+                self.num_jet_samples = len(trainer.datamodule.tensor_val) * abs(
+                    self.num_jet_samples
+                )
+        else:
+            self.datasets_multiplier = -1
 
         # get loggers
         for logger in trainer.loggers:
@@ -149,6 +165,9 @@ class JetNetEvaluationCallback(pl.Callback):
             elif self.data_type == "val":
                 background_data = np.array(trainer.datamodule.tensor_val)
                 background_mask = np.array(trainer.datamodule.mask_val)
+            if self.datasets_multiplier > 1:
+                background_data = np.repeat(background_data, self.datasets_multiplier, axis=0)
+                background_mask = np.repeat(background_mask, self.datasets_multiplier, axis=0)
 
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
 
@@ -162,8 +181,23 @@ class JetNetEvaluationCallback(pl.Callback):
             elif self.ema_callback and self.use_ema:
                 warnings.warn("EMA Callback is not initialized. Using normal weights.")
 
+            # Maximum number of samples to plot is the number of samples in the dataset
+            # if self.datasets_multiplier == -1:
+            #    if self.data_type == "test":
+            #        background_data_plot = background_data[: len(trainer.datamodule.tensor_test)]
+            #        background_mask_plot = background_mask[: len(trainer.datamodule.mask_test)]
+            #        jet_samples_plot = len(trainer.datamodule.tensor_test)
+            #    if self.data_type == "val":
+            #        background_data_plot = background_data[: len(trainer.datamodule.tensor_val)]
+            #        background_mask_plot = background_mask[: len(trainer.datamodule.mask_val)]
+            #        jet_samples_plot = len(trainer.datamodule.tensor_val)
+            # else:
+            background_data_plot = background_data
+            background_mask_plot = background_mask
+            jet_samples_plot = self.num_jet_samples
+
             fig, particle_data, times = create_and_plot_data(
-                background_data,
+                background_data_plot,
                 [pl_module],
                 cond=cond,
                 save_name=plot_name,
@@ -171,8 +205,8 @@ class JetNetEvaluationCallback(pl.Callback):
                 normalized_data=[trainer.datamodule.hparams.normalize],
                 normalize_sigma=trainer.datamodule.hparams.normalize_sigma,
                 variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
-                mask=background_mask,
-                num_jet_samples=self.num_jet_samples,
+                mask=background_mask_plot,
+                num_jet_samples=jet_samples_plot,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
                 save_folder=self.image_path,
@@ -197,14 +231,15 @@ class JetNetEvaluationCallback(pl.Callback):
 
             if self.log_w_dists:
                 # 1 batch
+                # ! Do this properly
                 w_dists_1b_temp = calculate_all_wasserstein_metrics(
-                    background_data[: len(particle_data), :, :3],
+                    background_data[: len(trainer.datamodule.tensor_val), :, :3],
                     particle_data,
-                    background_mask[: len(particle_data)],
-                    mask_data,
-                    num_eval_samples=self.num_jet_samples,
-                    num_batches=1,
-                    calculate_efps=self.calculate_efps,
+                    None,
+                    None,
+                    num_eval_samples=len(trainer.datamodule.tensor_val),
+                    num_batches=self.datasets_multiplier,
+                    calculate_efps=True,
                     use_masks=False,
                 )
                 # create new dict with _1b suffix to not log the same values twice
