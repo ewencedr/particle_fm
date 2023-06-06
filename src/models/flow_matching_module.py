@@ -164,7 +164,6 @@ class CNF(nn.Module):
         cond: Tensor = None,
         mask: Tensor = None,
     ) -> Tensor:
-
         # time embedding
         if self.t_emb == "sincos":
             logger.debug(f"t.shape: {t.shape}")
@@ -514,7 +513,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 # print(f"y_hat: {y_hat}")
                 loss = -torch.mean(y_hat)
                 # print(f"loss: {loss}")
-
         elif loss_type_d == "BCE":
             # BCE (https://pytorch.org/docs/stable/generated/torch.nn.BCELoss.html)
             loss = F.binary_cross_entropy_with_logits(y_hat, y)
@@ -537,48 +535,34 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         Returns:
             _type_: Loss.
         """
-        # x = (
-        #    jet_masses(x)
-        #    .unsqueeze(-1)
-        #    .unsqueeze(-1)
-        #    .repeat_interleave(30, dim=-2)
-        #    .repeat_interleave(3, dim=-1)
-        # )
-        # print(f"x shape: {x.shape}")
-        # v = self.flows[0]
         if self.hparams.loss_type == "FM-OT":
-            # t = torch.rand_like(x[..., 0]).unsqueeze(-1)
             t = torch.rand_like(torch.ones(x.shape[0]))
             t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
             t = t.type_as(x)
+
             logger_loss.debug(f"t: {t.shape}")
-            logger_loss.debug(f"t grad: {t.requires_grad}")
-            torch.set_grad_enabled(True)
-            logger_loss.debug(f"t: {t.requires_grad}")
+
             z = torch.randn_like(x)
-            logger_loss.debug(f"z grad: {z.requires_grad}")
-            # z.requires_grad = True
-            logger_loss.debug(f"z grad: {z.requires_grad}")
 
             logger_loss.debug(f"z: {z.shape}")
-            # y = (1 - (1 - self.hparams.sigma) * t) * z + t * x  # directly from fm paper
-            y = (1 - t) * x + (
-                self.hparams.sigma + (1 - self.hparams.sigma) * t
-            ) * z  # 100LOC implementation
-            # y = y.clone().detach().requires_grad_(True)
+            y = (1 - t) * x + (self.hparams.sigma + (1 - self.hparams.sigma) * t) * z
+
             logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"y grad: {y.requires_grad}")
-            # u_t = x - (1 - self.hparams.sigma) * z
-            u_t = (1 - self.hparams.sigma) * z - x  # = v_t?
+
+            u_t = (1 - self.hparams.sigma) * z - x
             u_t = u_t * mask
+
             logger_loss.debug(f"u_t: {u_t.shape}")
+
             temp = y.clone()
             for v in self.flows:
                 temp = v(t.squeeze(-1), temp, mask=mask)
             v_t = temp.clone()
-            logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
 
+            logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
             logger_loss.debug(f"v_t: {v_t.shape}")
+
             if self.hparams.loss_comparison == "MSE":
                 out = (v_t - u_t).square().mean()
             elif self.hparams.loss_comparison == "SWD":
@@ -758,25 +742,36 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             else:
                 raise NotImplementedError
             logger_loss.debug(f"out: {out.shape}")
+
         elif self.hparams.loss_type == "CFM":
-            t = torch.rand_like(x[..., 0]).unsqueeze(-1)
-            logger_loss.debug(f"t: {t.shape}")
-            x_0 = torch.randn_like(x)  # sample from prior
-            logger_loss.debug(f"x_0: {x_0.shape}")
-            x_1 = x  # conditioning
-            logger_loss.debug(f"x_1: {x_1.shape}")
-            mu_t = t * x_1 + (1 - t) * x_0
-            logger_loss.debug(f"mu_t: {mu_t.shape}")
             sigma_t = 0.1
+
+            t = torch.rand_like(torch.ones(x.shape[0]))
+            t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
+            t = t.type_as(x)
+
+            x_0 = torch.randn_like(x)  # sample from prior
+            x_1 = x  # conditioning
+
+            logger_loss.debug(f"t: {t.shape}")
+            logger_loss.debug(f"x_0: {x_0.shape}")
+            logger_loss.debug(f"x_1: {x_1.shape}")
+
+            mu_t = t * x_1 + (1 - t) * x_0
             y = mu_t + sigma_t * torch.randn_like(mu_t)
-            logger_loss.debug(f"y: {y.shape}")
+
             u_t = x_1 - x_0
             u_t = u_t * mask
+
+            logger_loss.debug(f"mu_t: {mu_t.shape}")
+            logger_loss.debug(f"y: {y.shape}")
             logger_loss.debug(f"u_t: {u_t.shape}")
+
             v_t = v(t.squeeze(-1), y, mask=mask)
+            out = (v_t - u_t).square().mean()
+
             logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
             logger_loss.debug(f"v_t: {v_t.shape}")
-            out = (v_t - u_t).square().mean()
             logger_loss.debug(f"out: {out.shape}")
 
         if self.hparams.use_mass_loss:
