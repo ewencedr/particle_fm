@@ -86,6 +86,8 @@ class JetNetDataModule(LightningDataModule):
         self.mask_test: Optional[torch.Tensor] = None
         self.tensor_val: Optional[torch.Tensor] = None
         self.mask_val: Optional[torch.Tensor] = None
+        self.tensor_train: Optional[torch.Tensor] = None
+        self.mask_train: Optional[torch.Tensor] = None
         self.x_mean: Optional[torch.Tensor] = None
         self.x_cov: Optional[torch.Tensor] = None
 
@@ -168,7 +170,7 @@ class JetNetDataModule(LightningDataModule):
                 stds = np.ma.std(dataset_train, axis=(0, 1))
 
                 normalized_dataset_train = normalize_tensor(
-                    dataset_train, means, stds, sigma=self.hparams.normalize_sigma
+                    np.ma.copy(dataset_train), means, stds, sigma=self.hparams.normalize_sigma
                 )
                 mask_train = np.ma.getmask(normalized_dataset_train) == 0
                 mask_train = mask_train.astype(int)
@@ -186,6 +188,14 @@ class JetNetDataModule(LightningDataModule):
                 mask_val = mask_val.astype(int)
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
+
+            # Train without normalization
+            unnormalized_tensor_train = torch.tensor(dataset_train)
+            unnormalized_mask_train = np.ma.getmask(dataset_train) == 0
+            unnormalized_mask_train = unnormalized_mask_train.astype(int)
+            unnormalized_mask_train = torch.tensor(
+                np.expand_dims(unnormalized_mask_train[..., 0], axis=-1)
+            )
 
             # Validation without normalization
             unnormalized_tensor_val = torch.tensor(dataset_val)
@@ -222,6 +232,8 @@ class JetNetDataModule(LightningDataModule):
                 self.means = None
                 self.stds = None
 
+            self.tensor_train = unnormalized_tensor_train
+            self.mask_train = unnormalized_mask_train
             self.tensor_test = tensor_test
             self.mask_test = mask_test
             self.tensor_val = unnormalized_tensor_val
