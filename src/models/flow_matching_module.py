@@ -762,7 +762,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             mu_t = (1 - t) * x_1 + t * x_0
             y = mu_t + sigma_t * torch.randn_like(mu_t)
 
-            u_t = x_1 - x_0
+            u_t = x_0 - x_1
             u_t = u_t * mask
 
             logger_loss.debug(f"mu_t: {mu_t.shape}")
@@ -811,10 +811,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 x0[k] = x0[k, i]
                 x1[k] = x1[k, j]
 
-            mu_t = x0 * (1 - t) + x1 * t
+            mu_t = x0 * t + x1 * (1 - t)
             sigma_t = sigma
             y = mu_t + sigma_t * torch.randn_like(x0)
-            ut = x1 - x0
+            ut = x0 - x1
 
             temp = y.clone()
             for v in self.flows:
