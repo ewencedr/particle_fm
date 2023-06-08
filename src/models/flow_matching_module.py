@@ -3,6 +3,7 @@ from typing import Any, List
 
 import energyflow as ef
 import numpy as np
+import ot as pot
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -744,6 +745,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"out: {out.shape}")
 
         elif self.hparams.loss_type == "CFM":
+            # from https://arxiv.org/abs/2302.00482
             sigma_t = 0.1
 
             t = torch.rand_like(torch.ones(x.shape[0]))
@@ -777,6 +779,52 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
             logger_loss.debug(f"v_t: {v_t.shape}")
             logger_loss.debug(f"out: {out.shape}")
+
+        elif self.hparams.loss_type == "CFM-OT":
+            # from https://arxiv.org/abs/2302.00482
+
+            sigma = 0.1
+
+            x0 = torch.randn_like(x)  # sample from prior
+            x1 = x  # wanted distribution
+
+            t = torch.rand_like(torch.ones(x0.shape[0]))
+            t = t.unsqueeze(-1).repeat_interleave(x0.shape[1], dim=1).unsqueeze(-1)
+            t = t.type_as(x0)
+
+            a, b = pot.unif(x0.size()[1]), pot.unif(x1.size()[1])
+            a = np.repeat(np.expand_dims(a, axis=0), x0.size()[0], axis=0)
+            b = np.repeat(np.expand_dims(b, axis=0), x1.size()[0], axis=0)
+
+            M = torch.cdist(x0, x1) ** 2
+
+            # for each set
+            for k in range(M.shape[0]):
+                M[k] = M[k] / M[k].max()
+                pi = pot.emd(a[k], b[k], M[k].detach().cpu().numpy())
+                p = pi.flatten()
+                p = p / p.sum()
+
+                choices = np.random.choice(pi.shape[0] * pi.shape[1], p=p, size=pi.shape[0])
+                i, j = np.divmod(choices, pi.shape[1])
+
+                x0[k] = x0[k, i]
+                x1[k] = x1[k, j]
+
+            mu_t = x0 * (1 - t) + x1 * t
+            sigma_t = sigma
+            y = mu_t + sigma_t * torch.randn_like(x0)
+            ut = x1 - x0
+
+            temp = y.clone()
+            for v in self.flows:
+                temp = v(t.squeeze(-1), temp, mask=mask)
+            vt = temp.clone()
+
+            out = torch.mean((vt - ut) ** 2)
+
+        else:
+            raise NotImplementedError(f"loss_type {self.hparams.loss_type} not implemented")
 
         if self.hparams.use_mass_loss:
             mass_scaling_factor = 0.0001 * 1

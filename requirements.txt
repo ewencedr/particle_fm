@@ -26,3 +26,4 @@ torchdyn==1.0.3
 zuko
 jetnet
 energyflow
+POT
