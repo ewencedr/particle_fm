@@ -7,10 +7,12 @@ import argparse
 import hydra
 import numpy as np
 import pandas as pd
+import torch
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
 from src.data.components import calculate_all_wasserstein_metrics
+from src.utils.data_generation import generate_data
 from src.utils.plotting import apply_mpl_styles, create_and_plot_data
 
 
@@ -22,7 +24,10 @@ def main(params):
     experiment = params.experiment
     # load everything from experiment config
     with hydra.initialize(version_base=None, config_path="../configs/"):
-        cfg = hydra.compose(config_name="train.yaml", overrides=[f"experiment={experiment}"])
+        cfg = hydra.compose(
+            config_name="train.yaml",
+            overrides=[f"experiment={experiment}", "model.num_particles=150"],
+        )
         # print(OmegaConf.to_yaml(cfg))
 
     datamodule = hydra.utils.instantiate(cfg.data)
@@ -48,14 +53,11 @@ def main(params):
         "ieuler",
         "alf",
     ]
-    steps = [20, 40, 60, 80, 100]
+    steps = [20, 40, 60, 80, 100, 200]
 
     solver_final = []
     steps_final = []
     generation_times_adaptive = []
-    w1m_1b_adaptive = []
-    w1p_1b_adaptive = []
-    w1efp_1b_adaptive = []
     w1m_adaptive = []
     w1p_adaptive = []
     w1efp_adaptive = []
@@ -67,95 +69,48 @@ def main(params):
         for step in steps:
             print(f"Solver: {solver}")
             print(f"Step: {step}")
-            fig, data, generation_times = create_and_plot_data(
-                np.array(val_data),
-                [model],
-                cond=None,
-                save_name="fm_tops_nb",
-                labels=["FM"],
-                mask=val_mask,
-                num_jet_samples=params.n_samples,
-                batch_size=params.batch_size,
+            big_mask = np.repeat(test_mask, 5, axis=0)
+
+            data, generation_time = generate_data(
+                model,
+                5 * len(test_mask),
+                batch_size=256,
                 variable_set_sizes=True,
-                normalized_data=[True, True],
+                mask=torch.tensor(big_mask),
+                normalized_data=True,
                 means=means,
                 stds=stds,
-                plottype="sim_data",
-                plot_jet_features=True,
-                plot_w_dists=False,
-                plot_selected_multiplicities=False,
-                selected_multiplicities=[1, 3, 5, 10, 20, 30],
                 ode_solver=solver,
                 ode_steps=step,
-                save_fig=False,
             )
-            print(f"Generation time: {generation_times}")
-            particle_data = data[0]
-            mask_data = np.ma.masked_where(
-                particle_data[:, :, 0] == 0,
-                particle_data[:, :, 0],
-            )
-            mask_data = np.expand_dims(mask_data, axis=-1)
-            w_dists_1b_adaptive_dict = calculate_all_wasserstein_metrics(
+            print(f"Generation time: {generation_time}")
+            w_dists_big = calculate_all_wasserstein_metrics(
                 test_data[..., :3],
-                particle_data,
-                test_mask,
-                mask_data,
-                num_eval_samples=len(particle_data),
-                num_batches=1,
-                calculate_efps=True,
-            )
-            w_dists_adaptive_dict = calculate_all_wasserstein_metrics(
-                test_data[..., :3],
-                particle_data,
-                test_mask,
-                mask_data,
-                num_eval_samples=int(len(particle_data) / 5),
+                data,
+                None,
+                None,
+                num_eval_samples=len(test_data),
                 num_batches=5,
                 calculate_efps=True,
+                use_masks=False,
             )
+
             solver_final.append(solver)
             steps_final.append(step)
-            generation_times_adaptive.append(float(generation_times.squeeze()))
-            w1m_1b_adaptive.append(w_dists_1b_adaptive_dict["w1m_mean"])
-            w1p_1b_adaptive.append(w_dists_1b_adaptive_dict["w1p_mean"])
-            w1efp_1b_adaptive.append(w_dists_1b_adaptive_dict["w1efp_mean"])
-            w1m_adaptive.append(w_dists_adaptive_dict["w1m_mean"])
-            w1p_adaptive.append(w_dists_adaptive_dict["w1p_mean"])
-            w1efp_adaptive.append(w_dists_adaptive_dict["w1efp_mean"])
-            w1m_std_adaptive.append(w_dists_adaptive_dict["w1m_std"])
-            w1p_std_adaptive.append(w_dists_adaptive_dict["w1p_std"])
-            w1efp_std_adaptive.append(w_dists_adaptive_dict["w1efp_std"])
+            generation_times_adaptive.append(generation_time)
+            w1m_adaptive.append(w_dists_big["w1m_mean"])
+            w1p_adaptive.append(w_dists_big["w1p_mean"])
+            w1efp_adaptive.append(w_dists_big["w1efp_mean"])
+            w1m_std_adaptive.append(w_dists_big["w1m_std"])
+            w1p_std_adaptive.append(w_dists_big["w1p_std"])
+            w1efp_std_adaptive.append(w_dists_big["w1efp_std"])
 
-    # print(f"Adaptive solvers: {(solver_final)}")
-    # print(f"Solver: {(solver_final)}")
-    # print(f"Steps: {steps_final}")
-    # print(
-    #     f"Generated Jets: {([len(particle_data) for _ in range(len(ode_solver_adaptive)*len(steps))])}"
-    # )
-    # print(f"Time: {(generation_times_adaptive)}")
-    # print(f"Time per Jet: {(np.array(generation_times_adaptive) / len(particle_data))}")
-    # print(f"Time per Jet: {len(np.array(generation_times_adaptive) / len(particle_data))}")
-    # print(f"w1m_1b: {(w1m_1b_adaptive)}")
-    # print(f"w1p_1b: {(w1p_1b_adaptive)}")
-    # print(f"w1efp_1b: {(w1efp_1b_adaptive)}")
-    # print(f"w1m: {(w1m_adaptive)}")
-    # print(f"w1p: {(w1p_adaptive)}")
-    # print(f"w1efp: {(w1efp_adaptive)}")
-    # print(f"w1m_std: {(w1m_std_adaptive)}")
-    # print(f"w1p_std: {(w1p_std_adaptive)}")
-    # print(f"w1efp_std: {(w1efp_std_adaptive)}")
     dict_adaptive = {
         "Solver": solver_final,
         "Steps": steps_final,
-        "Generated Jets": [
-            len(particle_data) for _ in range(len(ode_solver_adaptive) * len(steps))
-        ],
+        "Generated Jets": [len(data) for _ in range(len(ode_solver_adaptive) * len(steps))],
         "Time": generation_times_adaptive,
-        "Time per Jet": np.array(generation_times_adaptive) / len(particle_data),
-        "w1m_1b": w1m_1b_adaptive,
-        "w1p_1b": w1p_1b_adaptive,
-        "w1efp_1b": w1efp_1b_adaptive,
+        "Time per Jet": np.array(generation_times_adaptive) / len(data),
         "w1m": w1m_adaptive,
         "w1p": w1p_adaptive,
         "w1efp": w1efp_adaptive,
@@ -164,7 +119,7 @@ def main(params):
         "w1efp_std": w1efp_std_adaptive,
     }
     df = pd.DataFrame(data=dict_adaptive)
-    df.to_csv(f"{params.save_folder}/ode_solver.csv")
+    df.to_csv(f"{params.save_folder}/ode_solver-v2.csv")
 
 
 if __name__ == "__main__":
@@ -172,7 +127,7 @@ if __name__ == "__main__":
     # define parser
     parser = argparse.ArgumentParser(description="training of flows")
     parser.add_argument(
-        "--n_samples", "-n", default=10000, help="samples to generate with each solver", type=int
+        "--n_samples", "-n", default=-5, help="samples to generate with each solver", type=int
     )
     parser.add_argument(
         "--batch_size", "-bs", default=500, help="batch size for sampling", type=int
