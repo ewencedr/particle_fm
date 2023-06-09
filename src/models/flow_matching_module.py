@@ -815,6 +815,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             sigma_t = sigma
             y = mu_t + sigma_t * torch.randn_like(x0)
             ut = x0 - x1
+            ut = ut * mask
 
             temp = y.clone()
             for v in self.flows:
