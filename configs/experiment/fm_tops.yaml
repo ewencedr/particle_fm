@@ -16,6 +16,8 @@ defaults:
 
 tags: ["flow_matching", "tops", "30", "test_runs"]
 
+seed: 12345
+
 trainer:
   min_epochs: 3
   max_epochs: 30
@@ -30,7 +32,7 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 150
+  num_particles: 30
   frequencies: 12
   use_mass_loss: False
   layers: 6
@@ -46,7 +48,7 @@ model:
   t_local_cat: True
   t_global_cat: False
 
-  dropout: 0.1
+  dropout: 0.0
 
   # transformer
   heads: 4
@@ -60,14 +62,15 @@ model:
   loss_type_d: LSGAN
   t_emb: gaussian
   # scheduler
-  #scheduler:
-  #  warmup: ${trainer.min_epochs}
-  #  max_iters: ${trainer.max_epochs}
-  #cosine_annealing:
   scheduler:
-    T_max: ${trainer.max_epochs}
+    warmup: ${trainer.min_epochs}
+    max_iters: ${trainer.max_epochs}
+  #cosine_annealing:
+  #scheduler:
+  #  T_max: ${trainer.max_epochs}
 
 data:
+  jet_type: t
   batch_size: 256
   num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}

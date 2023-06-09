@@ -16,6 +16,8 @@ defaults:
 
 tags: ["flow_matching", "tops"]
 
+seed: 12345
+
 trainer:
   min_epochs: 1000
   max_epochs: 10000
@@ -55,12 +57,12 @@ model:
   loss_type_d: LSGAN
   t_emb: sincos
   # scheduler
-  #scheduler:
-  #  warmup: ${trainer.min_epochs}
-  #  max_iters: ${trainer.max_epochs}
-  cosine_annealing:
   scheduler:
-    T_max: ${trainer.max_epochs}
+    warmup: ${trainer.min_epochs}
+    max_iters: ${trainer.max_epochs}
+  #cosine_annealing:
+  #scheduler:
+  #  T_max: ${trainer.max_epochs}
   gpus: 1
 
 data:
@@ -72,7 +74,15 @@ data:
   normalize_sigma: 5
   use_calculated_base_distribution: False
 
+
 callbacks:
+  ema:
+    decay: 0.9999
+    apply_ema_every_n_steps: 1
+    start_step: 0
+    save_ema_weights_in_callback_state: True
+    evaluate_ema_weights_instead: True
+
   jetnet_eval:
     every_n_epochs: epochs10000
     num_jet_samples: 25000
@@ -83,7 +93,7 @@ callbacks:
     plot_jet_features: True
     log_w_dists: True
     data_type: "val"
-    use_ema: True
+    use_ema: ${callbacks.ema.evaluate_ema_weights_instead}
     ode_solver: "midpoint"
 
   model_checkpoint:
