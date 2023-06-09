@@ -1254,6 +1254,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
+    def on_validation_epoch_start(self) -> None:
+        # set same seed for every validation epoch
+        torch.manual_seed(9999)
+
+    def on_validation_epoch_end(self) -> None:
+        torch.manual_seed(torch.seed())
+
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask = batch
         if self.trainer.current_epoch == 0:
