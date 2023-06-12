@@ -16,13 +16,13 @@ defaults:
 
 tags: ["flow_matching", "tops", "30", "test_runs"]
 
-seed: 12345
+#seed: 12345
 
 trainer:
   min_epochs: 3
   max_epochs: 30
   gradient_clip_val: 0.5
-  # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
+  detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
 model:
   optimizer:
@@ -32,7 +32,7 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 30
+  num_particles: 150
   frequencies: 12
   use_mass_loss: False
   layers: 6
@@ -80,16 +80,25 @@ data:
   use_calculated_base_distribution: False
 
 callbacks:
+
+  ema:
+    decay: 0.9999
+    apply_ema_every_n_steps: 1
+    start_step: 0
+    save_ema_weights_in_callback_state: True
+    evaluate_ema_weights_instead: True
+
+
   jetnet_eval:
     every_n_epochs: 3
     num_jet_samples: 2
-    batch_size: 256
+    batch_size: 1024
     plot_w_dists: False
     w_dists_batches: 2
     log_w_dists: True
     mass_conditioning: ${model.mass_conditioning}
     data_type: "test"
-    use_ema: True
+    use_ema: ${callbacks.ema.evaluate_ema_weights_instead}
     ode_solver: "midpoint"
 
   model_checkpoint:
