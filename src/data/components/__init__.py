@@ -10,4 +10,5 @@ from src.data.components.utils import (
     inverse_normalize_tensor,
     mask_data,
     normalize_tensor,
+    one_hot_encode,
 )
