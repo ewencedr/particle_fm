@@ -79,6 +79,11 @@ data:
   normalize: True
   normalize_sigma: 5
   use_calculated_base_distribution: False
+  conditioning_type: True
+  conditioning_pt: True
+  conditioning_eta: True
+  conditioning_mass: True
+  conditioning_num_particles: True
 
 
 callbacks:

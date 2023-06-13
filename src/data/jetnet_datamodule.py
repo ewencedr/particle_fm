@@ -16,7 +16,8 @@ from .components import (
 
 
 class JetNetDataModule(LightningDataModule):
-    """LightningDataModule for JetNet dataset.
+    """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
+    will be a tensor of zeros.
 
     Args:
         data_dir (str, optional): Path to data directory. Defaults to "data/".
@@ -112,7 +113,7 @@ class JetNetDataModule(LightningDataModule):
 
     @property
     def num_classes(self):
-        pass
+        return len(self.hparams.jet_type)
 
     def get_data_args(self) -> Dict[str, Any]:
         if self.hparams.num_particles != 30 and self.hparams.num_particles != 150:
@@ -175,7 +176,6 @@ class JetNetDataModule(LightningDataModule):
             )
 
             # conditioning
-            print(f"jet_data.shape: {jet_data.shape}")
             conditioning_data = self._handle_conditioning(jet_data)
             tensor_conditioning = torch.tensor(conditioning_data)
 
@@ -201,8 +201,7 @@ class JetNetDataModule(LightningDataModule):
             tensor_conditioning_train = torch.tensor(conditioning_train)
             tensor_conditioning_val = torch.tensor(conditioning_val)
             tensor_conditioning_test = torch.tensor(conditioning_test)
-            print(f"conditioning tensor: {len(tensor_conditioning)}")
-            print(f"x_ma: {len(x_ma)}")
+
             if len(tensor_conditioning) != len(x_ma):
                 raise ValueError("Conditioning tensor and data tensor must have same length.")
 
@@ -331,10 +330,18 @@ class JetNetDataModule(LightningDataModule):
 
         # get the integer categories which classify the jets into different types
         categories = np.unique(jet_data[:, 0])
-        print(f"Categories: {categories}")
         jet_data_one_hot = one_hot_encode(
             jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
         )
+
+        if (
+            not self.hparams.conditioning_type
+            and not self.hparams.conditioning_pt
+            and not self.hparams.conditioning_eta
+            and not self.hparams.conditioning_mass
+            and not self.hparams.conditioning_num_particles
+        ):
+            return np.zeros(len(jet_data))
 
         # select the columns which correspond to the conditioning variables that should be used
         one_hot_len = len(categories)

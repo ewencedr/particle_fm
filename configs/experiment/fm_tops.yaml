@@ -72,9 +72,9 @@ model:
 data:
   jet_type:
     - "g"
-    - "q"
-    - "t"
-    - "w"
+    #- "q"
+    #- "t"
+    #- "w"
     - "z"
   batch_size: 256
   num_particles: ${model.num_particles}
@@ -83,6 +83,11 @@ data:
   normalize: True
   normalize_sigma: 5
   use_calculated_base_distribution: False
+  conditioning_type: False
+  conditioning_pt: False
+  conditioning_eta: False
+  conditioning_mass: False
+  conditioning_num_particles: False
 
 callbacks:
 
