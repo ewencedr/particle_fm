@@ -66,6 +66,12 @@ model:
   gpus: 1
 
 data:
+  jet_type:
+    - "g"
+    - "q"
+    - "t"
+    - "w"
+    - "z"
   batch_size: 1024
   num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}

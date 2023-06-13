@@ -15,7 +15,6 @@ from .components import (
 )
 
 
-# TODO handle multiple jet types
 class JetNetDataModule(LightningDataModule):
     """LightningDataModule for JetNet dataset.
 
@@ -26,7 +25,7 @@ class JetNetDataModule(LightningDataModule):
         batch_size (int, optional): Batch size. Defaults to 256.
         num_workers (int, optional): Number of workers for dataloader. Defaults to 32.
         pin_memory (bool, optional): Pin memory for dataloader. Defaults to False.
-        jet_type (str, optional): Type of jets. Options: g, q, t, w, z. Defaults to "t".
+        jet_type (str | list[str],  optional): Type of jets. Options: g, q, t, w, z. Defaults to "t".
         num_particles (number, optional): Number of particles to use (max 150). Defaults to 150.
         variable_jet_sizes (bool, optional): Use variable jet sizes, jets with lesser constituents than num_particles will be zero padded and masked.
         conditioning_type (bool, optional): Condition on jet type. Defaults to True.
@@ -124,7 +123,7 @@ class JetNetDataModule(LightningDataModule):
         else:
             load_num_particles = self.hparams.num_particles
         data_args = {
-            "jet_type": [self.hparams.jet_type],
+            "jet_type": self.hparams.jet_type,
             "data_dir": f"{self.hparams.data_dir}/jetnet",
             "particle_features": ["etarel", "phirel", "ptrel", "mask"],
             "num_particles": load_num_particles,

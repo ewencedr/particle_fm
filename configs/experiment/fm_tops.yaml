@@ -70,7 +70,12 @@ model:
   #  T_max: ${trainer.max_epochs}
 
 data:
-  jet_type: t
+  jet_type:
+    - "g"
+    - "q"
+    - "t"
+    - "w"
+    - "z"
   batch_size: 256
   num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}
