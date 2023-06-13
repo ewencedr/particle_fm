@@ -5,7 +5,9 @@ import torch
 from sklearn.preprocessing import OneHotEncoder
 
 
-def one_hot_encode(x: np.ndarray, categories: list = [[0, 1, 2, 3, 4]]):
+def one_hot_encode(
+    x: np.ndarray, categories: list = [[0, 1, 2, 3, 4]], num_other_features: int = 4
+) -> np.array:
     """One hot encode the jet type and leave the rest of the features as is
         Note: The one_hot encoded value is based on the position in the categories list not the value itself,
         e.g. categories: [0,3] results in the two one_hot encoded values [1,0] and [0,1]
@@ -13,13 +15,14 @@ def one_hot_encode(x: np.ndarray, categories: list = [[0, 1, 2, 3, 4]]):
     Args:
         x (np.ndarray): jet data with shape (num_jets, num_features) that contains the jet type in the first column
         categories (list, optional): List with values in x that should be one hot encoded. Defaults to [[0, 1, 2, 3, 4]].
+        num_other_features (int, optional): Number of features in x that are not one hot encoded. Defaults to 4.
 
     Returns:
         np.array: one_hot_encoded jet data (num_jets, num_features) with feature length len(categories) + 3 (pt, eta, mass)
     """
     enc = OneHotEncoder(categories=categories)
     type_encoded = enc.fit_transform(x[..., 0].reshape(-1, 1)).toarray()
-    other_features = x[..., 1:].reshape(-1, 3)
+    other_features = x[..., 1:].reshape(-1, num_other_features)
     return np.concatenate((type_encoded, other_features), axis=-1).reshape(*x.shape[:-1], -1)
 
 
