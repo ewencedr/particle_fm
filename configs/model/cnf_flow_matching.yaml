@@ -6,14 +6,14 @@ optimizer:
   lr: 0.001
   weight_decay: 0.00005
 
-#scheduler:
-#  _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
-#  _partial_: true
-#  warmup: 5
-#  max_iters: 10
 scheduler:
-  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
   _partial_: true
+  warmup: 5
+  max_iters: 10
+#scheduler:
+#  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+#  _partial_: true
 
 optimizer_d:
   _target_: torch.optim.AdamW
