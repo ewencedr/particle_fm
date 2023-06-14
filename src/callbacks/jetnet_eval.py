@@ -43,7 +43,6 @@ class JetNetEvaluationCallback(pl.Callback):
         log_w_dists (bool, optional): Calculate and log wasserstein distances Defaults to False.
         log_times (bool, optional): Log generation times of data. Defaults to True.
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
-        mass_conditioning (bool, optional): Condition on mass. Defaults to False.
         data_type (str, optional): Type of data to plot. Options are 'test' and 'val'. Defaults to "test".
         use_ema (bool, optional): Use exponential moving average weights for logging. Defaults to False.
         **kwargs: Arguments for create_and_plot_data
@@ -60,7 +59,6 @@ class JetNetEvaluationCallback(pl.Callback):
         log_w_dists: bool = False,
         log_times: bool = True,
         log_epoch_zero: bool = False,
-        mass_conditioning: bool = False,
         data_type: str = "val",
         use_ema: bool = False,
         **kwargs,
@@ -73,8 +71,6 @@ class JetNetEvaluationCallback(pl.Callback):
         self.log_times = log_times
         self.log_epoch_zero = log_epoch_zero
         self.use_ema = use_ema
-
-        self.mass_conditioning = mass_conditioning
 
         # Parameters for plotting
         self.model_name = model_name
@@ -154,23 +150,21 @@ class JetNetEvaluationCallback(pl.Callback):
                 raise KeyError("Custom logging schedule not available.")
 
         if log:
-            if self.mass_conditioning:
-                cond = jet_masses(trainer.datamodule.tensor_test).unsqueeze(-1)
-            else:
-                cond = None
-
             # Get background data for plotting and calculating Wasserstein distances
             if self.data_type == "test":
                 background_data = np.array(trainer.datamodule.tensor_test)
                 background_mask = np.array(trainer.datamodule.mask_test)
+                background_cond = np.array(trainer.datamodule.tensor_conditioning_test)
             elif self.data_type == "val":
                 background_data = np.array(trainer.datamodule.tensor_val)
                 background_mask = np.array(trainer.datamodule.mask_val)
+                background_cond = np.array(trainer.datamodule.tensor_conditioning_val)
             # if self.datasets_multiplier > 1:
             #    background_data = np.repeat(background_data, self.datasets_multiplier, axis=0)
             #    background_mask = np.repeat(background_mask, self.datasets_multiplier, axis=0)
             big_mask = np.repeat(background_mask, 5, axis=0)
             big_data = np.repeat(background_data, 5, axis=0)
+            big_cond = np.repeat(background_cond, 5, axis=0)
 
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
 
@@ -218,11 +212,12 @@ class JetNetEvaluationCallback(pl.Callback):
             #    close_fig=True,
             #    **self.kwargs,
             # )
-
+            print(f"big-cond: {big_cond.shape}")
             data, generation_time = generate_data(
-                pl_module,
-                5 * len(background_mask),
+                model=pl_module,
+                num_jet_samples=5 * len(background_mask),
                 batch_size=256,
+                cond=torch.tensor(big_cond),
                 variable_set_sizes=True,
                 mask=torch.tensor(big_mask),
                 normalized_data=trainer.datamodule.hparams.normalize,

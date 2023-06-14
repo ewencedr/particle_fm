@@ -19,6 +19,7 @@ from .components import (
 log = get_pylogger("JetNetDataModule")
 
 
+# TODO make cond None when not conditioning
 class JetNetDataModule(LightningDataModule):
     """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
     will be a tensor of zeros.
