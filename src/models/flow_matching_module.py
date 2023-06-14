@@ -202,12 +202,13 @@ class CNF(nn.Module):
         if self.model == "epic":
             x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
             x_local = x
-            if self.mass_conditioning:
-                if cond is None:
-                    cond = jet_masses(x_local).unsqueeze(-1)
-                logger.debug(f"mass.shape: {cond.shape}")
-            else:
-                cond = None
+            # if self.mass_conditioning:
+            #    if cond is None:
+            #        cond = jet_masses(x_local).unsqueeze(-1)
+            #    logger.debug(f"mass.shape: {cond.shape}")
+            # else:
+            #    cond = None
+            # print(f"cond.shape: {cond.shape}")
             x = self.net(t, x_global, x_local, cond, mask)
 
         else:

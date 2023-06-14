@@ -43,7 +43,7 @@ model:
   latent: 16
   return_latent_space: False
   mass_conditioning: False
-  global_cond_dim: 0
+  global_cond_dim: 4
   local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
@@ -83,10 +83,10 @@ data:
   normalize: True
   normalize_sigma: 5
   use_calculated_base_distribution: False
-  conditioning_type: False
-  conditioning_pt: False
+  conditioning_type: True
+  conditioning_pt: True
   conditioning_eta: False
-  conditioning_mass: False
+  conditioning_mass: True
   conditioning_num_particles: False
 
 callbacks:

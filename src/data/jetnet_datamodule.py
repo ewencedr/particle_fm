@@ -177,7 +177,7 @@ class JetNetDataModule(LightningDataModule):
 
             # conditioning
             conditioning_data = self._handle_conditioning(jet_data)
-            tensor_conditioning = torch.tensor(conditioning_data)
+            tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
 
             n_samples_val = int(self.hparams.val_fraction * len(x))
             n_samples_test = int(self.hparams.test_fraction * len(x))
@@ -198,9 +198,9 @@ class JetNetDataModule(LightningDataModule):
                     len(conditioning_data) - n_samples_val,
                 ],
             )
-            tensor_conditioning_train = torch.tensor(conditioning_train)
-            tensor_conditioning_val = torch.tensor(conditioning_val)
-            tensor_conditioning_test = torch.tensor(conditioning_test)
+            tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
+            tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
+            tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
 
             if len(tensor_conditioning) != len(x_ma):
                 raise ValueError("Conditioning tensor and data tensor must have same length.")
