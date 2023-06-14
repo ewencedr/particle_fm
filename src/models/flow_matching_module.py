@@ -524,7 +524,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             raise NotImplementedError("Loss type not supported!")
         return loss
 
-    def loss(self, x: torch.Tensor, mask: torch.Tensor = None):
+    def loss(self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None):
         """Loss function.
 
         Args:
@@ -558,7 +558,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
             temp = y.clone()
             for v in self.flows:
-                temp = v(t.squeeze(-1), temp, mask=mask)
+                temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
             v_t = temp.clone()
 
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
@@ -771,7 +771,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
             temp = y.clone()
             for v in self.flows:
-                temp = v(t.squeeze(-1), temp, mask=mask)
+                temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
             v_t = temp.clone()
 
             out = (v_t - u_t).square().mean()
@@ -819,7 +819,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
             temp = y.clone()
             for v in self.flows:
-                temp = v(t.squeeze(-1), temp, mask=mask)
+                temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
             vt = temp.clone()
 
             out = torch.mean((vt - ut) ** 2)
@@ -865,12 +865,12 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     #    pass
 
     def training_step(self, batch, batch_idx):
-        x, mask = batch
+        x, mask, cond = batch
         if not self.hparams.mask:
             mask = None
 
         if self.hparams.use_mass_loss:
-            loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask)
+            loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask, cond=cond)
             self.log("train/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
             if self.hparams.plot_loss_hist_debug:
                 if batch_idx == 0:
@@ -1250,7 +1250,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         plt.show()
 
         else:
-            loss = self.loss(x, mask=mask)
+            loss = self.loss(x, mask=mask, cond=cond)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
@@ -1263,7 +1263,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         torch.manual_seed(torch.seed())
 
     def validation_step(self, batch: Any, batch_idx: int):
-        x, mask = batch
+        x, mask, cond = batch
         if self.trainer.current_epoch == 0:
             # Just to have something logged so that the checkpoint callback doesn't fail
             self.log("w1m_mean", 0.005)
@@ -1272,10 +1272,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             mask = None
 
         if self.hparams.use_mass_loss:
-            loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask)
+            loss, mse_mass, u_mass, v_mass, x = self.loss(x, mask, cond=cond)
             self.log("val/mse_mass", mse_mass, on_step=False, on_epoch=True, prog_bar=True)
         else:
-            loss = self.loss(x, mask)
+            loss = self.loss(x, mask, cond=cond)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}
 
