@@ -6,6 +6,8 @@ from jetnet.datasets import JetNet
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 
+from src.utils.pylogger import get_pylogger
+
 from .components import (
     center_jets,
     get_base_distribution,
@@ -13,6 +15,8 @@ from .components import (
     normalize_tensor,
     one_hot_encode,
 )
+
+log = get_pylogger("JetNetDataModule")
 
 
 class JetNetDataModule(LightningDataModule):
@@ -26,6 +30,7 @@ class JetNetDataModule(LightningDataModule):
         batch_size (int, optional): Batch size. Defaults to 256.
         num_workers (int, optional): Number of workers for dataloader. Defaults to 32.
         pin_memory (bool, optional): Pin memory for dataloader. Defaults to False.
+        verbose (bool, optional): Verbose. Defaults to False.
         jet_type (str | list[str],  optional): Type of jets. Options: g, q, t, w, z. Defaults to "t".
         num_particles (number, optional): Number of particles to use (max 150). Defaults to 150.
         variable_jet_sizes (bool, optional): Use variable jet sizes, jets with lesser constituents than num_particles will be zero padded and masked.
@@ -72,6 +77,7 @@ class JetNetDataModule(LightningDataModule):
         batch_size: int = 256,
         num_workers: int = 32,
         pin_memory: bool = False,
+        verbose: bool = True,
         # data
         jet_type: str | list[str] = "t",
         num_particles: int = 150,
@@ -273,6 +279,19 @@ class JetNetDataModule(LightningDataModule):
 
                 self.means = None
                 self.stds = None
+
+            if self.hparams.verbose:
+                log.info(f"Data of jet types {self.hparams.jet_type} loaded.")
+                log.info(
+                    f"Conditioning on {tensor_conditioning_train.shape[-1] if len(tensor_conditioning_train.shape)==2 else 0} variables, consisting of jet_type: {len(self.hparams.jet_type) if self.hparams.conditioning_type else 0}, pt: {1 if self.hparams.conditioning_pt else 0}, eta: {1 if self.hparams.conditioning_eta else 0}, mass: {1 if self.hparams.conditioning_mass else 0}, num_particles: {1 if self.hparams.conditioning_num_particles else 0}"
+                )
+                log.info(f"{'Training data shape:':<23} {tensor_train.shape}")
+                log.info(f"{'Validation data shape:':<23} {tensor_val.shape}")
+                log.info(f"{'Test data shape:':<23} {tensor_test.shape}")
+                if self.hparams.normalize:
+                    log.info(f"Normalizing data with sigma = {self.hparams.normalize_sigma}")
+                if self.hparams.centering:
+                    log.info("Centering data")
 
             self.tensor_train = unnormalized_tensor_train
             self.mask_train = unnormalized_mask_train
