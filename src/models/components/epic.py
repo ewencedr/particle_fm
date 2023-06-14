@@ -105,7 +105,7 @@ class EPiC_layer(nn.Module):
         if self.global_cond_dim == 0:
             global_cond = torch.Tensor().to(x_global.device)
         else:
-            global_cond = global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1)
+            global_cond = global_cond_in
 
         if self.local_cond_dim == 0:
             local_cond = torch.Tensor().to(x_local.device)
@@ -119,9 +119,7 @@ class EPiC_layer(nn.Module):
 
         if global_cond_in is not None:
             logger_el.debug(f"global_cond_in shape: {global_cond_in.shape}")
-            logger_el.debug(
-                f"global_cond_in repeat shape: {global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1).shape}"
-            )
+            logger_el.debug(f"global_cond_in repeat shape: {global_cond_in.shape}")
 
         # time conditioning
         if t is None:
@@ -348,7 +346,7 @@ class EPiC_generator(nn.Module):
             z_global = torch.cat(
                 [
                     z_global,
-                    global_cond_in.repeat_interleave(self.global_cond_dim, dim=-1),
+                    global_cond_in,
                 ],
                 1,
             )

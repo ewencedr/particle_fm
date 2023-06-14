@@ -6,11 +6,18 @@ from jetnet.datasets import JetNet
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 
-from .components import center_jets, get_base_distribution, mask_data, normalize_tensor
+from .components import (
+    center_jets,
+    get_base_distribution,
+    mask_data,
+    normalize_tensor,
+    one_hot_encode,
+)
 
 
 class JetNetDataModule(LightningDataModule):
-    """LightningDataModule for JetNet dataset.
+    """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
+    will be a tensor of zeros.
 
     Args:
         data_dir (str, optional): Path to data directory. Defaults to "data/".
@@ -19,9 +26,14 @@ class JetNetDataModule(LightningDataModule):
         batch_size (int, optional): Batch size. Defaults to 256.
         num_workers (int, optional): Number of workers for dataloader. Defaults to 32.
         pin_memory (bool, optional): Pin memory for dataloader. Defaults to False.
-        jet_type (str, optional): Type of jets. Options: g, q, t, w, z. Defaults to "t".
+        jet_type (str | list[str],  optional): Type of jets. Options: g, q, t, w, z. Defaults to "t".
         num_particles (number, optional): Number of particles to use (max 150). Defaults to 150.
         variable_jet_sizes (bool, optional): Use variable jet sizes, jets with lesser constituents than num_particles will be zero padded and masked.
+        conditioning_type (bool, optional): Condition on jet type. Defaults to True.
+        conditioning_pt (bool, optional): Condition on jet pt. Defaults to True.
+        conditioning_eta (bool, optional): Condition on jet eta. Defaults to True.
+        conditioning_mass (bool, optional): Condition on jet mass. Defaults to True.
+        conditioning_num_particles (bool, optional): Condition on jet num_particles. Defaults to True.
         centering (bool, optional): Center the data. Defaults to True.
         normalize (bool, optional): Standardise each feature to have zero mean and normalize_sisgma std deviation. Defaults to True.
         normalize_sigma (int, optional): Number of std deviations to use for normalization. Defaults to 5.
@@ -61,14 +73,19 @@ class JetNetDataModule(LightningDataModule):
         num_workers: int = 32,
         pin_memory: bool = False,
         # data
-        jet_type: str = "t",
+        jet_type: str | list[str] = "t",
         num_particles: int = 150,
         variable_jet_sizes: bool = True,
+        conditioning_type: bool = True,
+        conditioning_pt: bool = True,
+        conditioning_eta: bool = True,
+        conditioning_mass: bool = True,
+        conditioning_num_particles: bool = True,
         # preprocessing
-        centering=True,
-        normalize=True,
-        normalize_sigma=5,
-        use_calculated_base_distribution=True,
+        centering: bool = True,
+        normalize: bool = True,
+        normalize_sigma: int = 5,
+        use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
 
@@ -90,10 +107,13 @@ class JetNetDataModule(LightningDataModule):
         self.mask_train: Optional[torch.Tensor] = None
         self.x_mean: Optional[torch.Tensor] = None
         self.x_cov: Optional[torch.Tensor] = None
+        self.tensor_conditioning_train: Optional[torch.Tensor] = None
+        self.tensor_conditioning_val: Optional[torch.Tensor] = None
+        self.tensor_conditioning_test: Optional[torch.Tensor] = None
 
     @property
     def num_classes(self):
-        pass
+        return len(self.hparams.jet_type)
 
     def get_data_args(self) -> Dict[str, Any]:
         if self.hparams.num_particles != 30 and self.hparams.num_particles != 150:
@@ -104,11 +124,12 @@ class JetNetDataModule(LightningDataModule):
         else:
             load_num_particles = self.hparams.num_particles
         data_args = {
-            "jet_type": [self.hparams.jet_type],
+            "jet_type": self.hparams.jet_type,
             "data_dir": f"{self.hparams.data_dir}/jetnet",
             "particle_features": ["etarel", "phirel", "ptrel", "mask"],
             "num_particles": load_num_particles,
             "jet_features": ["type", "pt", "eta", "mass", "num_particles"],
+            "split": "all",
         }
         return data_args
 
@@ -139,6 +160,7 @@ class JetNetDataModule(LightningDataModule):
                 particle_data = center_jets(particle_data[..., :3])
                 particle_data = np.append(particle_data, np.expand_dims(mask, axis=-1), axis=-1)
 
+            # mask and select number of particles, mainly relevant for smaller jet sizes
             x, mask, masked_particle_data, masked_jet_data = mask_data(
                 particle_data,
                 jet_data,
@@ -146,11 +168,16 @@ class JetNetDataModule(LightningDataModule):
                 variable_jet_sizes=self.hparams.variable_jet_sizes,
             )
 
+            # get mean and covariance of noise distribution
             x_mean, x_cov = get_base_distribution(
                 x,
                 mask,
                 use_calculated_base_distribution=self.hparams.use_calculated_base_distribution,
             )
+
+            # conditioning
+            conditioning_data = self._handle_conditioning(jet_data)
+            tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
 
             n_samples_val = int(self.hparams.val_fraction * len(x))
             n_samples_test = int(self.hparams.test_fraction * len(x))
@@ -164,6 +191,19 @@ class JetNetDataModule(LightningDataModule):
                     len(x_ma) - n_samples_val,
                 ],
             )
+            conditioning_train, conditioning_val, conditioning_test = np.split(
+                conditioning_data,
+                [
+                    len(conditioning_data) - (n_samples_val + n_samples_test),
+                    len(conditioning_data) - n_samples_val,
+                ],
+            )
+            tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
+            tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
+            tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
+
+            if len(tensor_conditioning) != len(x_ma):
+                raise ValueError("Conditioning tensor and data tensor must have same length.")
 
             if self.hparams.normalize:
                 means = np.ma.mean(dataset_train, axis=(0, 1))
@@ -212,14 +252,16 @@ class JetNetDataModule(LightningDataModule):
             mask_test = torch.tensor(np.expand_dims(mask_test[..., 0], axis=-1))
 
             if self.hparams.normalize:
-                self.data_train = TensorDataset(tensor_train, mask_train)
-                self.data_val = TensorDataset(tensor_val, mask_val)
-                self.data_test = TensorDataset(tensor_test, mask_test)
+                self.data_train = TensorDataset(
+                    tensor_train, mask_train, tensor_conditioning_train
+                )
+                self.data_val = TensorDataset(tensor_val, mask_val, tensor_conditioning_val)
+                self.data_test = TensorDataset(tensor_test, mask_test, tensor_conditioning_test)
 
                 self.means = torch.tensor(means)
                 self.stds = torch.tensor(stds)
             else:
-                dataset = TensorDataset(x, mask)
+                dataset = TensorDataset(x, mask, tensor_conditioning)
                 (self.data_train, self.data_val, self.data_test,) = random_split(
                     dataset,
                     [
@@ -240,6 +282,9 @@ class JetNetDataModule(LightningDataModule):
             self.mask_val = unnormalized_mask_val
             self.x_mean = x_mean
             self.x_cov = x_cov
+            self.tensor_conditioning_train = tensor_conditioning_test
+            self.tensor_conditioning_val = tensor_conditioning_val
+            self.tensor_conditioning_test = tensor_conditioning_test
 
     def train_dataloader(self):
         return DataLoader(
@@ -279,6 +324,41 @@ class JetNetDataModule(LightningDataModule):
     def load_state_dict(self, state_dict: Dict[str, Any]):
         """Things to do when loading checkpoint."""
         pass
+
+    def _handle_conditioning(self, jet_data: np.array):
+        """Select the conditioning variables and one-hot encode the type conditioning of jets."""
+
+        # get the integer categories which classify the jets into different types
+        categories = np.unique(jet_data[:, 0])
+        jet_data_one_hot = one_hot_encode(
+            jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
+        )
+
+        if (
+            not self.hparams.conditioning_type
+            and not self.hparams.conditioning_pt
+            and not self.hparams.conditioning_eta
+            and not self.hparams.conditioning_mass
+            and not self.hparams.conditioning_num_particles
+        ):
+            return np.zeros(len(jet_data))
+
+        # select the columns which correspond to the conditioning variables that should be used
+        one_hot_len = len(categories)
+        keep_col = []
+        if self.hparams.conditioning_type:
+            keep_col.append(np.arange(one_hot_len))
+        if self.hparams.conditioning_pt:
+            keep_col.append(np.arange(one_hot_len, one_hot_len + 1))
+        if self.hparams.conditioning_eta:
+            keep_col.append(np.arange(one_hot_len + 1, one_hot_len + 2))
+        if self.hparams.conditioning_mass:
+            keep_col.append(np.arange(one_hot_len + 2, one_hot_len + 3))
+        if self.hparams.conditioning_num_particles:
+            keep_col.append(np.arange(one_hot_len + 3, one_hot_len + 4))
+        keep_col = np.concatenate(keep_col)
+
+        return jet_data_one_hot[:, keep_col]
 
 
 if __name__ == "__main__":

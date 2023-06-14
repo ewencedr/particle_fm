@@ -66,13 +66,24 @@ model:
   gpus: 1
 
 data:
-  batch_size: 256
+  jet_type:
+    - "g"
+    - "q"
+    - "t"
+    - "w"
+    - "z"
+  batch_size: 1024
   num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}
   centering: True
   normalize: True
   normalize_sigma: 5
   use_calculated_base_distribution: False
+  conditioning_type: True
+  conditioning_pt: True
+  conditioning_eta: True
+  conditioning_mass: True
+  conditioning_num_particles: True
 
 
 callbacks:

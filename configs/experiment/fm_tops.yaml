@@ -32,7 +32,7 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 30
+  num_particles: 150
   frequencies: 12
   use_mass_loss: False
   layers: 6
@@ -70,7 +70,12 @@ model:
   #  T_max: ${trainer.max_epochs}
 
 data:
-  jet_type: t
+  jet_type:
+    #- "g"
+    #- "q"
+    - "t"
+    #- "w"
+    #- "z"
   batch_size: 1024
   num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}
@@ -78,9 +83,13 @@ data:
   normalize: True
   normalize_sigma: 5
   use_calculated_base_distribution: False
+  conditioning_type: False
+  conditioning_pt: False
+  conditioning_eta: False
+  conditioning_mass: False
+  conditioning_num_particles: False
 
 callbacks:
-
   ema:
     decay: 0.9999
     apply_ema_every_n_steps: 1
