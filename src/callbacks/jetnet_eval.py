@@ -26,6 +26,7 @@ log = get_pylogger("JetNetEvaluationCallback")
 # TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
 # TODO fix efp logging
+# TODO use ema can be taken from ema callback and should be removed here
 # ! High statistics are hardcoded, generation should be done in a separate function
 
 
@@ -212,7 +213,7 @@ class JetNetEvaluationCallback(pl.Callback):
             #    close_fig=True,
             #    **self.kwargs,
             # )
-            print(f"big-cond: {big_cond.shape}")
+            # print(f"big-cond: {big_cond.shape}")
             data, generation_time = generate_data(
                 model=pl_module,
                 num_jet_samples=5 * len(background_mask),

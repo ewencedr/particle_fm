@@ -40,7 +40,7 @@ model:
   latent: 16
   return_latent_space: False
   mass_conditioning: False
-  global_cond_dim: 0 # needs to be calculated when using conditioning
+  global_cond_dim: 2 # needs to be calculated when using conditioning
   local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
@@ -80,9 +80,9 @@ data:
   normalize_sigma: 5
   use_calculated_base_distribution: False
   conditioning_type: False
-  conditioning_pt: False
+  conditioning_pt: True
   conditioning_eta: False
-  conditioning_mass: False
+  conditioning_mass: True
   conditioning_num_particles: False
 # global_cond_dim needs to be set when using conditioning
 
