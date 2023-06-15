@@ -122,6 +122,22 @@ class JetNetDataModule(LightningDataModule):
     def num_classes(self):
         return len(self.hparams.jet_type)
 
+    @property
+    def jet_types(self):
+        return self.hparams.jet_type
+
+    @property
+    def num_cond_features(self):
+        return sum(
+            [
+                self.hparams.conditioning_pt,
+                self.hparams.conditioning_eta,
+                self.hparams.conditioning_mass,
+                self.hparams.conditioning_num_particles,
+            ]
+            + [self.hparams.conditioning_type] * self.num_classes
+        )
+
     def get_data_args(self) -> Dict[str, Any]:
         if self.hparams.num_particles != 30 and self.hparams.num_particles != 150:
             if self.hparams.num_particles > 150:
