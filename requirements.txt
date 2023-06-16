@@ -27,3 +27,4 @@ zuko
 jetnet
 energyflow
 POT
+pyjet

@@ -51,7 +51,7 @@ def generate_data(
         ValueError: _description_
 
     Returns:
-        np.array: sampled data
+        np.array: sampled data of shape (num_jet_samples, num_particles, num_features) with features (eta, phi, pt)
         float: generation time
     """
     if variable_set_sizes and mask is None:
