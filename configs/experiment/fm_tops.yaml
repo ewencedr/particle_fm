@@ -33,7 +33,7 @@ model:
   features: 3
   hidden_dim: 128
   num_particles: 150
-  frequencies: 12
+  frequencies: 6
   use_mass_loss: False
   layers: 6
   n_transforms: 1
@@ -43,7 +43,7 @@ model:
   latent: 16
   return_latent_space: False
   mass_conditioning: False
-  global_cond_dim: 2 # needs to be calculated when using conditioning
+  global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
@@ -84,9 +84,9 @@ data:
   normalize_sigma: 5
   use_calculated_base_distribution: False
   conditioning_type: False
-  conditioning_pt: True
+  conditioning_pt: False
   conditioning_eta: False
-  conditioning_mass: True
+  conditioning_mass: False
   conditioning_num_particles: False
   # global_cond_dim needs to be set when using conditioning
 

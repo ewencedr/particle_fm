@@ -811,16 +811,17 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
                 x0[k] = x0[k, i]
                 x1[k] = x1[k, j]
+                mask_ot = mask[k, j]
 
             mu_t = x0 * t + x1 * (1 - t)
             sigma_t = sigma
             y = mu_t + sigma_t * torch.randn_like(x0)
             ut = x0 - x1
-            ut = ut * mask
+            ut = ut * mask_ot
 
             temp = y.clone()
             for v in self.flows:
-                temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
+                temp = v(t.squeeze(-1), temp, mask=mask_ot, cond=cond)
             vt = temp.clone()
 
             out = torch.mean((vt - ut) ** 2)

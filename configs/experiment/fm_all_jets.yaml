@@ -29,7 +29,7 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 150
+  num_particles: 30
   frequencies: 6
   use_mass_loss: False
   layers: 6
