@@ -51,7 +51,7 @@ def main(params):
         "euler",
         "midpoint",
         "ieuler",
-        "alf",
+        # "alf",
     ]
     steps = [20, 40, 60, 80, 100, 200]
 
@@ -119,7 +119,7 @@ def main(params):
         "w1efp_std": w1efp_std_adaptive,
     }
     df = pd.DataFrame(data=dict_adaptive)
-    df.to_csv(f"{params.save_folder}/ode_solver-v2.csv")
+    df.to_csv(f"{params.save_folder}/ode_solver-v3.csv")
 
 
 if __name__ == "__main__":
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint",
         "-ckpt",
-        default="/beegfs/desy/user/ewencedr/deep-learning/logs/150 epoch10000 oldsetup/runs/2023-05-22_18-00-11/checkpoints/epoch_1216_loss_2.60804.ckpt",
+        default="/beegfs/desy/user/ewencedr/deep-learning/logs/150 warmuplr midpoint/runs/2023-06-02_21-46-33/checkpoints/epoch_9761_w1m_0.00064797.ckpt",
         help="checkpoint to load",
         type=str,
     )
