@@ -318,7 +318,7 @@ class JetNetDataModule(LightningDataModule):
             self.mask_val = unnormalized_mask_val
             self.x_mean = x_mean
             self.x_cov = x_cov
-            self.tensor_conditioning_train = tensor_conditioning_test
+            self.tensor_conditioning_train = tensor_conditioning_train
             self.tensor_conditioning_val = tensor_conditioning_val
             self.tensor_conditioning_test = tensor_conditioning_test
 
