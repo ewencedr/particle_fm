@@ -50,10 +50,14 @@ def main(params):
         "rk4",
         "euler",
         "midpoint",
-        "ieuler",
+        # "ieuler",
         # "alf",
+        "dopri5",
+        "dopri5_zuko",
+        "tsit5",
     ]
     steps = [20, 40, 60, 80, 100, 200]
+    # steps = [100, 100, 100, 100, 100]
 
     solver_final = []
     steps_final = []
@@ -67,6 +71,11 @@ def main(params):
 
     for solver in ode_solver_adaptive:
         for step in steps:
+            if solver == "midpoint":
+                step = step // 2
+            elif solver == "rk4":
+                step = step // 4
+
             print(f"Solver: {solver}")
             print(f"Step: {step}")
             big_mask = np.repeat(test_mask, 5, axis=0)
@@ -119,7 +128,7 @@ def main(params):
         "w1efp_std": w1efp_std_adaptive,
     }
     df = pd.DataFrame(data=dict_adaptive)
-    df.to_csv(f"{params.save_folder}/ode_solver-v3.csv")
+    df.to_csv(f"{params.save_folder}/ode_solver-nfe.csv")
 
 
 if __name__ == "__main__":
