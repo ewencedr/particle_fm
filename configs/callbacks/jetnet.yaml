@@ -4,6 +4,7 @@ defaults:
   - model_checkpoint3.yaml
   #- early_stopping.yaml
   - model_summary.yaml
+  - lr_monitor.yaml
   - rich_progress_bar.yaml
   - ema.yaml
   - jetnet_eval.yaml

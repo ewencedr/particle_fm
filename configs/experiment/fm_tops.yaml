@@ -20,7 +20,7 @@ seed: 12345
 
 trainer:
   min_epochs: 3
-  max_epochs: 30
+  max_epochs: 3
   gradient_clip_val: 0.5
   # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
@@ -43,7 +43,7 @@ model:
   latent: 16
   return_latent_space: False
   mass_conditioning: False
-  global_cond_dim: 5 # needs to be calculated when using conditioning
+  global_cond_dim: 4 # needs to be calculated when using conditioning
   local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
@@ -71,11 +71,11 @@ model:
 
 data:
   jet_type:
-    - "g"
-    - "q"
+    #- "g"
+    #- "q"
     - "t"
-    - "w"
-    - "z"
+    #- "w"
+    #- "z"
   batch_size: 1024
   num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}
@@ -83,11 +83,11 @@ data:
   normalize: True
   normalize_sigma: 5
   use_calculated_base_distribution: False
-  conditioning_type: True
-  conditioning_pt: False
-  conditioning_eta: False
-  conditioning_mass: False
-  conditioning_num_particles: False
+  conditioning_type: False
+  conditioning_pt: True
+  conditioning_eta: True
+  conditioning_mass: True
+  conditioning_num_particles: True
   # global_cond_dim needs to be set when using conditioning
 
 callbacks:
