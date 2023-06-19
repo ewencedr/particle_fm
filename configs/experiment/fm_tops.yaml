@@ -20,7 +20,7 @@ seed: 12345
 
 trainer:
   min_epochs: 3
-  max_epochs: 3
+  max_epochs: 10
   gradient_clip_val: 0.5
   # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
