@@ -1226,7 +1226,7 @@ git clone https://github.com/YourGithubName/your-repo-name
 cd your-repo-name
 
 # [OPTIONAL] create conda environment
-conda create -n myenv python=3.9
+conda create -n myenv python=3.10
 conda activate myenv
 
 # install pytorch according to instructions
