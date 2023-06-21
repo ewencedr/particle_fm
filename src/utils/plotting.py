@@ -831,7 +831,7 @@ def plot_data(
 def create_and_plot_data(
     sim_data: np.ndarray,
     gen_models,
-    cond: torch.Tensor = None,
+    cond: list[torch.Tensor] = None,
     save_name: str = "plot",
     labels: list[str] = ["Model"],
     num_jet_samples: int = 10000,
@@ -866,7 +866,7 @@ def create_and_plot_data(
     Args:
         sim_data (_type_): _description_
         gen_models (_type_): _description_
-        cond (torch.Tensor, optional): Condition data in case of conditioned model. Defaults to None.
+        cond (list[torch.Tensor], optional): Condition data in case of conditioned model. Defaults to None.
         save_name (_type_): _description_
         labels (_type_): _description_
         num_jet_samples (int, optional): _description_. Defaults to 10000.
@@ -1092,7 +1092,7 @@ def create_data_for_plotting(
     stds: list[float] = None,
     file_dict: dict = None,
     calculate_efps: bool = False,
-    cond: torch.Tensor = None,
+    cond: list[torch.Tensor] = None,
     ode_solver: str = "dopri5_zuko",
     ode_steps: int = 100,
 ):
@@ -1106,7 +1106,8 @@ def create_data_for_plotting(
     sim_data = sim_data_in[:num_jet_samples]
     mask = mask[:num_jet_samples]
     if cond is not None:
-        cond = cond[:num_jet_samples]
+        for count, c in enumerate(cond):
+            cond[count] = c[:num_jet_samples]
     jet_data_sim = calculate_jet_features(sim_data)
     efps_sim = []
     if calculate_efps:
@@ -1137,7 +1138,7 @@ def create_data_for_plotting(
                 normalize_sigma=normalize_sigma,
                 means=means,
                 stds=stds,
-                cond=cond,
+                cond=cond[count],
                 ode_solver=ode_solver,
                 ode_steps=ode_steps,
             )
