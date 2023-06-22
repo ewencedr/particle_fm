@@ -1076,6 +1076,61 @@ def do_timing_plots(
     return np.array(times)
 
 
+def prepare_data_for_plotting(
+    data: list[np.ndarray],
+    calculate_efps: bool = False,
+    selected_particles: list[int] = [1, 3, 10],
+    selected_multiplicities: list[int] = [20, 30, 40],
+):
+    """Calculate the features for plotting, i.e. the jet features, the efps, the pt of selected
+    particles and the pt of selected multiplicities.
+
+    Args:
+        data (np.ndarray): data in the shape (n_jets, n_particles, n_features) with features (pt, eta, phi)
+        calculate_efps (bool, optional): If efps should be calculated. Defaults to False.
+        selected_particles (list[int], optional): Selected particles. Defaults to [1,3,10].
+        selected_multiplicities (list[int], optional): Selected multiplicities. Defaults to [20, 30, 40].
+
+    Returns:
+        np.ndarray : jet_data
+        np.ndarray : efps
+        np.ndarray : pt_selected_particles
+        dict : pt_selected_multiplicities
+    """
+
+    jet_data = []
+    efps_values = []
+    pt_selected_particles = []
+    pt_selected_multiplicities = []
+    for count, data_temp in enumerate(data):
+        jet_data_temp = calculate_jet_features(data_temp)
+        efps_temp = []
+        if calculate_efps:
+            efps_temp = efps(data_temp)
+        pt_selected_particles_temp = get_pt_of_selected_particles(data_temp, selected_particles)
+        pt_selected_multiplicities_temp = get_pt_of_selected_multiplicities(
+            data_temp, selected_multiplicities
+        )
+
+        jet_data.append(jet_data_temp)
+        efps_values.append(efps_temp)
+        pt_selected_particles.append(pt_selected_particles_temp)
+        pt_selected_multiplicities.append(pt_selected_multiplicities_temp)
+
+    new_dict = {}
+    for count, i in enumerate(selected_multiplicities):
+        new_dict[f"{count}"] = []
+
+    for dicts in pt_selected_multiplicities:
+        for count, dict_items_array in enumerate(dicts):
+            new_dict[f"{count}"].append(np.array(dicts[dict_items_array]))
+
+    for count, i in enumerate(new_dict):
+        new_dict[i] = np.array(new_dict[i])
+
+    return np.array(jet_data), np.array(efps_values), np.array(pt_selected_particles), new_dict
+
+
 def create_data_for_plotting(
     sim_data_in: np.ndarray,
     gen_models,
