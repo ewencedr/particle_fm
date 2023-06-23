@@ -302,10 +302,10 @@ class JetNetDataModule(LightningDataModule):
                 log.info(
                     f"Conditioning on {tensor_conditioning_train.shape[-1] if len(tensor_conditioning_train.shape)==2 else 0} variables, consisting of jet_type: {len(self.hparams.jet_type) if self.hparams.conditioning_type else 0}, pt: {1 if self.hparams.conditioning_pt else 0}, eta: {1 if self.hparams.conditioning_eta else 0}, mass: {1 if self.hparams.conditioning_mass else 0}, num_particles: {1 if self.hparams.conditioning_num_particles else 0}"
                 )
-                log.info(f"{'Training data shape:':<23} {tensor_train.shape}")
-                log.info(f"{'Validation data shape:':<23} {tensor_val.shape}")
-                log.info(f"{'Test data shape:':<23} {tensor_test.shape}")
                 if self.hparams.normalize:
+                    log.info(f"{'Training data shape:':<23} {tensor_train.shape}")
+                    log.info(f"{'Validation data shape:':<23} {tensor_val.shape}")
+                    log.info(f"{'Test data shape:':<23} {tensor_test.shape}")
                     log.info(f"Normalizing data with sigma = {self.hparams.normalize_sigma}")
                 if self.hparams.centering:
                     log.info("Centering data")
