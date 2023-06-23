@@ -52,9 +52,9 @@ def main(params):
         "midpoint",
         # "ieuler",
         # "alf",
-        "dopri5",
-        "dopri5_zuko",
-        "tsit5",
+        # "dopri5",
+        # "dopri5_zuko",
+        # "tsit5",
     ]
     steps = [20, 40, 60, 80, 100, 200]
     # steps = [100, 100, 100, 100, 100]
@@ -128,7 +128,7 @@ def main(params):
         "w1efp_std": w1efp_std_adaptive,
     }
     df = pd.DataFrame(data=dict_adaptive)
-    df.to_csv(f"{params.save_folder}/ode_solver-nfe.csv")
+    df.to_csv(f"{params.save_folder}/ode_solver-nfe2.csv")
 
 
 if __name__ == "__main__":

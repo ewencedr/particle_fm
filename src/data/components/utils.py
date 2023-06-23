@@ -308,7 +308,7 @@ def get_pt_of_selected_particles(particle_data, selected_particles=[1, 3, 10]):
 
 def get_pt_of_selected_multiplicities(
     particle_data, selected_multiplicities=[10, 20, 30], num_jets=150
-):
+) -> dict:
     """Return pt of jets with selected particle multiplicities.
 
     Args:
@@ -317,7 +317,7 @@ def get_pt_of_selected_multiplicities(
         num_jets (int, optional): _description_. Defaults to 150.
 
     Returns:
-        _type_: _description_
+        dict: _description_
     """
     data = {}
     for count, selected_multiplicity in enumerate(selected_multiplicities):
