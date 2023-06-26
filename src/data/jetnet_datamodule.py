@@ -204,11 +204,7 @@ class JetNetDataModule(LightningDataModule):
 
             n_samples_val = int(self.hparams.val_fraction * len(x))
             n_samples_test = int(self.hparams.test_fraction * len(x))
-            print(f"val_fraction: {self.hparams.val_fraction}")
-            print(f"test_fraction: {self.hparams.test_fraction}")
-            print(f"x: {len(x)}")
-            print(f"n_samples_val: {n_samples_val}")
-            print(f"n_samples_test: {n_samples_test}")
+
             full_mask = np.repeat(mask, repeats=3, axis=-1) == 0
             full_mask = np.ma.make_mask(full_mask, shrink=False)
             x_ma = np.ma.masked_array(x, full_mask)
