@@ -31,6 +31,7 @@ class JetNetDataModule(LightningDataModule):
         batch_size (int, optional): Batch size. Defaults to 256.
         num_workers (int, optional): Number of workers for dataloader. Defaults to 32.
         pin_memory (bool, optional): Pin memory for dataloader. Defaults to False.
+        drop_last (bool, optional): Drop last batch for train and val dataloader. Defaults to False.
         verbose (bool, optional): Verbose. Defaults to False.
         jet_type (str | list[str],  optional): Type of jets. Options: g, q, t, w, z. Defaults to "t".
         num_particles (number, optional): Number of particles to use (max 150). Defaults to 150.
@@ -78,6 +79,7 @@ class JetNetDataModule(LightningDataModule):
         batch_size: int = 256,
         num_workers: int = 32,
         pin_memory: bool = False,
+        drop_last: bool = False,
         verbose: bool = True,
         # data
         jet_type: str | list[str] = "t",
@@ -328,6 +330,7 @@ class JetNetDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=True,
+            drop_last=self.hparams.drop_last,
         )
 
     def val_dataloader(self):
@@ -337,6 +340,7 @@ class JetNetDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
+            drop_last=self.hparams.drop_last,
         )
 
     def test_dataloader(self):
@@ -346,6 +350,7 @@ class JetNetDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
+            drop_last=False,
         )
 
     def teardown(self, stage: Optional[str] = None):
