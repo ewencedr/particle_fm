@@ -4,8 +4,8 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: /jetnet/jetnet_tops_30.yaml
-  - override /model: cnf_flow_matching.yaml
+  - override /data: jetnet_jedi.yaml
+  - override /model: fm_jedi.yaml
   - override /callbacks: jetnet.yaml
   - override /trainer: gpu.yaml
 
@@ -14,25 +14,20 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops", "30", "test_runs"]
+tags: ["flow_matching", "tops"]
 
 seed: 12345
 
 trainer:
-  min_epochs: 3
-  max_epochs: 3
+  min_epochs: 1000
+  max_epochs: 10000
   gradient_clip_val: 0.5
-  # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
 model:
-  optimizer:
-    lr: 0.001
-  optimizer_d:
-    lr: 0.0001
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 150
+  num_particles: 30
   frequencies: 6
   use_mass_loss: False
   layers: 6
@@ -40,58 +35,55 @@ model:
   activation: leaky_relu
   wrapper_func: weight_norm
   # epic
-  latent: 16
+  latent: 10 # !
   return_latent_space: False
   mass_conditioning: False
   global_cond_dim: 2 # needs to be calculated when using conditioning
   local_cond_dim: 0
-  t_local_cat: True
-  t_global_cat: False
+  t_local_cat: True # TODO
+  t_global_cat: False # TODO
 
   dropout: 0.0
 
   # transformer
   heads: 4
   mask: True
-  # debug
-  plot_loss_hist_debug: True
   # loss
   loss_type: FM-OT
   sigma: 1e-4
   loss_comparison: MSE
   loss_type_d: LSGAN
-  t_emb: gaussian
+  t_emb: gaussian # TODO
   # scheduler
-  scheduler:
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
+  #scheduler:
+  #  warmup: ${trainer.min_epochs}
+  #  max_iters: ${trainer.max_epochs}
   #cosine_annealing:
   #scheduler:
   #  T_max: ${trainer.max_epochs}
+  gpus: 1
 
-data:
-  jet_type:
-    #- "g"
-    #- "q"
-    - "t"
-    #- "w"
-    #- "z"
-  batch_size: 1024
-  num_particles: ${model.num_particles}
-  variable_jet_sizes: ${model.mask}
-  centering: False
-  normalize: False
-  normalize_sigma: 5
-  use_calculated_base_distribution: False
-  conditioning_type: False
-  conditioning_pt: True
-  conditioning_eta: False
-  conditioning_mass: True
-  conditioning_num_particles: False
-  val_fraction: 0.1
-  test_fraction: 0.3
-  drop_last: True
-  # global_cond_dim needs to be set when using conditioning
+
+#data:
+#  jet_type:
+#    #- "g"
+#    #- "q"
+#    - "t"
+#    #- "w"
+#    #- "z"
+#  batch_size: 1024
+#  num_particles: ${model.num_particles}
+#  variable_jet_sizes: ${model.mask}
+#  centering: False
+#  normalize: True
+#  normalize_sigma: 5
+#  use_calculated_base_distribution: False
+#  conditioning_type: False
+#  conditioning_pt: True
+#  conditioning_eta: False
+#  conditioning_mass: True
+#  conditioning_num_particles: False
+# global_cond_dim needs to be set when using conditioning
 
 callbacks:
   ema:
@@ -102,13 +94,14 @@ callbacks:
     evaluate_ema_weights_instead: True
 
   jetnet_eval:
-    every_n_epochs: 3
-    num_jet_samples: 2
+    every_n_epochs: epochs10000
+    num_jet_samples: 25000
     batch_size: 256
     plot_w_dists: False
-    w_dists_batches: 2
-    log_w_dists: True
+    w_dists_batches: 5
     mass_conditioning: ${model.mass_conditioning}
+    plot_jet_features: True
+    log_w_dists: True
     data_type: "val"
     use_ema: ${callbacks.ema.evaluate_ema_weights_instead}
     ode_solver: "midpoint"
@@ -120,7 +113,6 @@ callbacks:
     mode: "min"
     save_last: True
     auto_insert_metric_name: False
-    save_top_k: 2
 
   model_checkpoint2:
     dirpath: ${paths.output_dir}/checkpoints
@@ -129,7 +121,6 @@ callbacks:
     mode: "min"
     auto_insert_metric_name: False
     every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
-    save_top_k: 2
 
   model_checkpoint3:
     dirpath: ${paths.output_dir}/checkpoints
@@ -137,22 +128,19 @@ callbacks:
     monitor: "w1p_mean_1b"
     mode: "min"
     auto_insert_metric_name: False
-    every_n_epochs: 1
-    save_top_k: 2
+    every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
 
   #early_stopping:
   #  monitor: "val/loss"
   #  patience: 2000
   #  mode: "min"
 
-task_name: "fm_tops-${model.num_particles}-1"
+task_name: "fm_tops-${model.num_particles}"
 
 logger:
   wandb:
-    project: "test_runs"
     tags: ${tags}
     group: "fm_tops"
     name: ${task_name}
   comet:
     experiment_name: ${task_name}
-    project_name: "test_runs"
