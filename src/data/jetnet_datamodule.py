@@ -213,15 +213,15 @@ class JetNetDataModule(LightningDataModule):
             dataset_train, dataset_val, dataset_test = np.split(
                 x_ma,
                 [
-                    len(x_ma) - (n_samples_val + n_samples_test),
-                    len(x_ma) - n_samples_test,
+                    len(x_ma) - 1 - (n_samples_val + n_samples_test),
+                    len(x_ma) - 1 - n_samples_test,
                 ],
             )
             conditioning_train, conditioning_val, conditioning_test = np.split(
                 conditioning_data,
                 [
-                    len(conditioning_data) - (n_samples_val + n_samples_test),
-                    len(conditioning_data) - n_samples_test,
+                    len(conditioning_data) - 1 - (n_samples_val + n_samples_test),
+                    len(conditioning_data) - 1 - n_samples_test,
                 ],
             )
             tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
