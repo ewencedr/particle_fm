@@ -204,6 +204,11 @@ class JetNetDataModule(LightningDataModule):
 
             n_samples_val = int(self.hparams.val_fraction * len(x))
             n_samples_test = int(self.hparams.test_fraction * len(x))
+            print(f"val_fraction: {self.hparams.val_fraction}")
+            print(f"test_fraction: {self.hparams.test_fraction}")
+            print(f"x: {len(x)}")
+            print(f"n_samples_val: {n_samples_val}")
+            print(f"n_samples_test: {n_samples_test}")
             full_mask = np.repeat(mask, repeats=3, axis=-1) == 0
             full_mask = np.ma.make_mask(full_mask, shrink=False)
             x_ma = np.ma.masked_array(x, full_mask)
@@ -211,14 +216,14 @@ class JetNetDataModule(LightningDataModule):
                 x_ma,
                 [
                     len(x_ma) - (n_samples_val + n_samples_test),
-                    len(x_ma) - n_samples_val,
+                    len(x_ma) - n_samples_test,
                 ],
             )
             conditioning_train, conditioning_val, conditioning_test = np.split(
                 conditioning_data,
                 [
                     len(conditioning_data) - (n_samples_val + n_samples_test),
-                    len(conditioning_data) - n_samples_val,
+                    len(conditioning_data) - n_samples_test,
                 ],
             )
             tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
@@ -284,15 +289,13 @@ class JetNetDataModule(LightningDataModule):
                 self.means = torch.tensor(means)
                 self.stds = torch.tensor(stds)
             else:
-                dataset = TensorDataset(x, mask, tensor_conditioning)
-                (self.data_train, self.data_val, self.data_test,) = random_split(
-                    dataset,
-                    [
-                        len(x) - (n_samples_val + n_samples_test),
-                        n_samples_val,
-                        n_samples_test,
-                    ],
+                self.data_train = TensorDataset(
+                    unnormalized_tensor_train, unnormalized_mask_train, tensor_conditioning_train
                 )
+                self.data_val = TensorDataset(
+                    unnormalized_tensor_val, unnormalized_mask_val, tensor_conditioning_val
+                )
+                self.data_test = TensorDataset(tensor_test, mask_test, tensor_conditioning_test)
 
                 self.means = None
                 self.stds = None
