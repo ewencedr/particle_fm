@@ -62,8 +62,6 @@ class EMA(Callback):
     def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         log.info("Creating EMA weights copy.")
         if self._ema_model_weights is None:
-            for i, j in zip(pl_module.state_dict().values(), pl_module.state_dict().keys()):
-                print(f"EMA weights start: {j}: {i.shape}")
             self._ema_model_weights = [p.detach().clone() for p in pl_module.state_dict().values()]
         # ensure that all the weights are on the correct device
         self._ema_model_weights = [p.to(pl_module.device) for p in self._ema_model_weights]
@@ -73,25 +71,13 @@ class EMA(Callback):
         return self.apply_ema(pl_module)
 
     def apply_ema(self, pl_module: "pl.LightningModule") -> None:
-        # print(f"weights: {pl_module.state_dict().keys()}")
-        for i, j in zip(pl_module.state_dict().values(), pl_module.state_dict().keys()):
-            print(f"EMA weights 2: {j}: {i.shape}")
-        for i, j, key in zip(
-            self._ema_model_weights, pl_module.state_dict().values(), pl_module.state_dict().keys()
-        ):
-            print(f"Compare: {key}: {i.shape} vs {j.shape}")
         for orig_weight, ema_weight in zip(
             list(pl_module.state_dict().values()), self._ema_model_weights
         ):
             if ema_weight.data.dtype != torch.long and orig_weight.data.dtype != torch.long:
                 # ensure that non-trainable parameters (e.g., feature distributions) are not included in EMA weight averaging
-                # print(f"EMA weight: {ema_weight.shape}")
-                # print(f"EMA orig_weight: {orig_weight.shape}")
-
                 diff = ema_weight.data - orig_weight.data
-                # print(f"EMA diff: {diff.shape}")
                 diff.mul_(1.0 - self.decay)
-                # print(f"EMA diff_mul: {diff.mul_(1.0 - self.decay).shape}")
                 ema_weight.sub_(diff)
 
     def should_apply_ema(self, step: int) -> bool:

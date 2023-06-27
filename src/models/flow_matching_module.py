@@ -886,9 +886,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, mask, cond = batch
         if self.hparams.use_normaliser:
-            x = self.normaliser(x, mask.squeeze(-1))
-            # if self.conditioned:
-            #    cond = self.ctxt_normaliser(cond)
+            bool_mask = (mask.clone().detach() == 1).squeeze()
+            x = self.normaliser(x, bool_mask)
+            if self.conditioned:
+                cond = self.ctxt_normaliser(cond)
         if not self.hparams.mask:
             mask = None
 
@@ -1288,14 +1289,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask, cond = batch
         if self.hparams.use_normaliser:
-            print(f" norm x: {x.shape}")
-            print(f" norm mask: {mask.shape}")
-            print(f" norm mask squeeze: {mask.squeeze().shape}")
-            x = self.normaliser(x, mask.squeeze())
-            print(f" norm x2: {x.shape}")
-
-            # if self.conditioned:
-            #    cond = self.ctxt_normaliser(cond)
+            bool_mask = (mask.clone().detach() == 1).squeeze()
+            x = self.normaliser(x, bool_mask)
+            if self.conditioned:
+                cond = self.ctxt_normaliser(cond)
         if self.trainer.current_epoch == 0:
             # Just to have something logged so that the checkpoint callback doesn't fail
             self.log("w1m_mean", 0.005)

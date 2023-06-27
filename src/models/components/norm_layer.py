@@ -5,13 +5,13 @@ import torch.nn as nn
 
 
 class IterativeNormLayer(nn.Module):
-    """A basic normalisation layer so it can be part of the model.
+    """A basic normalisation layer so it can be part of the model. Note! If a mask is provided in
+    the forward pass, then this must be the dimension to apply over the masked inputs! For example:
+    Graph nodes are usually batch x n_nodes x features so to normalise over the features one would
+    typically give extra_dims as (0,) But nodes are always passed with the mask which flattens it
+    to batch x features. Batch dimension is done automatically, so we dont pass any extra_dims!!!
 
-    Note! If a mask is provided in the forward pass, then this must be the dimension to apply over
-    the masked inputs! For example: Graph nodes are usually batch x n_nodes x features so to
-    normalise over the features one would typically give extra_dims as (0,) But nodes are always
-    passed with the mask which flattens it to batch x features. Batch dimension is done
-    automatically, so we dont pass any extra_dims!!!
+    adapted from: https://github.com/rodem-hep/PC-JeDi/blob/main/src/models/modules.py
     """
 
     def __init__(
@@ -95,9 +95,7 @@ class IterativeNormLayer(nn.Module):
     ) -> None:
         """Set the stats given a population of data."""
         inpt = self._mask(inpt, mask)
-        print(f"fit input shape: {inpt.shape}")
         self.vars, self.means = T.var_mean(inpt, dim=(0, *self.extra_dims), keepdim=True)
-        print(f"fit means shape: {self.means.shape}")
         self.n = T.tensor(len(inpt), device=self.means.device)
         self.m2 = self.vars * self.n
         self.frozen = freeze
@@ -106,18 +104,12 @@ class IterativeNormLayer(nn.Module):
         """Applies the standardisation to a batch of inputs, also uses the inputs to update the
         running stats if in training mode."""
         with T.no_grad():
-            print(f"forward input shape: {inpt.shape}")
             sel_inpt = self._mask(inpt, mask)
-            print(f"forward sel_inpt shape: {sel_inpt.shape}")
             if not self.frozen and self.training:
                 self.update(sel_inpt)
 
             # Apply the mapping
-            print(f"forward sel_input2 shape: {sel_inpt.shape}")
-            print(f"forward means shape: {self.means.shape}")
             normed_inpt = (sel_inpt - self.means) / (self.vars.sqrt() + 1e-8)
-            print(f"forward means shape: {self.means.shape}")
-            print(f"forward normed_inpt shape: {normed_inpt.shape}")
 
             # Undo the masking
             if mask is not None:
@@ -142,9 +134,7 @@ class IterativeNormLayer(nn.Module):
 
     def update(self, inpt: T.Tensor, mask: Optional[T.BoolTensor] = None) -> None:
         """Update the running stats using a batch of data."""
-        print(f"update input shape: {inpt.shape}")
         inpt = self._mask(inpt, mask)
-        print(f"update input shape2: {inpt.shape}")
         # For first iteration
         if self.n == 0:
             self.fit(inpt, freeze=False)
