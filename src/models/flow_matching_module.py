@@ -26,32 +26,11 @@ from .components import (
     IterativeNormLayer,
     Transformer,
 )
+from .components.time_emb import CosineEncoding, GaussianFourierProjection
 from .components.utils import SWD, MMDLoss, calculate_gradient_penalty
 
 logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
-
-
-class GaussianFourierProjection(nn.Module):
-    """Gaussian random features for encoding time steps.
-
-    Inspired by https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing#scrollTo=YyQtV7155Nht
-    """
-
-    def __init__(self, embed_dim, scale=30.0):
-        super().__init__()
-        # Randomly sample weights during initialization. These weights are fixed
-        # during optimization and are not trainable.
-        self.W = nn.Parameter(torch.randn(embed_dim // 2) * scale, requires_grad=False)
-
-    def forward(self, x):
-        # logger.debug(f"GFP w: {self.W.shape}")
-        # logger.debug(f"x[:,None]{x[:, None].shape}")
-        # logger.debug(f"self.W[None,:]:{self.W[None,:].shape}")
-        x_proj = x[..., None] * self.W[None, ...] * 2 * np.pi
-        # logger.debug(f"x_proj: {x_proj.shape}")
-        # logger.debug(f"torch cat: {torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1).shape}")
-        return torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1)
 
 
 class ode_wrapper(torch.nn.Module):
@@ -162,6 +141,13 @@ class CNF(nn.Module):
                 GaussianFourierProjection(embed_dim=hidden_dim), nn.Linear(hidden_dim, hidden_dim)
             )
             self.linear = nn.Linear(hidden_dim, 2 * frequencies)
+        elif self.t_emb == "cosine":
+            self.embed = CosineEncoding(
+                outp_dim=2 * frequencies,
+                min_value=0.0,
+                max_value=1.0,
+                frequency_scaling="exponential",
+            )
 
     def forward(
         self,
@@ -170,36 +156,7 @@ class CNF(nn.Module):
         cond: Tensor = None,
         mask: Tensor = None,
     ) -> Tensor:
-        # time embedding
-        if self.t_emb == "sincos":
-            logger.debug(f"t.shape: {t.shape}")
-            t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
-            logger.debug(f"t.shape1: {t.shape}")
-
-            t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
-            # logger.debug(f"t.shape2: {t[:3]}")
-            t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
-            logger.debug(f"t.shape3: {t.shape}")
-        elif self.t_emb == "gaussian":
-            # Obtain the Gaussian random feature embedding for t
-            # logger.debug(f"t.shape: {t.shape}")
-            test = False
-            # different shape for training and sampling
-            if len(t.shape) == 2:
-                t = t[:, 0]
-                test = True
-            # logger.debug(f"t:{t[:3]}")
-            # logger.debug(f"t.shape: {t.shape}")
-            t = getattr(F, self.activation, lambda x: x)(self.embed(t))
-            # logger.debug(f"t2.shape: {t.shape}")
-            t = self.linear(t).unsqueeze(1)
-            logger.debug(f"t3.shape: {t.shape}")
-            t = t.expand(*x.shape[:-1], -1)
-            # if test:
-            #    t = t.unsqueeze(1).repeat_interleave(x.shape[1], dim=1)
-            logger.debug(f"t4.shape: {t.shape}")
-        else:
-            raise NotImplementedError(f"t_emb={self.t_emb} not implemented")
+        t = self.time_embedding(t, x, self.t_emb)
 
         x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
         # logger.debug(f"x.shape2: {x[:3]}")
@@ -220,6 +177,35 @@ class CNF(nn.Module):
             x = self.net(x)
 
         return x
+
+    def time_embedding(self, t: Tensor, x: Tensor, t_emb: str = "sincos") -> Tensor:
+        """Time embedding."""
+        if t_emb == "sincos":
+            t = self.frequencies * t[..., None]  # (batch_size,num_particles,frequencies)
+            t = torch.cat((t.cos(), t.sin()), dim=-1)  # (batch_size,num_particles,2*frequencies)
+            t = t.expand(*x.shape[:-1], -1)  # (batch_size,num_particles,2*frequencies)
+
+        elif t_emb == "gaussian":
+            # Obtain the Gaussian random feature embedding for t
+
+            # different shape for training
+            if len(t.shape) == 2:
+                t = t[:, 0]
+            t = getattr(F, self.activation, lambda x: x)(self.embed(t))
+            t = self.linear(t).unsqueeze(1)
+            t = t.expand(*x.shape[:-1], -1)
+
+        elif t_emb == "cosine":
+            # different shape for sampling
+            if t.dim() == 0:
+                t = t.unsqueeze(0)
+            t = self.embed(t)
+            t = t.expand(*x.shape[:-1], -1)
+
+        else:
+            raise NotImplementedError(f"t_emb={t_emb} not implemented")
+
+        return t
 
     def encode(
         self, x: Tensor, mask: Tensor = None, ode_solver: str = "dopri5_zuko", ode_steps: int = 100

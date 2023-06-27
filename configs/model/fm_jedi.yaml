@@ -10,3 +10,4 @@ optimizer:
 use_normaliser: true
 normaliser_config:
   max_n: 2000_000
+t_emb: cosine
