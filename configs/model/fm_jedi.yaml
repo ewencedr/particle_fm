@@ -8,6 +8,7 @@ optimizer:
   weight_decay: 0.0001
 
 use_normaliser: true
+add_time_to_input: false
 normaliser_config:
   max_n: 2000_000
 t_emb: cosine

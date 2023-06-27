@@ -80,9 +80,7 @@ class EPiC_layer(nn.Module):
         x_local: torch.Tensor = None,
         global_cond_in: torch.Tensor = None,
         mask: torch.Tensor = None,
-    ) -> tuple[
-        torch.Tensor, torch.Tensor
-    ]:  # shapes: x_global[b,latent], x_local[b,n,latent_local]
+    ) -> tuple[torch.Tensor, torch.Tensor]:  # shapes: x_global[b,latent], x_local[b,n,input_dim]
         # Check and prepare input
         if x_global is None or x_local is None:
             raise ValueError("x_global or x_local is None")
@@ -149,7 +147,7 @@ class EPiC_layer(nn.Module):
 
         # Actual forward pass
 
-        batch_size, n_points, latent_local = x_local.size()
+        batch_size, n_points, input_dim = x_local.size()
         latent_global = x_global.size(1)
         logger_emask.debug(f"mask.shape: {mask.shape}")
 
@@ -210,7 +208,7 @@ class EPiC_generator(nn.Module):
 
     Args:
         latent (int, optional): used for latent size of equiv concat. Defaults to 16.
-        latent_local (int, optional): noise. Defaults to 3.
+        input_dim (int, optional): number of features of input point cloud. Defaults to 3.
         hid_d (int, optional): Hidden dimension. Defaults to 256.
         feats (int, optional): Embedding dimension for EPiC Layers. Defaults to 128.
         equiv_layers (int, optional): Number of EPiC Layers used. Defaults to 8.
@@ -229,7 +227,7 @@ class EPiC_generator(nn.Module):
     def __init__(
         self,
         latent: int = 16,
-        latent_local: int = 3,
+        input_dim: int = 3,
         hid_d: int = 256,
         feats: int = 128,
         equiv_layers: int = 8,
@@ -247,7 +245,7 @@ class EPiC_generator(nn.Module):
         super().__init__()
         self.activation = activation
         self.latent = latent
-        self.latent_local = latent_local
+        self.input_dim = input_dim
         self.hid_d = hid_d
         self.feats = feats
         self.equiv_layers = equiv_layers
@@ -263,7 +261,7 @@ class EPiC_generator(nn.Module):
 
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
         self.local_0 = self.wrapper_func(
-            nn.Linear(self.latent_local + t_local_dim + self.local_cond_dim, self.hid_d)
+            nn.Linear(self.input_dim + t_local_dim + self.local_cond_dim, self.hid_d)
         )
         self.global_0 = self.wrapper_func(
             nn.Linear(self.latent + t_global_dim + self.global_cond_dim, self.hid_d)

@@ -68,6 +68,7 @@ class CNF(nn.Module):
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+        add_time_to_input (bool, optional): Concat time to input. Defaults to True.
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
     """
 
@@ -91,11 +92,13 @@ class CNF(nn.Module):
         wrapper_func: str = "weight_norm",
         t_local_cat: bool = False,
         t_global_cat: bool = False,
+        add_time_to_input: bool = True,
         t_emb: str = "sincos",
     ):
         super().__init__()
         self.model = model
         self.latent = latent
+        self.add_time_to_input = add_time_to_input
         self.mass_conditioning = mass_conditioning
         if self.model == "transformer":
             # TODO doesn't work anymore
@@ -114,8 +117,10 @@ class CNF(nn.Module):
                 raise ValueError(
                     "If mass_conditioning is True, global_cond_dim or local_cond_dim must be > 0"
                 )
+            input_dim = features + 2 * frequencies if self.add_time_to_input else features
+
             self.net = EPiC_generator(
-                latent_local=features + 2 * frequencies,
+                input_dim=input_dim,
                 feats=features,
                 latent=latent,
                 equiv_layers=layers,
@@ -157,20 +162,12 @@ class CNF(nn.Module):
         mask: Tensor = None,
     ) -> Tensor:
         t = self.time_embedding(t, x, self.t_emb)
-
-        x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
-        # logger.debug(f"x.shape2: {x[:3]}")
-
+        if self.add_time_to_input:
+            x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
         if self.model == "epic":
             x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
             x_local = x
-            # if self.mass_conditioning:
-            #    if cond is None:
-            #        cond = jet_masses(x_local).unsqueeze(-1)
-            #    logger.debug(f"mass.shape: {cond.shape}")
-            # else:
-            #    cond = None
-            # print(f"cond.shape: {cond.shape}")
+
             x = self.net(t, x_global, x_local, cond, mask)
 
         else:
@@ -340,6 +337,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+        add_time_to_input (bool, optional): Concat time to input. Defaults to False.
         dropout (float, optional): Value for dropout layers. Defaults to 0.0.
         heads (int, optional): Number of attention heads. Defaults to 4.
         mask (bool, optional): Use Mask. Defaults to False.
@@ -372,6 +370,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         return_latent_space: bool = False,
         t_local_cat: bool = False,
         t_global_cat: bool = False,
+        add_time_to_input: bool = True,
         mass_conditioning: bool = False,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
@@ -432,6 +431,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     wrapper_func=wrapper_func,
                     t_global_cat=t_global_cat,
                     t_local_cat=t_local_cat,
+                    add_time_to_input=add_time_to_input,
                     t_emb=t_emb,
                 )
             )
