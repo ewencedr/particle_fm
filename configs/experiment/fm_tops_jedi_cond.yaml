@@ -27,7 +27,7 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 30
+  num_particles: 150
   frequencies: 6
   use_mass_loss: False
   layers: 6
@@ -74,7 +74,7 @@ data:
   num_particles: ${model.num_particles}
   variable_jet_sizes: ${model.mask}
   centering: False
-  normalize: True
+  normalize: False
   normalize_sigma: 5
   use_calculated_base_distribution: False
   conditioning_type: False

@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, List
+from typing import Any, List, Mapping
 
 import energyflow as ef
 import numpy as np
@@ -20,7 +20,12 @@ from zuko.utils import odeint
 from src.data.components.utils import jet_masses
 from src.utils.pylogger import get_pylogger
 
-from .components import EPiC_discriminator, EPiC_generator, Transformer
+from .components import (
+    EPiC_discriminator,
+    EPiC_generator,
+    IterativeNormLayer,
+    Transformer,
+)
 from .components.utils import SWD, MMDLoss, calculate_gradient_penalty
 
 logger = get_pylogger("fm_module")
@@ -343,6 +348,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
+        use_normaliser (bool, optional): Use layers that learn to normalise the input and conditioning. Defaults to True.
+        normaliser_config (Mapping, optional): Normaliser config. Defaults to None.
         latent (int, optional): Latent dimension. Defaults to 16.
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
@@ -372,6 +379,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         n_transforms: int = 1,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
+        use_normaliser: bool = True,
+        normaliser_config: Mapping = None,
         # epic
         latent: int = 16,
         return_latent_space: bool = False,
@@ -464,6 +473,14 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 t_global_cat=t_global_cat,
                 t_local_cat=t_local_cat,
             )
+        self.conditioned = global_cond_dim > 0
+        if use_normaliser:
+            self.normaliser = IterativeNormLayer(
+                (features,),
+                **normaliser_config,
+            )
+            if self.conditioned:
+                self.ctxt_normaliser = IterativeNormLayer((global_cond_dim,), **normaliser_config)
 
     def forward(
         self,
@@ -868,6 +885,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, mask, cond = batch
+        if self.hparams.use_normaliser:
+            x = self.normaliser(x, mask.squeeze(-1))
+            # if self.conditioned:
+            #    cond = self.ctxt_normaliser(cond)
         if not self.hparams.mask:
             mask = None
 
@@ -1266,6 +1287,15 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask, cond = batch
+        if self.hparams.use_normaliser:
+            print(f" norm x: {x.shape}")
+            print(f" norm mask: {mask.shape}")
+            print(f" norm mask squeeze: {mask.squeeze().shape}")
+            x = self.normaliser(x, mask.squeeze())
+            print(f" norm x2: {x.shape}")
+
+            # if self.conditioned:
+            #    cond = self.ctxt_normaliser(cond)
         if self.trainer.current_epoch == 0:
             # Just to have something logged so that the checkpoint callback doesn't fail
             self.log("w1m_mean", 0.005)
