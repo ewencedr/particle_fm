@@ -89,7 +89,8 @@ def plot_data(
     jet_data: np.ndarray,
     efps_sim: np.ndarray,
     efps_values: np.ndarray,
-    labels: list[str],
+    num_samples: int = -1,
+    labels: list[str] = ["Gen. data"],
     sim_data_label: str = "Sim. data",
     plot_jet_features: bool = False,
     plot_w_dists: bool = False,
@@ -120,6 +121,7 @@ def plot_data(
         jet_data (list): Jet data of the data to be plotted.
         efps_sim (np.ndarray): EFPs of the reference data.
         efps_values (list): EFPS of the data to be plotted.
+        num_samples (int, optional): Number of samples to be plotted. Defaults to length of first dataset in particle_data.
         labels (list): Labels of the plot to describe the data.
         sim_data_label (str, optional): Label of the plot for the reference data. Defaults to "Sim. data".
         plot_jet_features (bool, optional): Plot Jet Features. Defaults to False.
@@ -154,6 +156,27 @@ def plot_data(
     if len(particle_data) == 0:
         plot_data_only = True
 
+    # select only the first num_samples
+    if num_samples == -1:
+        num_samples = particle_data.shape[1]
+
+    lengths = [sim_data.shape[0], jet_data_sim.shape[0]]
+    if plot_efps:
+        lengths.append(efps_sim.shape[0])
+    for count, _ in enumerate(particle_data):
+        lengths.append(particle_data[count].shape[0])
+        lengths.append(jet_data[count].shape[0])
+        if plot_efps:
+            lengths.append(efps_values[count].shape[1])
+    if any(np.array(lengths) < num_samples):
+        raise ValueError("num_samples is larger than the smallest dataset")
+    sim_data = sim_data[:num_samples]
+    particle_data = particle_data[:, :num_samples]
+    jet_data_sim = jet_data_sim[:num_samples]
+    jet_data = jet_data[:, :num_samples]
+    efps_sim = efps_sim[:num_samples]
+    efps_values = efps_values[:, :num_samples]
+
     particles_per_jet = sim_data.shape[-2]
 
     if plot_selected_multiplicities:
@@ -170,7 +193,6 @@ def plot_data(
         else:
             fig = plt.figure(figsize=(12, 12))
             gs = GridSpec(3, 3)
-
     gs_counter = 0
     ax1 = fig.add_subplot(gs[gs_counter])
     data1 = sim_data[:, :, 2].flatten()
