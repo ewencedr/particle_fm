@@ -29,7 +29,7 @@ model:
   model: "epic"
   features: 3
   hidden_dim: 128
-  num_particles: 30
+  num_particles: 150
   frequencies: 6
   use_mass_loss: False
   layers: 6
@@ -44,6 +44,7 @@ model:
   local_cond_dim: 0
   t_local_cat: True
   t_global_cat: False
+  add_time_to_input: True
 
   dropout: 0.0
 
