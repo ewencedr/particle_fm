@@ -1,17 +1,20 @@
 # Generate data, calculate plots and metrics and log them to the logger
 jetnet_eval:
   _target_: src.callbacks.jetnet_eval.JetNetEvaluationCallback
-  every_n_epochs: 10 # evaluate every n epochs
-  num_jet_samples: 25000 # jet samples to generate
-  w_dists_batches: 5
+  every_n_epochs: 100 # evaluate every n epochs
+  num_jet_samples: -1 # jet samples to generate
   image_path: ${paths.log_dir}callback_logs/
   model_name: "model-test"
   use_ema: False
-  #plotting
-  batch_size: 1000
-  calculate_efps: False
-  log_w_dists: False
   log_times: True
   log_epoch_zero: False
-  mass_conditioning: False
   data_type: "test"
+  w_dist_config:
+    num_batches: 40
+    calculate_efps: False
+  generation_config:
+    batch_size: 1000
+    ode_solver: "midpoint"
+    ode_steps: 200
+  plot_config:
+    plot_efps: False

@@ -1279,10 +1279,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             x = self.normaliser(x, bool_mask)
             if self.conditioned:
                 cond = self.ctxt_normaliser(cond)
-        if self.trainer.current_epoch == 0:
-            # Just to have something logged so that the checkpoint callback doesn't fail
-            self.log("w1m_mean", 0.005)
-            self.log("w1p_mean", 0.005)
         if not self.hparams.mask:
             mask = None
 
