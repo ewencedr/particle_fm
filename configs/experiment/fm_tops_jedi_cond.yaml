@@ -48,8 +48,6 @@ model:
   # loss
   loss_type: FM-OT
   sigma: 1e-4
-  loss_comparison: MSE
-  loss_type_d: LSGAN
   t_emb: cosine
   gpus: 1
 

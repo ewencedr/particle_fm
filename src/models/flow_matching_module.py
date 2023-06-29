@@ -1,33 +1,20 @@
-import warnings
-from typing import Any, List, Mapping
+from typing import Any, Mapping
 
-import energyflow as ef
 import numpy as np
 import ot as pot
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import wandb
-from matplotlib import pyplot as plt
-from matplotlib.gridspec import GridSpec
-from scipy.integrate import solve_ivp
 from torch import Tensor
 from torch.distributions import Normal
 from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
-from src.data.components.utils import jet_masses
 from src.utils.pylogger import get_pylogger
 
-from .components import (
-    EPiC_discriminator,
-    EPiC_generator,
-    IterativeNormLayer,
-    Transformer,
-)
+from .components import EPiC_generator, IterativeNormLayer, Transformer
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
-from .components.utils import SWD, MMDLoss, calculate_gradient_penalty
 
 logger = get_pylogger("fm_module")
 logger_loss = get_pylogger("fm_module_loss")
@@ -315,9 +302,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     Args:
         optimizer (torch.optim.Optimizer): Optimizer
-        optimizer_d (torch.optim.Optimizer): Optimizer for discriminator
         scheduler (torch.optim.lr_scheduler): Scheduler
-        scheduler_d (torch.optim.lr_scheduler): Scheduler for discriminator
         model (str, optional): Use Transformer or EPiC Generator as model. Defaults to "epic".
         features (int, optional): Features of data. Defaults to 3.
         hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
@@ -341,17 +326,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         heads (int, optional): Number of attention heads. Defaults to 4.
         mask (bool, optional): Use Mask. Defaults to False.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
-        loss_comparison (str, optional): Which method to use for comparing the two VFs in FM loss. Defaults to "MSE".
-        loss_type_d (str, optional): Loss type for discriminator. Defaults to "BCE".
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
     """
 
     def __init__(
         self,
         optimizer: torch.optim.Optimizer,
-        optimizer_d: torch.optim.Optimizer = None,
         scheduler: torch.optim.lr_scheduler = None,
-        scheduler_d: torch.optim.lr_scheduler = None,
         model: str = "epic",
         features: int = 3,
         hidden_dim: int = 128,
@@ -376,13 +357,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         dropout: float = 0.0,
         heads: int = 4,
         mask=False,
-        # debug
-        plot_loss_hist_debug: bool = False,
         # loss
         loss_type: str = "FM-OT",
         sigma: float = 1e-4,
-        loss_comparison: str = "MSE",
-        loss_type_d: str = "LSGAN",
         t_emb: str = "sincos",
         **kwargs,
     ):
@@ -390,24 +367,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-        if loss_comparison == "adversarial":
-            self.automatic_optimization = (
-                False  # we will do our own optimization for Adversarial loss
-            )
+
         flows = nn.ModuleList()
-        # losses = nn.ModuleList()
-        if optimizer_d is not None and self.hparams.loss_comparison != "adversarial":
-            warnings.warn(
-                "Optimizer for discriminator is not None but loss comparison is not adversarial!"
-            )
-        if scheduler_d is not None and self.hparams.loss_comparison != "adversarial":
-            warnings.warn(
-                "Scheduler for discriminator is not None but loss comparison is not adversarial!"
-            )
-        if loss_type_d is not None and self.hparams.loss_comparison != "adversarial":
-            warnings.warn(
-                "Loss type for discriminator is not None but loss comparison is not adversarial!"
-            )
+
         for _ in range(n_transforms):
             flows.append(
                 CNF(
@@ -433,30 +395,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     t_emb=t_emb,
                 )
             )
-            # losses.append(FlowMatchingLoss(flows[-1]))
         self.flows = flows
-        self.u_mass = []
-        self.v_mass = []
-        self.data = []
-        self.data_x = []
-        self.data_ut = []
-        self.data_vt = []
-        self.v_mass_tensor = torch.empty(0, 30, 3)
-        if loss_comparison == "SWD":
-            self.swd = SWD()
-        elif loss_comparison == "MMD":
-            self.mmd = MMDLoss()
-        elif loss_comparison == "adversarial":
-            self.discriminator = EPiC_discriminator(
-                feats=features,
-                equiv_layers=layers,
-                hid_d=hidden_dim,
-                latent=latent,
-                activation=activation,
-                wrapper_func=wrapper_func,
-                t_global_cat=t_global_cat,
-                t_local_cat=t_local_cat,
-            )
+
         self.conditioned = global_cond_dim > 0
         if use_normaliser:
             self.normaliser = IterativeNormLayer(
@@ -482,49 +422,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             for f in self.flows:
                 x = f.encode(x, mask, ode_solver=ode_solver, ode_steps=ode_steps)
         return x
-
-    def adversarial_loss(
-        self,
-        y_hat: torch.Tensor,
-        y: torch.Tensor,
-        loss_type_d: str = "BCE",
-        generator: bool = True,
-    ):
-        """Discriminator loss. Thanks to Copilot for the code.
-
-        Args:
-            y_hat (torch.Tensor): Values.
-            y (torch.Tensor): Values.
-            loss_type_d (str, optional): Possible losses: BCE, LSGAN, WGAN, Hinge. Defaults to "BCE".
-            generator (bool, optional): Whether to use generator or discriminator. Defaults to True.
-
-        Raises:
-            ValueError: If loss type is not supported.
-
-        Returns:
-            torch.Tensor [1]: Loss.
-        """
-        if loss_type_d == "LSGAN":
-            # LSGAN (https://agustinus.kristia.de/techblog/2017/03/02/least-squares-gan/)
-            # print(f"y_hat: {y_hat}")
-            loss = torch.mean((y_hat - y) ** 2)
-            if generator:
-                loss = loss * 0.5
-        elif loss_type_d == "WGAN":
-            # WGAN (https://arxiv.org/abs/1701.07875)
-            if generator:
-                # print(f"y_hat: {y_hat}")
-                loss = -torch.mean(y_hat)
-                # print(f"loss: {loss}")
-        elif loss_type_d == "BCE":
-            # BCE (https://pytorch.org/docs/stable/generated/torch.nn.BCELoss.html)
-            loss = F.binary_cross_entropy_with_logits(y_hat, y)
-        elif loss_type_d == "Hinge":
-            # Hinge (https://arxiv.org/abs/1705.07215)
-            loss = torch.mean(F.relu(1 - y * y_hat))
-        else:
-            raise NotImplementedError("Loss type not supported!")
-        return loss
 
     def loss(self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None):
         """Loss function.
@@ -566,185 +463,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
             logger_loss.debug(f"v_t: {v_t.shape}")
 
-            if self.hparams.loss_comparison == "MSE":
-                out = (v_t - u_t).square().mean()
-            elif self.hparams.loss_comparison == "SWD":
-                out = self.swd(v_t, u_t)
-            elif self.hparams.loss_comparison == "MMD":
-                # TODO NOT WORKING YET
-                out = self.mmd(v_t, u_t)
-            elif self.hparams.loss_comparison == "adversarial":
-                # TODO mask for adversarial loss
-                clip_gradients = True
-                epochs_pretrain_generator = 0
-
-                optimizer, optimizer_d = self.optimizers()
-                if self.trainer.current_epoch < epochs_pretrain_generator:
-                    self.toggle_optimizer(optimizer)
-                    out = (v_t - u_t).square().mean()
-                    optimizer.zero_grad()
-                    self.manual_backward(out)
-                    if clip_gradients:
-                        self.clip_gradients(
-                            optimizer,
-                            gradient_clip_val=0.5,
-                            gradient_clip_algorithm="norm",
-                        )
-                    optimizer.step()
-
-                    self.untoggle_optimizer(optimizer)
-                    return out
-                else:
-                    if self.hparams.scheduler is not None and self.hparams.scheduler_d is not None:
-                        scheduler = self.lr_schedulers()
-                    elif (
-                        self.hparams.scheduler is not None and self.hparams.scheduler_d is not None
-                    ):
-                        scheduler, scheduler_d = self.lr_schedulers()
-                    elif self.hparams.scheduler is None and self.hparams.scheduler_d is not None:
-                        scheduler_d = self.lr_schedulers()
-
-                    # train generator
-                    self.toggle_optimizer(optimizer)
-
-                    # ground truth result (ie: all fake)
-                    valid = torch.ones(v_t.size(0), 1)
-                    # add noise to labels to stabilise training
-                    noise = -torch.rand_like(valid) * 0.05
-                    logger_loss.debug(f"valid: {valid.shape}")
-                    valid = valid.type_as(v_t) + noise.type_as(v_t)
-
-                    # Measure generator's ability to fool the discriminator
-                    g_loss = self.adversarial_loss(
-                        self.discriminator(t.squeeze(-1), self.flows[0](t.squeeze(-1), y)),
-                        valid,
-                        loss_type_d=self.hparams.loss_type_d,
-                    )
-                    self.log(
-                        "train/g_loss",
-                        g_loss,
-                        on_step=True,
-                        on_epoch=True,
-                        prog_bar=True,
-                    )
-                    logger_loss.debug(f"g_loss grad: {g_loss.requires_grad}")
-                    self.manual_backward(g_loss)
-                    if clip_gradients:
-                        self.clip_gradients(
-                            optimizer,
-                            gradient_clip_val=0.5,
-                            gradient_clip_algorithm="norm",
-                        )
-                    optimizer.step()
-                    optimizer.zero_grad()
-                    self.untoggle_optimizer(optimizer)
-
-                    # train discriminator
-                    # Measure discriminator's ability to classify between both vector fields
-                    self.toggle_optimizer(optimizer_d)
-
-                    if self.hparams.loss_type_d == "WGAN":
-                        fake_data = self.flows[0](t.squeeze(-1).detach(), y.detach())
-                        discr_out_real = self.discriminator(t.squeeze(-1), u_t)
-                        discr_out_fake = self.discriminator(
-                            t.squeeze(-1),
-                            fake_data,
-                        )
-
-                        errD_real = torch.mean(discr_out_real)
-                        errD_fake = torch.mean(discr_out_fake)
-                        gradient_penalty = calculate_gradient_penalty(
-                            self.discriminator,
-                            t.squeeze(-1),
-                            u_t,
-                            fake_data,
-                            device=self.device,
-                        )
-                        # print(f"errD_real: {errD_real}")
-                        # print(f"errD_fake: {errD_fake}")
-                        # print(f"gradient penalty: {gradient_penalty}")
-                        d_loss = -errD_real + errD_fake + gradient_penalty * 10
-                    else:
-                        # how well can it label as real?
-                        valid = torch.ones(v_t.size(0), 1)
-                        noise = -torch.rand_like(valid) * 0.05
-                        valid = valid.type_as(v_t) + noise.type_as(v_t)
-
-                        real_loss = self.adversarial_loss(
-                            self.discriminator(t.squeeze(-1), u_t),
-                            valid,
-                            loss_type_d=self.hparams.loss_type_d,
-                            generator=False,
-                        )
-                        self.log(
-                            "train/d_real_loss",
-                            real_loss,
-                            on_step=True,
-                            on_epoch=True,
-                            prog_bar=True,
-                        )
-
-                        # how well can it label as fake?
-                        fake = torch.zeros(v_t.size(0), 1)
-                        noise = torch.rand_like(fake) * 0.05
-                        fake = fake.type_as(v_t) + noise.type_as(v_t)
-
-                        fake_loss = self.adversarial_loss(
-                            self.discriminator(
-                                t.squeeze(-1),
-                                self.flows[0](t.squeeze(-1).detach(), y.detach()),
-                            ),
-                            fake,
-                            loss_type_d=self.hparams.loss_type_d,
-                        )
-                        self.log(
-                            "train/d_fake_loss",
-                            fake_loss,
-                            on_step=True,
-                            on_epoch=True,
-                            prog_bar=True,
-                        )
-                        # discriminator loss is the average of these
-                        d_loss = (real_loss + fake_loss) * 0.5
-                    self.log(
-                        "train/d_loss",
-                        d_loss,
-                        on_step=True,
-                        on_epoch=True,
-                        prog_bar=True,
-                    )
-                    self.manual_backward(d_loss)
-                    if clip_gradients:
-                        self.clip_gradients(
-                            optimizer_d,
-                            gradient_clip_val=0.5,
-                            gradient_clip_algorithm="norm",
-                        )
-                    optimizer_d.step()
-                    optimizer_d.zero_grad()
-                    self.untoggle_optimizer(optimizer_d)
-
-                    if self.trainer.is_last_batch:
-                        if (
-                            self.hparams.scheduler is not None
-                            and self.hparams.scheduler_d is not None
-                        ):
-                            scheduler.step()
-                        elif (
-                            self.hparams.scheduler is not None
-                            and self.hparams.scheduler_d is not None
-                        ):
-                            scheduler.step()
-                            scheduler_d.step()
-                        elif (
-                            self.hparams.scheduler is None and self.hparams.scheduler_d is not None
-                        ):
-                            scheduler_d.step()
-
-                    out = d_loss
-            else:
-                raise NotImplementedError
-            logger_loss.debug(f"out: {out.shape}")
+            out = (v_t - u_t).square().mean()
 
         elif self.hparams.loss_type == "CFM":
             # from https://arxiv.org/abs/2302.00482
@@ -905,7 +624,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         Examples:
             https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
         """
-        # TODO check if parameters are correctly passed to optimizer
         optimizer = self.hparams.optimizer(params=self.parameters())
         if self.hparams.scheduler is not None:
             scheduler = self.hparams.scheduler(optimizer=optimizer)
@@ -920,25 +638,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             }
         else:
             opt = {"optimizer": optimizer}
-
-        if self.hparams.loss_comparison == "adversarial":
-            optimizer_d = self.hparams.optimizer(params=self.discriminator.parameters())
-            if self.hparams.scheduler_d is not None:
-                scheduler_d = self.hparams.scheduler(optimizer=optimizer)
-                opt_d = {
-                    "optimizer": optimizer_d,
-                    "lr_scheduler": {
-                        "scheduler": scheduler_d,
-                        "monitor": "val/loss",
-                        "interval": "epoch",
-                        "frequency": 1,
-                    },
-                }
-            else:
-                opt_d = {"optimizer": optimizer_d}
-            return [opt, opt_d]
-        else:
-            return opt
+        return opt
 
     @torch.no_grad()
     def sample(
