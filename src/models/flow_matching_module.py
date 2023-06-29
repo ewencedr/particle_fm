@@ -1366,6 +1366,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         )
         if cond is not None:
             cond = cond.to(self.device)
+            if self.use_normaliser:
+                cond = self.ctxt_normaliser(cond)
         if mask is not None:
             mask = mask[:n_samples]
             mask = mask.to(self.device)
@@ -1373,4 +1375,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         samples = self.forward(
             z, cond=cond, mask=mask, reverse=True, ode_solver=ode_solver, ode_steps=ode_steps
         )
+        if self.use_normaliser:
+            samples = self.normaliser.reverse(samples, mask)
         return samples
