@@ -13,7 +13,7 @@ from zuko.utils import odeint
 
 from src.utils.pylogger import get_pylogger
 
-from .components import EPiC_generator, IterativeNormLayer, Transformer
+from .components import EPiC_generator, IterativeNormLayer
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
 
 logger = get_pylogger("fm_module")
@@ -38,12 +38,10 @@ class CNF(nn.Module):
 
     Args:
         features (int): Data features. Defaults to 3.
-        model (str, optional): Use Transformer or EPiC Generator as architecture. Defaults to "transformer".
         num_particles (int, optional): Set cardinality. Defaults to 150.
         frequencies (int, optional): Frequency for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
         hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
         layers (int, optional): Number of Layers to use. Defaults to 8.
-        mass_conditioning (bool, optional): Condition the model on the jet mass. Defaults to False.
         global_cond_dim (int, optional): Dimension to concatenate to the global feature in EPiC Layer. Must be zero for no conditioning. Defaults to 0.
         local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
         return_latent_space (bool, optional): Return latent space. Defaults to False.
@@ -62,12 +60,10 @@ class CNF(nn.Module):
     def __init__(
         self,
         features: int = 3,
-        model: str = "transformer",
         num_particles: int = 150,
         frequencies: int = 6,
         hidden_dim: int = 128,
         layers: int = 8,
-        mass_conditioning: bool = False,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
         return_latent_space: bool = False,
@@ -83,46 +79,27 @@ class CNF(nn.Module):
         t_emb: str = "sincos",
     ):
         super().__init__()
-        self.model = model
         self.latent = latent
         self.add_time_to_input = add_time_to_input
-        self.mass_conditioning = mass_conditioning
-        if self.model == "transformer":
-            # TODO doesn't work anymore
-            self.net = Transformer(
-                input_dim=features + 2 * frequencies,
-                output_dim=features,
-                emb=hidden_dim,
-                mask=mask,
-                seq_length=num_particles,
-                heads=heads,
-                depth=layers,
-                dropout=dropout,
-            )
-        elif self.model == "epic":
-            if mass_conditioning and global_cond_dim == 0 and local_cond_dim == 0:
-                raise ValueError(
-                    "If mass_conditioning is True, global_cond_dim or local_cond_dim must be > 0"
-                )
-            input_dim = features + 2 * frequencies if self.add_time_to_input else features
+        input_dim = features + 2 * frequencies if self.add_time_to_input else features
 
-            self.net = EPiC_generator(
-                input_dim=input_dim,
-                feats=features,
-                latent=latent,
-                equiv_layers=layers,
-                hid_d=hidden_dim,
-                return_latent_space=return_latent_space,
-                activation=activation,
-                wrapper_func=wrapper_func,
-                frequencies=frequencies,
-                num_points=num_particles,
-                t_local_cat=t_local_cat,
-                t_global_cat=t_global_cat,
-                global_cond_dim=global_cond_dim,
-                local_cond_dim=local_cond_dim,
-                dropout=dropout,
-            )
+        self.net = EPiC_generator(
+            input_dim=input_dim,
+            feats=features,
+            latent=latent,
+            equiv_layers=layers,
+            hid_d=hidden_dim,
+            return_latent_space=return_latent_space,
+            activation=activation,
+            wrapper_func=wrapper_func,
+            frequencies=frequencies,
+            num_points=num_particles,
+            t_local_cat=t_local_cat,
+            t_global_cat=t_global_cat,
+            global_cond_dim=global_cond_dim,
+            local_cond_dim=local_cond_dim,
+            dropout=dropout,
+        )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
         self.activation = activation
@@ -151,14 +128,11 @@ class CNF(nn.Module):
         t = self.time_embedding(t, x, self.t_emb)
         if self.add_time_to_input:
             x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
-        if self.model == "epic":
-            x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
-            x_local = x
 
-            x = self.net(t, x_global, x_local, cond, mask)
+        x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
+        x_local = x
 
-        else:
-            x = self.net(x)
+        x = self.net(t, x_global, x_local, cond, mask)
 
         return x
 
@@ -303,14 +277,12 @@ class SetFlowMatchingLitModule(pl.LightningModule):
     Args:
         optimizer (torch.optim.Optimizer): Optimizer
         scheduler (torch.optim.lr_scheduler): Scheduler
-        model (str, optional): Use Transformer or EPiC Generator as model. Defaults to "epic".
         features (int, optional): Features of data. Defaults to 3.
         hidden_dim (int, optional): Hidden dimensions. Defaults to 128.
         num_particles (int, optional): Set cardinality. Defaults to 150.
         frequencies (int, optional): Time frequencies. Basically half the size of the time vector that is added to the model. Defaults to 6.
         layers (int, optional): Number of layers. Defaults to 8.
         n_transforms (int, optional): Number of flow transforms. Defaults to 1.
-        mass_conditioning (bool, optional): Condition the model on the jet mass. Defaults to False.
         global_cond_dim (int, optional): Dimension to concatenate to the global feature in EPiC Layer. Must be zero for no conditioning. Defaults to 0.
         local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
@@ -333,7 +305,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler = None,
-        model: str = "epic",
         features: int = 3,
         hidden_dim: int = 128,
         num_particles: int = 150,
@@ -350,7 +321,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         t_local_cat: bool = False,
         t_global_cat: bool = False,
         add_time_to_input: bool = True,
-        mass_conditioning: bool = False,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
         # transformer
@@ -374,12 +344,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             flows.append(
                 CNF(
                     features=features,
-                    model=model,
                     hidden_dim=hidden_dim,
                     num_particles=num_particles,
                     frequencies=frequencies,
                     layers=layers,
-                    mass_conditioning=mass_conditioning,
                     global_cond_dim=global_cond_dim,
                     local_cond_dim=local_cond_dim,
                     latent=latent,

@@ -24,7 +24,6 @@ trainer:
   gradient_clip_val: 0.5
 
 model:
-  model: "epic"
   features: 3
   hidden_dim: 128
   num_particles: 150
@@ -36,7 +35,6 @@ model:
   # epic
   latent: 10 # !
   return_latent_space: False
-  mass_conditioning: False
   global_cond_dim: 2 # needs to be calculated when using conditioning
   local_cond_dim: 0
 

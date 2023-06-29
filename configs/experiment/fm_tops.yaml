@@ -27,7 +27,6 @@ trainer:
 model:
   optimizer:
     lr: 0.001
-  model: "epic"
   features: 3
   hidden_dim: 128
   num_particles: 150
@@ -39,7 +38,6 @@ model:
   # epic
   latent: 16
   return_latent_space: False
-  mass_conditioning: False
   global_cond_dim: 2 # needs to be calculated when using conditioning
   local_cond_dim: 0
   t_local_cat: True
