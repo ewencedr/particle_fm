@@ -16,5 +16,6 @@ jetnet_eval:
     batch_size: 1000
     ode_solver: "midpoint"
     ode_steps: 200
+    verbose: False
   plot_config:
     plot_efps: False

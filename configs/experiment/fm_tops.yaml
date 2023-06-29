@@ -108,6 +108,7 @@ callbacks:
     use_ema: ${callbacks.ema.evaluate_ema_weights_instead}
     generation_config:
       ode_solver: "midpoint"
+      verbose: True
     w_dist_config:
       num_batches: 5
     plot_config:

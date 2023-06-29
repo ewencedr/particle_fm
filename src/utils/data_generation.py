@@ -26,6 +26,7 @@ def generate_data(
     means=None,
     stds=None,
     shuffle_mask: bool = False,
+    verbose: bool = True,
     ode_solver: str = "dopri5_zuko",
     ode_steps: int = 100,
 ):
@@ -44,6 +45,7 @@ def generate_data(
         means (_type_, optional): Means for normalized data. Defaults to None.
         stds (_type_, optional): Standard deviations for normalized data. Defaults to None.
         shuffle_mask (bool, optional): Shuffle mask during generation. Defaults to False.
+        verbose (bool, optional): Print generation progress. Defaults to True.
         ode_solver (str, optional): ODE solver for sampling. Defaults to "dopri5_zuko".
         ode_steps (int, optional): Number of steps for ODE solver. Defaults to 100.
 
@@ -60,10 +62,11 @@ def generate_data(
         raise ValueError(
             f"Mask should have the same length as num_jet_samples ({len(mask)} != {num_jet_samples})"
         )
-    print(f"Generating data. Device: {torch.device(device)}")
+    if verbose:
+        print(f"Generating data. Device: {torch.device(device)}")
     particle_data_sampled = torch.Tensor()
     start_time = 0
-    for i in tqdm(range(num_jet_samples // batch_size)):
+    for i in tqdm(range(num_jet_samples // batch_size), disable=not verbose):
         if cond is not None:
             cond_batch = cond[i * batch_size : (i + 1) * batch_size]
         else:
