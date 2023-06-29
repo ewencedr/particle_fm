@@ -97,40 +97,16 @@ callbacks:
 
   jetnet_eval:
     every_n_epochs: epochs10000
-    num_jet_samples: 25000
-    batch_size: 256
-    plot_w_dists: False
-    w_dists_batches: 5
-    mass_conditioning: ${model.mass_conditioning}
-    plot_jet_features: True
-    log_w_dists: True
+    num_jet_samples: -1
     data_type: "val"
     use_ema: ${callbacks.ema.evaluate_ema_weights_instead}
-    ode_solver: "midpoint"
-
-  model_checkpoint:
-    dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_loss_{val/loss:.5f}"
-    monitor: "val/loss"
-    mode: "min"
-    save_last: True
-    auto_insert_metric_name: False
-
-  model_checkpoint2:
-    dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_w1m_{w1m_mean_1b:.8f}"
-    monitor: "w1m_mean_1b"
-    mode: "min"
-    auto_insert_metric_name: False
-    every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
-
-  model_checkpoint3:
-    dirpath: ${paths.output_dir}/checkpoints
-    filename: "epoch_{epoch:03d}_w1p_{w1p_mean_1b:.8f}"
-    monitor: "w1p_mean_1b"
-    mode: "min"
-    auto_insert_metric_name: False
-    every_n_epochs: 1 # ${callbacks.jetnet_eval.every_n_epochs}+1
+    generation_config:
+      ode_solver: "midpoint"
+    w_dist_config:
+      num_batches: 40
+    plot_config:
+      plot_w_dists: False
+      plot_jet_features: True
 
   #early_stopping:
   #  monitor: "val/loss"

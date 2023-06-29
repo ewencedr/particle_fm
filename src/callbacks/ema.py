@@ -180,13 +180,16 @@ class EMAModelCheckpoint(ModelCheckpoint):
     model as well. Should only be used with `EMACallback`. Should only work for trainings with a
     single GPU. For custom checkpoint names use the metric map.
 
+    Args:
+        metric_map (Dict[str, str]): A dictionary mapping the metric name that is logged to the name of the metric in the checkpoint file name.
+
     Adapted from: https://github.com/NVIDIA/NeMo/blob/be0804f61e82dd0f63da7f9fe8a4d8388e330b18/nemo/utils/exp_manager.py#L744
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, metric_map={"val/loss": "loss"}, **kwargs):
         # call the parent class constructor with the provided kwargs
         super().__init__(**kwargs)
-        self.metric_map = {"val/loss": "loss", "w1m_mean_1b": "w1m", "w1p_mean_1b": "w1p"}
+        self.metric_map = metric_map
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
