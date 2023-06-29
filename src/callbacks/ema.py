@@ -175,6 +175,7 @@ class EMA(Callback):
             self.restore_original_weights(pl_module)
 
 
+# TODO breaks when task_name contains metric_map keys
 class EMAModelCheckpoint(ModelCheckpoint):
     """Light wrapper around Lightning's `ModelCheckpoint` to, upon request, save an EMA copy of the
     model as well. Should only be used with `EMACallback`. Should only work for trainings with a
