@@ -14,10 +14,14 @@ from zuko.utils import odeint
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_generator, IterativeNormLayer
+from .components.losses import (
+    ConditionalFlowMatchingLoss,
+    ConditionalFlowMatchingOTLoss,
+    FlowMatchingLoss,
+)
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
 
 logger = get_pylogger("fm_module")
-logger_loss = get_pylogger("fm_module_loss")
 
 
 class ode_wrapper(torch.nn.Module):
@@ -253,24 +257,6 @@ class CNF(nn.Module):
         return Normal(0.0, z.new_tensor(1.0)).log_prob(z).sum(dim=-1) + ladj * 1e2
 
 
-class FlowMatchingLoss2(nn.Module):
-    def __init__(self, vs: nn.Module):
-        super().__init__()
-
-        self.vs = vs
-
-    def forward(self, x: Tensor) -> Tensor:
-        t = torch.rand_like(x[..., 0]).unsqueeze(-1)
-        z = torch.randn_like(x)
-        # y = (1 - t) * x + (1e-6 + (1 - 1e-6) * t) * z
-        # u = (1 - 1e-6) * z - x
-        y = (1 - (1 - 1e-4) * t) * z + t * x
-        u = x - (1 - 1e-4) * z
-        for v in self.vs:
-            y = v(t.squeeze(-1), y)
-        return (y - u).square().mean()
-
-
 class SetFlowMatchingLitModule(pl.LightningModule):
     """Pytorch Lightning module for training CNFs with Flow Matching loss.
 
@@ -363,9 +349,19 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     t_emb=t_emb,
                 )
             )
-        self.flows = flows
 
+        self.flows = flows
         self.conditioned = global_cond_dim > 0
+
+        if loss_type == "FM-OT":
+            self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma)
+        elif loss_type == "CFM":
+            self.loss = ConditionalFlowMatchingLoss(flows=self.flows, sigma=sigma)
+        elif loss_type == "CFM-OT":
+            self.loss = ConditionalFlowMatchingOTLoss(flows=self.flows, sigma=sigma)
+        else:
+            raise NotImplementedError(f"Loss type {loss_type} not implemented.")
+
         if use_normaliser:
             self.normaliser = IterativeNormLayer(
                 (features,),
@@ -390,134 +386,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             for f in self.flows:
                 x = f.encode(x, mask, ode_solver=ode_solver, ode_steps=ode_steps)
         return x
-
-    def loss(self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None):
-        """Loss function.
-
-        Args:
-            x (torch.Tensor): Values.
-
-        Raises:
-            NotImplementedError: If loss type is not supported.
-
-        Returns:
-            _type_: Loss.
-        """
-        if self.hparams.loss_type == "FM-OT":
-            t = torch.rand_like(torch.ones(x.shape[0]))
-            t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
-            t = t.type_as(x)
-
-            logger_loss.debug(f"t: {t.shape}")
-
-            z = torch.randn_like(x)
-
-            logger_loss.debug(f"z: {z.shape}")
-            y = (1 - t) * x + (self.hparams.sigma + (1 - self.hparams.sigma) * t) * z
-
-            logger_loss.debug(f"y: {y.shape}")
-            logger_loss.debug(f"y grad: {y.requires_grad}")
-
-            u_t = (1 - self.hparams.sigma) * z - x
-            u_t = u_t * mask
-
-            logger_loss.debug(f"u_t: {u_t.shape}")
-
-            temp = y.clone()
-            for v in self.flows:
-                temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
-            v_t = temp.clone()
-
-            logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
-            logger_loss.debug(f"v_t: {v_t.shape}")
-
-            out = (v_t - u_t).square().mean()
-
-        elif self.hparams.loss_type == "CFM":
-            # from https://arxiv.org/abs/2302.00482
-            sigma_t = 0.1
-
-            t = torch.rand_like(torch.ones(x.shape[0]))
-            t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
-            t = t.type_as(x)
-
-            x_0 = torch.randn_like(x)  # sample from prior
-            x_1 = x  # conditioning
-
-            logger_loss.debug(f"t: {t.shape}")
-            logger_loss.debug(f"x_0: {x_0.shape}")
-            logger_loss.debug(f"x_1: {x_1.shape}")
-
-            mu_t = (1 - t) * x_1 + t * x_0
-            y = mu_t + sigma_t * torch.randn_like(mu_t)
-
-            u_t = x_0 - x_1
-            u_t = u_t * mask
-
-            logger_loss.debug(f"mu_t: {mu_t.shape}")
-            logger_loss.debug(f"y: {y.shape}")
-            logger_loss.debug(f"u_t: {u_t.shape}")
-
-            temp = y.clone()
-            for v in self.flows:
-                temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
-            v_t = temp.clone()
-
-            out = (v_t - u_t).square().mean()
-
-            logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
-            logger_loss.debug(f"v_t: {v_t.shape}")
-            logger_loss.debug(f"out: {out.shape}")
-
-        elif self.hparams.loss_type == "CFM-OT":
-            # from https://arxiv.org/abs/2302.00482
-
-            sigma = 0.1
-
-            x0 = torch.randn_like(x)  # sample from prior
-            x1 = x  # wanted distribution
-
-            t = torch.rand_like(torch.ones(x0.shape[0]))
-            t = t.unsqueeze(-1).repeat_interleave(x0.shape[1], dim=1).unsqueeze(-1)
-            t = t.type_as(x0)
-
-            a, b = pot.unif(x0.size()[1]), pot.unif(x1.size()[1])
-            a = np.repeat(np.expand_dims(a, axis=0), x0.size()[0], axis=0)
-            b = np.repeat(np.expand_dims(b, axis=0), x1.size()[0], axis=0)
-
-            M = torch.cdist(x0, x1) ** 2
-
-            # for each set
-            for k in range(M.shape[0]):
-                M[k] = M[k] / M[k].max()
-                pi = pot.emd(a[k], b[k], M[k].detach().cpu().numpy())
-                p = pi.flatten()
-                p = p / p.sum()
-
-                choices = np.random.choice(pi.shape[0] * pi.shape[1], p=p, size=pi.shape[0])
-                i, j = np.divmod(choices, pi.shape[1])
-
-                x0[k] = x0[k, i]
-                x1[k] = x1[k, j]
-                mask_ot = mask[k, j]
-
-            mu_t = x0 * t + x1 * (1 - t)
-            sigma_t = sigma
-            y = mu_t + sigma_t * torch.randn_like(x0)
-            ut = x0 - x1
-            ut = ut * mask_ot
-
-            temp = y.clone()
-            for v in self.flows:
-                temp = v(t.squeeze(-1), temp, mask=mask_ot, cond=cond)
-            vt = temp.clone()
-
-            out = torch.mean((vt - ut) ** 2)
-
-        else:
-            raise NotImplementedError(f"loss_type {self.hparams.loss_type} not implemented")
-
-        return out
 
     def on_train_start(self):
         # by default lightning executes validation step sanity checks before training starts,
