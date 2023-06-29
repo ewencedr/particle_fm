@@ -50,8 +50,6 @@ class CNF(nn.Module):
         local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
         return_latent_space (bool, optional): Return latent space. Defaults to False.
         dropout (float, optional): Dropout value for dropout layers. Defaults to 0.0.
-        heads (int, optional): Number of attention heads. Defaults to 4.
-        mask (bool, optional): Use mask. Defaults to False.
         latent (int, optional): Latent dimension. Defaults to 16.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
@@ -72,8 +70,6 @@ class CNF(nn.Module):
         local_cond_dim: int = 0,
         return_latent_space: bool = False,
         dropout: float = 0.0,
-        heads: int = 4,
-        mask=False,
         latent: int = 16,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
@@ -281,8 +277,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
         add_time_to_input (bool, optional): Concat time to input. Defaults to False.
         dropout (float, optional): Value for dropout layers. Defaults to 0.0.
-        heads (int, optional): Number of attention heads. Defaults to 4.
-        mask (bool, optional): Use Mask. Defaults to False.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
     """
@@ -309,15 +303,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         add_time_to_input: bool = True,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
-        # transformer
         dropout: float = 0.0,
-        heads: int = 4,
-        mask=False,
         # loss
         loss_type: str = "FM-OT",
         sigma: float = 1e-4,
         t_emb: str = "sincos",
-        **kwargs,
     ):
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -339,8 +329,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     latent=latent,
                     return_latent_space=return_latent_space,
                     dropout=dropout,
-                    heads=heads,
-                    mask=mask,
                     activation=activation,
                     wrapper_func=wrapper_func,
                     t_global_cat=t_global_cat,
@@ -414,7 +402,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             x = self.normaliser(x, bool_mask)
             if self.conditioned:
                 cond = self.ctxt_normaliser(cond)
-        if not self.hparams.mask:
+        if not self.trainer.datamodule.hparams.variable_jet_sizes:
             mask = None
 
         loss = self.loss(x, mask=mask, cond=cond)
@@ -436,7 +424,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             x = self.normaliser(x, bool_mask)
             if self.conditioned:
                 cond = self.ctxt_normaliser(cond)
-        if not self.hparams.mask:
+        if not self.trainer.datamodule.hparams.variable_jet_sizes:
             mask = None
 
         loss = self.loss(x, mask, cond=cond)

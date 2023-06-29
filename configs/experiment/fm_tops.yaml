@@ -44,10 +44,6 @@ model:
   t_global_cat: False
 
   dropout: 0.0
-
-  # transformer
-  heads: 4
-  mask: True
   # loss
   loss_type: FM-OT
   sigma: 1e-4
@@ -69,7 +65,7 @@ data:
     #- "z"
   batch_size: 1024
   num_particles: ${model.num_particles}
-  variable_jet_sizes: ${model.mask}
+  variable_jet_sizes: True
   centering: False
   normalize: False
   normalize_sigma: 5
