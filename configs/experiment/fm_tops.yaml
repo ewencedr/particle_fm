@@ -22,6 +22,7 @@ trainer:
   min_epochs: 3
   max_epochs: 30
   gradient_clip_val: 0.5
+  devices: 1
   # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
 model:
