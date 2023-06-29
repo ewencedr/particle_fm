@@ -213,6 +213,9 @@ class JetNetEvaluationCallback(pl.Callback):
 
             self.log("w1m_mean", w_dists["w1m_mean"])
             self.log("w1p_mean", w_dists["w1p_mean"])
+            self.log("w1m_std", w_dists["w1m_std"])
+            self.log("w1p_std", w_dists["w1p_std"])
+
             if self.comet_logger is not None:
                 text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
                 self.comet_logger.log_text(text)
