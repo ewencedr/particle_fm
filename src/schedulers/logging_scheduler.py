@@ -21,11 +21,11 @@ def custom5000epochs(current_epoch: int):
 def epochs10000(current_epoch: int):
     if current_epoch == 100:
         return True
-    for i in range(2, 9):
+    for i in range(1, 9):
         t = 1000 * i
-        if current_epoch <= t and current_epoch > t - 25:
+        if current_epoch <= t and current_epoch > t - 20:
             return True
-    if current_epoch > 9750:
+    if current_epoch > 9900:
         return True
     return False
 
