@@ -220,7 +220,7 @@ class EPiC_generator(nn.Module):
         frequencies (int, optional): Frequencies for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
         num_points (int, optional): Number of points in set. Defaults to 30.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
-        t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector in EPiC layers. Defaults to False.
         dropout (float, optional): Dropout rate. Defaults to 0.0.
     """
 
@@ -257,14 +257,13 @@ class EPiC_generator(nn.Module):
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
         t_local_dim = 2 * frequencies if self.t_local_cat else 0
-        t_global_dim = 2 * frequencies if self.t_global_cat else 0
 
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
         self.local_0 = self.wrapper_func(
             nn.Linear(self.input_dim + t_local_dim + self.local_cond_dim, self.hid_d)
         )
         self.global_0 = self.wrapper_func(
-            nn.Linear(self.latent + t_global_dim + self.global_cond_dim, self.hid_d)
+            nn.Linear(self.latent + self.global_cond_dim, self.hid_d)
         )
         self.global_1 = self.wrapper_func(nn.Linear(self.hid_d, self.latent))
 
@@ -330,12 +329,6 @@ class EPiC_generator(nn.Module):
             t_local = torch.Tensor().to(t.device)
         else:
             t_local = t
-        if self.t_global_cat:
-            # prepare t for concat to global
-            t_global = t.clone()[:, 0, :]
-            logger_eg.debug(f"t_global shape: {t_global.shape}")
-            z_global = torch.cat([z_global, t_global], 1)
-        logger_eg.debug(f"z_global shape: {z_global.shape}")
 
         # global conditioning
         if self.global_cond_dim == 0:

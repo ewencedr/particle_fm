@@ -3,12 +3,14 @@ _target_: src.models.flow_matching_module.SetFlowMatchingLitModule
 # Full configuration for the model optimizer
 optimizer:
   _target_: torch.optim.AdamW
-  _partial_: true
+  _partial_: True
   lr: 0.0001
   weight_decay: 0.0001
 
-use_normaliser: true
-add_time_to_input: false
+use_normaliser: True
+add_time_to_input: False
 normaliser_config:
   max_n: 2000_000
 t_emb: cosine
+t_global_cat: True
+t_local_cat: False
