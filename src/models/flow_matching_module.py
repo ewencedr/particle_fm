@@ -17,6 +17,7 @@ from .components import EPiC_generator, IterativeNormLayer
 from .components.losses import (
     ConditionalFlowMatchingLoss,
     ConditionalFlowMatchingOTLoss,
+    DiffusionLoss,
     FlowMatchingLoss,
 )
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
@@ -313,7 +314,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-
         flows = nn.ModuleList()
 
         for _ in range(n_transforms):
@@ -347,6 +347,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             self.loss = ConditionalFlowMatchingLoss(flows=self.flows, sigma=sigma)
         elif loss_type == "CFM-OT":
             self.loss = ConditionalFlowMatchingOTLoss(flows=self.flows, sigma=sigma)
+        elif loss_type == "diffusion":
+            self.loss = DiffusionLoss(flows=self.flows, sigma=sigma)
         else:
             raise NotImplementedError(f"Loss type {loss_type} not implemented.")
 

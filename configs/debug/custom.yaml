@@ -21,7 +21,7 @@ hydra:
   #  root:
   #    level: DEBUG
   # use this to also set hydra loggers to 'DEBUG'
-  verbose: [fm_module]
+  verbose: [loss]
   # fm_module, loss, epic_layer, epic_generator, epic_discriminator, epic_mask, EMA, JetNetEvaluationCallback
 
 trainer:
