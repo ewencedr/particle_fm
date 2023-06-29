@@ -29,7 +29,6 @@ model:
   hidden_dim: 128
   num_particles: 30
   frequencies: 6
-  use_mass_loss: False
   layers: 6
   n_transforms: 1
   activation: leaky_relu
@@ -40,8 +39,6 @@ model:
   mass_conditioning: False
   global_cond_dim: 2 # needs to be calculated when using conditioning
   local_cond_dim: 0
-  t_local_cat: True # TODO
-  t_global_cat: False # TODO
 
   dropout: 0.0
 
@@ -53,7 +50,7 @@ model:
   sigma: 1e-4
   loss_comparison: MSE
   loss_type_d: LSGAN
-  t_emb: gaussian # TODO
+  t_emb: cosine
   # scheduler
   #scheduler:
   #  warmup: ${trainer.min_epochs}
