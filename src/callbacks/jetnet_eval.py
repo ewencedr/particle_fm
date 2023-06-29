@@ -41,6 +41,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
         data_type (str, optional): Type of data to plot. Options are 'test' and 'val'. Defaults to "test".
         use_ema (bool, optional): Use exponential moving average weights for logging. Defaults to False.
+        fix_seed (bool, optional): Fix seed for data generation to have better reproducibility and comparability between epochs. Defaults to True.
         w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
         generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 200}.
         plot_config (Mapping, optional): Configuration for plotting. Defaults to {}.
@@ -56,6 +57,7 @@ class JetNetEvaluationCallback(pl.Callback):
         log_epoch_zero: bool = False,
         data_type: str = "val",
         use_ema: bool = False,
+        fix_seed: bool = True,
         w_dist_config: Mapping = {
             "num_jet_samples": 10_000,
             "num_batches": 40,
@@ -73,6 +75,7 @@ class JetNetEvaluationCallback(pl.Callback):
         self.log_times = log_times
         self.log_epoch_zero = log_epoch_zero
         self.use_ema = use_ema
+        self.fix_seed = fix_seed
 
         self.model_name = model_name
         self.data_type = data_type
@@ -133,6 +136,10 @@ class JetNetEvaluationCallback(pl.Callback):
             log.info("Using EMA weights for logging.")
 
     def on_train_epoch_end(self, trainer, pl_module):
+        if self.fix_seed:
+            # fix seed for better reproducibility and comparable results
+            torch.manual_seed(9999)
+
         # Skip for all other epochs
         log_epoch = True
         if not self.log_epoch_zero and trainer.current_epoch == 0:
@@ -249,6 +256,7 @@ class JetNetEvaluationCallback(pl.Callback):
                 pt_selected_particles_sim[0],
             )
             sim_data = np.concatenate([background_data, background_mask], axis=-1)
+
             # Plotting
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
             fig = plot_data(
@@ -283,6 +291,9 @@ class JetNetEvaluationCallback(pl.Callback):
                     self.comet_logger.log_metrics({"Jet generation time": generation_time})
                 if self.wandb_logger is not None:
                     self.wandb_logger.log({"Jet generation time": generation_time})
+
+        if self.fix_seed:
+            torch.manual_seed(torch.seed())
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
