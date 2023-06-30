@@ -58,7 +58,8 @@ class FlowMatchingLoss(nn.Module):
         logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
         logger_loss.debug(f"v_t: {v_t.shape}")
 
-        out = (v_t - u_t).square().mean()
+        sqrd = (v_t - u_t).square()
+        out = sqrd.sum() / mask.sum()  # mean with ignoring masked values
 
         return out
 
@@ -192,7 +193,7 @@ class DiffusionLoss(nn.Module):
         flows: nn.ModuleList,
         sigma: float = 1e-4,
         loss_name: str = "huber",
-        diff_config: Mapping = {"max_sr": 0.999, "min_sr": 0.02},
+        diff_config: Mapping = {"max_sr": 1, "min_sr": 1e-8},
     ):
         super().__init__()
         self.flows = flows
@@ -222,7 +223,7 @@ class DiffusionLoss(nn.Module):
         # renaming for clarity
         nodes = x
         noises = z
-        diffusion_times = t
+        diffusion_times = t.clone()
 
         logger_loss.debug(f"times2 {diffusion_times[:,0].shape}")
         logger_loss.debug(f"times3 {diffusion_times[:,0].view(-1, 1, 1).shape}")
@@ -237,12 +238,13 @@ class DiffusionLoss(nn.Module):
         # Predict the noise using the network
         temp = noisy_nodes.clone()
         for v in self.flows:
-            temp = v(diffusion_times.squeeze(-1), temp, mask=mask, cond=cond)
+            temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
         pred_noises = temp.clone()
         logger_loss.debug(f"pred_noises: {pred_noises.shape}")
 
         # Simple noise loss is for "perceptual quality"
-        simple_loss = self.loss_fn(noises * mask, pred_noises * mask)
+        mask = mask.repeat_interleave(3, dim=-1)
+        simple_loss = self.loss_fn(noises[mask], pred_noises[mask])
 
         # MLE loss is for maximum liklihood training
         if self.mle_loss_weight:
