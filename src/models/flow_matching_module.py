@@ -316,6 +316,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
         diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
+        criterion (str, optional): Criterion for loss. Defaults to "mse".
     """
 
     def __init__(
@@ -346,6 +347,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         sigma: float = 1e-4,
         t_emb: str = "sincos",
         diff_config: Mapping = {"max_sr": 1, "min_sr": 1e-8},
+        criterion: str = "mse",
     ):
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -381,13 +383,19 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self.conditioned = global_cond_dim > 0
 
         if loss_type == "FM-OT":
-            self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma)
+            self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma, criterion=criterion)
         elif loss_type == "CFM":
-            self.loss = ConditionalFlowMatchingLoss(flows=self.flows, sigma=sigma)
+            self.loss = ConditionalFlowMatchingLoss(
+                flows=self.flows, sigma=sigma, criterion=criterion
+            )
         elif loss_type == "CFM-OT":
-            self.loss = ConditionalFlowMatchingOTLoss(flows=self.flows, sigma=sigma)
+            self.loss = ConditionalFlowMatchingOTLoss(
+                flows=self.flows, sigma=sigma, criterion=criterion
+            )
         elif loss_type == "diffusion":
-            self.loss = DiffusionLoss(flows=self.flows, sigma=sigma, diff_config=diff_config)
+            self.loss = DiffusionLoss(
+                flows=self.flows, sigma=sigma, diff_config=diff_config, criterion=criterion
+            )
         else:
             raise NotImplementedError(f"Loss type {loss_type} not implemented.")
 

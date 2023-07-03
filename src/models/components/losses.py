@@ -23,10 +23,17 @@ class FlowMatchingLoss(nn.Module):
         sigma (float, optional): Sigma. Defaults to 1e-4.
     """
 
-    def __init__(self, flows: nn.ModuleList, sigma: float = 1e-4):
+    def __init__(self, flows: nn.ModuleList, sigma: float = 1e-4, criterion: str = "mse"):
         super().__init__()
         self.flows = flows
         self.sigma = sigma
+        self.criterion: str
+        if criterion == "mse":
+            self.criterion = nn.MSELoss(reduction="sum")
+        elif criterion == "huber":
+            self.criterion = nn.HuberLoss(reduction="sum")
+        else:
+            raise NotImplementedError(f"criterion {criterion} not supported")
 
     def forward(
         self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None
@@ -58,9 +65,7 @@ class FlowMatchingLoss(nn.Module):
         logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
         logger_loss.debug(f"v_t: {v_t.shape}")
 
-        sqrd = (v_t - u_t).square()
-        out = sqrd.sum() / mask.sum()  # mean with ignoring masked values
-
+        out = self.criterion(v_t, u_t) / mask.sum()
         return out
 
 
@@ -74,10 +79,16 @@ class ConditionalFlowMatchingLoss(nn.Module):
         sigma (float, optional): Sigma. Defaults to 1e-4.
     """
 
-    def __init__(self, flows: nn.ModuleList, sigma: float = 1e-4):
+    def __init__(self, flows: nn.ModuleList, sigma: float = 1e-4, criterion: str = "mse"):
         super().__init__()
         self.flows = flows
         self.sigma = sigma
+        if criterion == "mse":
+            self.criterion = nn.MSELoss(reduction="sum")
+        elif criterion == "huber":
+            self.criterion = nn.HuberLoss(reduction="sum")
+        else:
+            raise NotImplementedError(f"criterion {criterion} not supported")
 
     def forward(
         self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None
@@ -108,7 +119,7 @@ class ConditionalFlowMatchingLoss(nn.Module):
             temp = v(t.squeeze(-1), temp, mask=mask, cond=cond)
         v_t = temp.clone()
 
-        out = (v_t - u_t).square().mean()
+        out = self.criterion(v_t, u_t) / mask.sum()
 
         logger_loss.debug(f"t squeeze: {t.squeeze(-1).shape}")
         logger_loss.debug(f"v_t: {v_t.shape}")
@@ -128,10 +139,16 @@ class ConditionalFlowMatchingOTLoss(nn.Module):
         sigma (float, optional): Sigma. Defaults to 1e-4.
     """
 
-    def __init__(self, flows: nn.ModuleList, sigma: float = 1e-4):
+    def __init__(self, flows: nn.ModuleList, sigma: float = 1e-4, criterion: str = "mse"):
         super().__init__()
         self.flows = flows
         self.sigma = sigma
+        if criterion == "mse":
+            self.criterion = nn.MSELoss(reduction="sum")
+        elif criterion == "huber":
+            self.criterion = nn.HuberLoss(reduction="sum")
+        else:
+            raise NotImplementedError(f"criterion {criterion} not supported")
 
     def forward(
         self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None
@@ -174,7 +191,7 @@ class ConditionalFlowMatchingOTLoss(nn.Module):
             temp = v(t.squeeze(-1), temp, mask=mask_ot, cond=cond)
         vt = temp.clone()
 
-        out = torch.mean((vt - ut) ** 2)
+        out = self.criterion(vt, ut) / mask.sum()
 
         return out
 
@@ -192,7 +209,7 @@ class DiffusionLoss(nn.Module):
         self,
         flows: nn.ModuleList,
         sigma: float = 1e-4,
-        loss_name: str = "huber",
+        criterion: str = "huber",
         diff_config: Mapping = {"max_sr": 1, "min_sr": 1e-8},
     ):
         super().__init__()
@@ -200,12 +217,12 @@ class DiffusionLoss(nn.Module):
         self.sigma = sigma
         self.mle_loss_weight = 0.001
         self.diff_sched = VPDiffusionSchedule(**diff_config)
-        if loss_name == "mse":
-            self.loss_fn = nn.MSELoss(reduction="none")
-        elif loss_name == "huber":
-            self.loss_fn = nn.HuberLoss(reduction="none")
+        if criterion == "mse":
+            self.criterion = nn.MSELoss(reduction="none")
+        elif criterion == "huber":
+            self.criterion = nn.HuberLoss(reduction="none")
         else:
-            raise NotImplementedError(f"Loss {loss_name} not supported")
+            raise NotImplementedError(f"criterion {criterion} not supported")
 
     def forward(
         self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None
@@ -224,12 +241,13 @@ class DiffusionLoss(nn.Module):
         nodes = x
         noises = z
         diffusion_times = t.clone()
+        diffusion_times = diffusion_times[:, 0]
 
-        logger_loss.debug(f"times2 {diffusion_times[:,0].shape}")
-        logger_loss.debug(f"times3 {diffusion_times[:,0].view(-1, 1, 1).shape}")
+        logger_loss.debug(f"times2 {diffusion_times.shape}")
+        logger_loss.debug(f"times3 {diffusion_times.view(-1, 1, 1).shape}")
 
         # Get the signal and noise rates from the diffusion schedule
-        signal_rates, noise_rates = self.diff_sched(diffusion_times[:, 0].view(-1, 1, 1))
+        signal_rates, noise_rates = self.diff_sched(diffusion_times.view(-1, 1, 1))
 
         # Mix the signal and noise according to the diffusion equation
         noisy_nodes = signal_rates * nodes + noise_rates * noises
@@ -243,8 +261,7 @@ class DiffusionLoss(nn.Module):
         logger_loss.debug(f"pred_noises: {pred_noises.shape}")
 
         # Simple noise loss is for "perceptual quality"
-        mask = mask.repeat_interleave(3, dim=-1)
-        simple_loss = self.loss_fn(noises[mask], pred_noises[mask])
+        simple_loss = self.criterion(noises, pred_noises) * mask
 
         # MLE loss is for maximum liklihood training
         if self.mle_loss_weight:

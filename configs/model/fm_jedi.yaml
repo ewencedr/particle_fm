@@ -19,6 +19,7 @@ normaliser_config:
 diff_config:
   max_sr: 0.999
   min_sr: 0.02
+criterion: 'mse'
 t_emb: cosine
 t_global_cat: True
 t_local_cat: False

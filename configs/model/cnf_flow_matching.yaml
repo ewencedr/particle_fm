@@ -14,3 +14,6 @@ scheduler:
 #scheduler:
 #  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
 #  _partial_: true
+
+use_normaliser: True
+criterion: 'huber'
