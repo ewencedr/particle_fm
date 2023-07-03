@@ -28,7 +28,7 @@ model:
   features: 3
   hidden_dim: 128
   num_particles: 150
-  frequencies: 6
+  frequencies: 16
   layers: 6
   n_transforms: 1
   activation: leaky_relu
@@ -69,7 +69,7 @@ data:
 
 callbacks:
   ema:
-    decay: 0.9999
+    decay: 0.999
     apply_ema_every_n_steps: 1
     start_step: 0
     save_ema_weights_in_callback_state: True

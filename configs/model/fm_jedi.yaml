@@ -7,10 +7,15 @@ optimizer:
   lr: 0.0001
   weight_decay: 0.0001
 
+scheduler:
+  _target_: src.schedulers.lr_scheduler.WarmupToConstant
+  _partial_: true
+  num_steps: 20
+
 use_normaliser: True
 add_time_to_input: False
 normaliser_config:
-  max_n: 2000_000
+  max_n: 2000
 t_emb: cosine
 t_global_cat: True
 t_local_cat: False
