@@ -16,6 +16,7 @@ use_normaliser: True
 add_time_to_input: False
 normaliser_config:
   max_n: 2000
+loss_type: 'diffusion'
 diff_config:
   max_sr: 0.999
   min_sr: 0.02

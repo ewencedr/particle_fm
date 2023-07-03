@@ -1,7 +1,5 @@
 from typing import Any, Mapping
 
-import numpy as np
-import ot as pot
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -11,6 +9,7 @@ from torch.distributions import Normal
 from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
+from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_generator, IterativeNormLayer
@@ -26,16 +25,43 @@ logger = get_pylogger("fm_module")
 
 
 class ode_wrapper(torch.nn.Module):
-    """Wraps model to ode solver compatible format."""
+    """Wraps model to ode solver compatible format. Also important for solving various types of
+    ODEs.
 
-    def __init__(self, model, cond, mask):
+    Args:
+        model (torch.nn.Module): Model to wrap.
+        mask (torch.Tensor, optional): Mask. Defaults to None.
+        cond (torch.Tensor, optional): Condition. Defaults to None.
+        loss_type (str, optional): Loss type. Defaults to "FM-OT".
+        diff_config (Mapping, optional): Config for diffusion noise scheduling. Only necessary when using loss_type="diffusion". Defaults to {"max_sr": 0.999, "min_sr": 0.02}.
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        mask: torch.Tensor = None,
+        cond: torch.Tensor = None,
+        loss_type: str = "FM-OT",
+        diff_config: Mapping = {"max_sr": 0.999, "min_sr": 0.02},
+    ):
         super().__init__()
         self.model = model
-        self.cond = cond
         self.mask = mask
+        self.cond = cond
+        self.loss_type = loss_type
+        if self.loss_type == "diffusion":
+            self.diff_sched = VPDiffusionSchedule(**diff_config)
 
     def forward(self, t, x):
-        return self.model(t, x, cond=self.cond, mask=self.mask)
+        if self.loss_type == "diffusion":
+            expanded_shape = [-1] + [1] * (x.dim() - 1)
+            _, noise_rates = self.diff_sched(t.view(expanded_shape))
+            betas = self.diff_sched.get_betas(t.view(expanded_shape))
+            return (
+                -0.5 * betas * (x - self.model(t, x, mask=self.mask, cond=self.cond) / noise_rates)
+            )
+        else:
+            return self.model(t, x, mask=self.mask, cond=self.cond)
 
 
 class CNF(nn.Module):
@@ -58,6 +84,8 @@ class CNF(nn.Module):
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
         add_time_to_input (bool, optional): Concat time to input. Defaults to True.
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
+        loss_type (str, optional): Loss type. Defaults to "FM-OT".
+        diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
     """
 
     def __init__(
@@ -78,6 +106,8 @@ class CNF(nn.Module):
         t_global_cat: bool = False,
         add_time_to_input: bool = True,
         t_emb: str = "sincos",
+        loss_type: str = "FM-OT",
+        diff_config: Mapping[str, Any] = {"max_sr": 0.999, "min_sr": 0.02},
     ):
         super().__init__()
         self.latent = latent
@@ -105,6 +135,8 @@ class CNF(nn.Module):
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
         self.activation = activation
         self.t_emb = t_emb
+        self.loss_type = loss_type
+        self.diff_config = diff_config
         # Gaussian random feature embedding layer for time
         if self.t_emb == "gaussian":
             self.embed = nn.Sequential(
@@ -174,7 +206,6 @@ class CNF(nn.Module):
         t_span = torch.linspace(0.0, 1.0, 100)
         traj = node.trajectory(x, t_span)
         return traj[-1]
-        # return odeint(wrapped_cnf, x, 0.0, 1.0, phi=self.parameters())
 
     # TODO make code cleaner by not repeating code, add code to encode and use config to configure ode_solver
     def decode(
@@ -185,7 +216,13 @@ class CNF(nn.Module):
         ode_solver: str = "dopri5_zuko",
         ode_steps: int = 100,
     ) -> Tensor:
-        wrapped_cnf = ode_wrapper(model=self, cond=cond, mask=mask)
+        wrapped_cnf = ode_wrapper(
+            model=self,
+            cond=cond,
+            mask=mask,
+            loss_type=self.loss_type,
+            diff_config=self.diff_config,
+        )
         if ode_solver == "dopri5_zuko":
             return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
         elif ode_solver == "rk4":
@@ -229,8 +266,6 @@ class CNF(nn.Module):
             t_span = torch.linspace(1.0, 0.0, ode_steps)
             traj = node.trajectory(z, t_span)
             return traj[-1]
-        # elif solver == "scipy":
-        # return solve_ivp(wrapped_cnf, [1.0, 0.0], z[:, 0, 0].cpu(), vectorized=True)
         else:
             raise NotImplementedError(f"Solver {ode_solver} not implemented")
 
@@ -280,6 +315,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         dropout (float, optional): Value for dropout layers. Defaults to 0.0.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
+        diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
     """
 
     def __init__(
@@ -309,6 +345,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         loss_type: str = "FM-OT",
         sigma: float = 1e-4,
         t_emb: str = "sincos",
+        diff_config: Mapping = {"max_sr": 1, "min_sr": 1e-8},
     ):
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -335,6 +372,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     t_local_cat=t_local_cat,
                     add_time_to_input=add_time_to_input,
                     t_emb=t_emb,
+                    loss_type=loss_type,
+                    diff_config=diff_config,
                 )
             )
 
@@ -348,7 +387,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         elif loss_type == "CFM-OT":
             self.loss = ConditionalFlowMatchingOTLoss(flows=self.flows, sigma=sigma)
         elif loss_type == "diffusion":
-            self.loss = DiffusionLoss(flows=self.flows, sigma=sigma)
+            self.loss = DiffusionLoss(flows=self.flows, sigma=sigma, diff_config=diff_config)
         else:
             raise NotImplementedError(f"Loss type {loss_type} not implemented.")
 
