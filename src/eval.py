@@ -2,8 +2,9 @@ from typing import List, Tuple
 
 import hydra
 import pyrootutils
+import torch
 from omegaconf import DictConfig
-from pytorch_lightning import LightningDataModule, LightningModule, Trainer
+from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -51,16 +52,20 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
     log.info(f"Instantiating model <{cfg.model._target_}>")
     model: LightningModule = hydra.utils.instantiate(cfg.model)
 
+    log.info("Instantiating callbacks...")
+    callbacks: List[Callback] = utils.instantiate_callbacks(cfg.get("callbacks"), cfg.ckpt_path)
+
     log.info("Instantiating loggers...")
     logger: List[Logger] = utils.instantiate_loggers(cfg.get("logger"))
 
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger)
+    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
 
     object_dict = {
         "cfg": cfg,
         "datamodule": datamodule,
         "model": model,
+        "callbacks": callbacks,
         "logger": logger,
         "trainer": trainer,
     }
@@ -82,6 +87,7 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="eval.yaml")
 def main(cfg: DictConfig) -> None:
+    torch.set_float32_matmul_precision("medium")
     evaluate(cfg)
 
 

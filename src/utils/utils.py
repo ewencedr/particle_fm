@@ -28,10 +28,8 @@ def task_wrapper(task_func: Callable) -> Callable:
     """
 
     def wrap(cfg: DictConfig):
-
         # execute the task
         try:
-
             # apply extra utilities
             extras(cfg)
 
@@ -39,7 +37,6 @@ def task_wrapper(task_func: Callable) -> Callable:
 
         # things to do if exception occurs
         except Exception as ex:
-
             # save exception to `.log` file
             log.exception("")
 
@@ -49,7 +46,6 @@ def task_wrapper(task_func: Callable) -> Callable:
 
         # things to always do after either success or exception
         finally:
-
             # display output dir path in terminal
             log.info(f"Output dir: {cfg.paths.output_dir}")
 
@@ -91,7 +87,7 @@ def extras(cfg: DictConfig) -> None:
         rich_utils.print_config_tree(cfg, resolve=True, save_to_file=True)
 
 
-def instantiate_callbacks(callbacks_cfg: DictConfig) -> List[Callback]:
+def instantiate_callbacks(callbacks_cfg: DictConfig, ckpt_path: str = None) -> List[Callback]:
     """Instantiates callbacks from config."""
     callbacks: List[Callback] = []
 
@@ -105,6 +101,8 @@ def instantiate_callbacks(callbacks_cfg: DictConfig) -> List[Callback]:
     for _, cb_conf in callbacks_cfg.items():
         if isinstance(cb_conf, DictConfig) and "_target_" in cb_conf:
             log.info(f"Instantiating callback <{cb_conf._target_}>")
+            if cb_conf._target_ == "src.callbacks.jetnet_final_eval.JetNetFinalEvaluationCallback":
+                cb_conf.ckpt_path = ckpt_path
             callbacks.append(hydra.utils.instantiate(cb_conf))
 
     return callbacks
