@@ -149,6 +149,12 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             **self.generation_config,
         )
 
+        # save generated data
+        path = "/".join(ckpt.split("/")[:-2]) + "/"
+        file_name = "final_generated_data.npy"
+        full_path = path + file_name
+        np.save(full_path, data)
+
         # Wasserstein distances
         w_dists = calculate_all_wasserstein_metrics(background_data, data, **self.w_dist_config)
 
