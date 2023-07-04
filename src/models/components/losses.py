@@ -265,7 +265,7 @@ class DiffusionLoss(nn.Module):
 
         # MLE loss is for maximum liklihood training
         if self.mle_loss_weight:
-            betas = self.diff_sched.get_betas(diffusion_times[:, 0].view(-1, 1, 1))
+            betas = self.diff_sched.get_betas(diffusion_times.view(-1, 1, 1))
             mle_weights = betas / noise_rates
             mle_loss = mle_weights * simple_loss
             out = simple_loss.mean() + self.mle_loss_weight * mle_loss.mean()
