@@ -19,6 +19,7 @@ from .components.losses import (
     DiffusionLoss,
     FlowMatchingLoss,
 )
+from .components.solver import ddim_sampler, euler_maruyama_sampler
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
 
 logger = get_pylogger("fm_module")
@@ -266,6 +267,30 @@ class CNF(nn.Module):
             t_span = torch.linspace(1.0, 0.0, ode_steps)
             traj = node.trajectory(z, t_span)
             return traj[-1]
+        elif ode_solver == "em" or ode_solver == "ddim":
+            if self.loss_type == "diffusion":
+                diff_sched = VPDiffusionSchedule(**self.diff_config)
+                if ode_solver == "em":  # euler-maruyama
+                    x = euler_maruyama_sampler(
+                        self,
+                        diff_sched=diff_sched,
+                        initial_noise=z,
+                        mask=mask,
+                        cond=cond,
+                        n_steps=ode_steps,
+                    )
+                elif ode_solver == "ddim":
+                    x = ddim_sampler(
+                        self,
+                        diff_sched=diff_sched,
+                        initial_noise=z,
+                        mask=mask,
+                        cond=cond,
+                        n_steps=ode_steps,
+                    )
+                return x[0]
+            else:
+                raise SyntaxError(f"Solver {ode_solver} is only implemented for diffusion loss")
         else:
             raise NotImplementedError(f"Solver {ode_solver} not implemented")
 
