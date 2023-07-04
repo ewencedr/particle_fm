@@ -65,7 +65,9 @@ class FlowMatchingLoss(nn.Module):
         logger_loss.debug(f"v_t grad: {v_t.requires_grad}")
         logger_loss.debug(f"v_t: {v_t.shape}")
 
-        out = self.criterion(v_t, u_t) / mask.sum()
+        # out = self.criterion(v_t, u_t) / mask.sum()
+        sqrd = (v_t - u_t).square()
+        out = sqrd.sum() / mask.sum()  # mean with ignoring masked values
         return out
 
 
@@ -268,8 +270,10 @@ class DiffusionLoss(nn.Module):
             betas = self.diff_sched.get_betas(diffusion_times.view(-1, 1, 1))
             mle_weights = betas / noise_rates
             mle_loss = mle_weights * simple_loss
-            out = simple_loss.mean() + self.mle_loss_weight * mle_loss.mean()
+            out = (
+                simple_loss.sum() / mask.sum() + self.mle_loss_weight * mle_loss.sum() / mask.sum()
+            )
         else:
-            out = simple_loss.mean()
+            out = simple_loss.sum() / mask.sum()
 
         return out
