@@ -12,14 +12,28 @@ scheduler:
   _partial_: true
   num_steps: 20
 
-use_normaliser: True
+features: 3
+n_transforms: 1
+layers: 6
+hidden_dim: 128
+latent: 10
+activation: leaky_relu
+wrapper_func: weight_norm
+dropout: 0.0
+
+t_emb: cosine
+frequencies: 16
+t_global_cat: True
+t_local_cat: False
 add_time_to_input: False
-normaliser_config:
-  max_n: 2000
+
+loss_type: 'FM-OT'
 diff_config:
   max_sr: 0.999
   min_sr: 0.02
 criterion: 'mse'
-t_emb: cosine
-t_global_cat: True
-t_local_cat: False
+sigma: 1e-4
+
+use_normaliser: False
+normaliser_config:
+  max_n: 2000
