@@ -23,9 +23,9 @@ def epochs10000(current_epoch: int):
         return True
     for i in range(1, 9):
         t = 1000 * i
-        if current_epoch <= t and current_epoch > t - 20:
+        if current_epoch <= t and current_epoch > t - 5:
             return True
-    if current_epoch > 9900:
+    if current_epoch > 9975:
         return True
     return False
 
