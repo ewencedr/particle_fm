@@ -1,16 +1,28 @@
 _target_: src.models.flow_matching_module.SetFlowMatchingLitModule
 
 # Full configuration for the model optimizer
+#optimizer:
+#  _target_: torch.optim.AdamW
+#  _partial_: True
+#  lr: 0.0001
+#  weight_decay: 0.0001
+#
+#scheduler:
+#  _target_: src.schedulers.lr_scheduler.WarmupToConstant
+#  _partial_: true
+#  num_steps: 20
+
 optimizer:
   _target_: torch.optim.AdamW
-  _partial_: True
-  lr: 0.0001
-  weight_decay: 0.0001
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.00005
 
 scheduler:
-  _target_: src.schedulers.lr_scheduler.WarmupToConstant
+  _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
   _partial_: true
-  num_steps: 20
+  warmup: 1000
+  max_iters: 10000
 
 features: 3
 n_transforms: 1
@@ -23,9 +35,9 @@ dropout: 0.0
 
 t_emb: cosine
 frequencies: 16
-t_global_cat: True
-t_local_cat: False
-add_time_to_input: False
+t_global_cat: False
+t_local_cat: True
+add_time_to_input: True
 
 loss_type: 'diffusion'
 diff_config:

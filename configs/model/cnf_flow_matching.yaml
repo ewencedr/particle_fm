@@ -9,8 +9,8 @@ optimizer:
 scheduler:
   _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
   _partial_: true
-  warmup: 5
-  max_iters: 10
+  warmup: 1000
+  max_iters: 10000
 #scheduler:
 #  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
 #  _partial_: true
