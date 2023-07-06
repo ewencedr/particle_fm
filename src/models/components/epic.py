@@ -108,11 +108,7 @@ class EPiC_layer(nn.Module):
         if self.local_cond_dim == 0:
             local_cond = torch.Tensor().to(x_local.device)
         else:
-            local_cond = (
-                global_cond_in.repeat_interleave(self.num_points, dim=-1)
-                .unsqueeze(-1)
-                .repeat_interleave(self.local_cond_dim, dim=-1)
-            )
+            local_cond = global_cond_in.unsqueeze(-2).repeat_interleave(self.num_points, dim=-2)
             logger_el.debug(f"local_cond shape: {local_cond.shape}")
 
         if global_cond_in is not None:
@@ -344,11 +340,7 @@ class EPiC_generator(nn.Module):
 
         # local conditioning
         if self.local_cond_dim > 0:
-            local_cond = (
-                global_cond_in.repeat_interleave(self.num_points, dim=-1)
-                .unsqueeze(-1)
-                .repeat_interleave(self.local_cond_dim, dim=-1)
-            )
+            local_cond = global_cond_in.unsqueeze(-2).repeat_interleave(self.num_points, dim=-2)
             logger_eg.debug(f"local_cond shape: {local_cond.shape}")
         else:
             local_cond = torch.Tensor().to(z_local.device)
