@@ -5,13 +5,13 @@ jetnet_final_eval:
   dataset: "test"
   nr_checkpoint_callbacks: 1
   ckpt_path: null
-  num_jet_samples: -1
+  num_jet_samples: -5
   fix_seed: true
   w_dist_config:
-    num_eval_samples: 10_000
+    num_eval_samples: 50_000
     num_batches: 40
   generation_config:
-    batch_size: 256
+    batch_size: 1024
     ode_solver: "midpoint"
     ode_steps: 200
   plot_config:
