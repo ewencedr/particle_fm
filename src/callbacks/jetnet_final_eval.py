@@ -65,6 +65,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         self.nr_checkpoint_callbacks = nr_checkpoint_callbacks
         self.num_jet_samples = num_jet_samples
         self.fix_seed = fix_seed
+        self.evaluate_substructure = evaluate_substructure
         # loggers
         self.comet_logger = None
         self.wandb_logger = None
