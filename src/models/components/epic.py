@@ -63,7 +63,9 @@ class EPiC_layer(nn.Module):
                 hid_dim,
             )
         )
-        self.fc_global2 = self.wrapper_func(nn.Linear(hid_dim, latent_dim))
+        self.fc_global2 = self.wrapper_func(
+            nn.Linear(hid_dim + t_global_dim + self.global_cond_dim, latent_dim)
+        )
         self.fc_local1 = self.wrapper_func(
             nn.Linear(local_in_dim + latent_dim + t_local_dim + self.local_cond_dim, hid_dim)
         )
@@ -173,7 +175,7 @@ class EPiC_layer(nn.Module):
         )  # new intermediate step
         logger_el.debug(f"x_global1.shape: {x_global1.shape}")
         x_global = getattr(F, self.activation, lambda x: x)(
-            self.fc_global2(x_global1) + x_global
+            self.fc_global2(torch.cat((t_global, x_global1, global_cond), dim=-1)) + x_global
         )  # with residual connection before AF
         x_global = self.do(x_global)
 
@@ -253,15 +255,18 @@ class EPiC_generator(nn.Module):
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
         t_local_dim = 2 * frequencies if self.t_local_cat else 0
+        t_global_dim = 2 * frequencies if self.t_global_cat else 0
 
         self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
         self.local_0 = self.wrapper_func(
             nn.Linear(self.input_dim + t_local_dim + self.local_cond_dim, self.hid_d)
         )
         self.global_0 = self.wrapper_func(
-            nn.Linear(self.latent + self.global_cond_dim, self.hid_d)
+            nn.Linear(self.latent + t_global_dim + self.global_cond_dim, self.hid_d)
         )
-        self.global_1 = self.wrapper_func(nn.Linear(self.hid_d, self.latent))
+        self.global_1 = self.wrapper_func(
+            nn.Linear(self.hid_d + t_global_dim + self.global_cond_dim, self.latent)
+        )
 
         self.nn_list = nn.ModuleList()
         for _ in range(self.equiv_layers):
@@ -326,17 +331,17 @@ class EPiC_generator(nn.Module):
         else:
             t_local = t
 
+        if self.t_global_cat:
+            # prepare t for concat to global
+            t_global = t.clone()[:, 0, :]
+        else:
+            t_global = torch.Tensor().to(t.device)
+
         # global conditioning
         if self.global_cond_dim == 0:
             global_cond = torch.Tensor().to(z_global.device)
         else:
-            z_global = torch.cat(
-                [
-                    z_global,
-                    global_cond_in,
-                ],
-                1,
-            )
+            global_cond = global_cond_in
 
         # local conditioning
         if self.local_cond_dim > 0:
@@ -351,9 +356,13 @@ class EPiC_generator(nn.Module):
         z_local = self.do(z_local)
 
         logger_eg.debug(f"z_global1: {z_global.shape}")
-        z_global = getattr(F, self.activation, lambda x: x)(self.global_0(z_global))
+        z_global = getattr(F, self.activation, lambda x: x)(
+            self.global_0(torch.cat((t_global, z_global, global_cond), dim=-1))
+        )
         logger_eg.debug(f"z_global2: {z_global.shape}")
-        z_global = getattr(F, self.activation, lambda x: x)(self.global_1(z_global))
+        z_global = getattr(F, self.activation, lambda x: x)(
+            self.global_1(torch.cat((t_global, z_global, global_cond), dim=-1))
+        )
         z_global = self.do(z_global)
 
         latent_tensor = torch.cat([latent_tensor, z_global.clone().reshape(batch_size, 1, -1)], 1)
@@ -376,7 +385,7 @@ class EPiC_generator(nn.Module):
         # final local NN to get down to input feats size
         logger_eg.debug(f"z_local2: {z_local.shape}")
         out = self.local_1(
-            torch.cat((t_local.clone(), z_local.clone(), local_cond.clone()), dim=-1),
+            torch.cat((t_local, z_local, local_cond), dim=-1),
         )
         if self.return_latent_space:
             return out * mask, latent_tensor
