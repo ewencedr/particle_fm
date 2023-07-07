@@ -1,5 +1,6 @@
 from typing import Mapping, Optional
 
+import h5py
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -7,7 +8,9 @@ import wandb
 import yaml
 
 from src.data.components import calculate_all_wasserstein_metrics
+from src.data.components.metrics import wasserstein_distance_batched
 from src.utils.data_generation import generate_data
+from src.utils.jet_substructure import dump_hlvs
 from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
 from src.utils.pylogger import get_pylogger
 
@@ -26,6 +29,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         ckpt_path (Optional[str], optional): Path to checkpoint. If given, this ckpt will be used for evaluation. Defaults to None.
         num_jet_samples (int, optional): How many jet samples to generate. Negative values define the amount of times the whole dataset is taken, e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
         fix_seed (bool, optional): Fix seed for data generation to have better reproducibility and comparability between epochs. Defaults to True.
+        evaluate_substructure (bool, optional): Evaluate substructure metrics. Takes very long. Defaults to True.
         w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
         generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 200}.
         plot_config (Mapping, optional): Configuration for plotting. Defaults to {}.
@@ -39,6 +43,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         ckpt_path: Optional[str] = None,
         num_jet_samples: int = -1,
         fix_seed: bool = True,
+        evaluate_substructure: bool = True,
         w_dist_config: Mapping = {
             "num_eval_samples": 10_000,
             "num_batches": 40,
@@ -156,7 +161,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         np.save(full_path, data)
 
         # Wasserstein distances
-        w_dists = calculate_all_wasserstein_metrics(background_data, data, **self.w_dist_config)
+        metrics = calculate_all_wasserstein_metrics(background_data, data, **self.w_dist_config)
 
         # Prepare Data for Plotting
         plot_prep_config = {
@@ -211,28 +216,84 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             **self.plot_config,
         )
 
+        if self.evaluate_substructure:
+            substructure_path = "/".join(ckpt.split("/")[:-2]) + "/"
+            substructure_file_name = "substructure"
+            substructure_full_path = substructure_path + substructure_file_name
+
+            # calculate substructure for generated data
+            dump_hlvs(data, substructure_full_path, plot=True)
+
+            substructure_path_jetnet = "/".join(ckpt.split("/")[:-2]) + "/"
+            substructure_file_name_jetnet = "substructure_jetnet"
+            substructure_full_path_jetnet = (
+                substructure_path_jetnet + substructure_file_name_jetnet
+            )
+
+            # calculate substructure for reference data
+            dump_hlvs(background_data, substructure_full_path_jetnet, plot=True)
+
+            # load substructure for model generated data
+            keys = []
+            data_substructure = []
+            with h5py.File(full_path + ".h5", "r") as f:
+                tau21 = np.array(f["tau21"])
+                tau32 = np.array(f["tau32"])
+                d2 = np.array(f["d2"])
+                for key in f.keys():
+                    keys.append(key)
+                    data_substructure.append(np.array(f[key]))
+            data_substructure = np.array(data_substructure)
+
+            # load substructure for JetNet data
+            data_substructure_jetnet = []
+            with h5py.File(substructure_full_path_jetnet + ".h5", "r") as f:
+                tau21_jetnet = np.array(f["tau21"])
+                tau32_jetnet = np.array(f["tau32"])
+                d2_jetnet = np.array(f["d2"])
+                for key in f.keys():
+                    data_substructure_jetnet.append(np.array(f[key]))
+            data_substructure_jetnet = np.array(data_substructure_jetnet)
+
+            w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
+                tau21_jetnet, tau21, **self.w_dist_config
+            )
+            w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
+                tau32_jetnet, tau32, **self.w_dist_config
+            )
+            w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
+                d2_jetnet, d2, **self.w_dist_config
+            )
+
+            metrics["w_dist_tau21_mean"] = w_dist_tau21_mean
+            metrics["w_dist_tau21_std"] = w_dist_tau21_std
+            metrics["w_dist_tau32_mean"] = w_dist_tau32_mean
+            metrics["w_dist_tau32_std"] = w_dist_tau32_std
+            metrics["w_dist_d2_mean"] = w_dist_d2_mean
+            metrics["w_dist_d2_std"] = w_dist_d2_std
+
         yaml_path = "/".join(ckpt.split("/")[:-2]) + "/final_eval_metrics.yml"
         log.info(f"Writing final evaluation metrics to {yaml_path}")
 
         # transform numpy.float64 for better readability in yaml file
-        w_dists = {k: float(v) for k, v in w_dists.items()}
+        metrics = {k: float(v) for k, v in metrics.items()}
         # write to yaml file
         with open(yaml_path, "w") as outfile:
-            yaml.dump(w_dists, outfile, default_flow_style=False)
+            yaml.dump(metrics, outfile, default_flow_style=False)
 
         # rename wasserstein distances for better distinction
-        w_dists_final = {}
-        for key, value in w_dists.items():
-            w_dists_final[key + "_final"] = value
+        metrics_final = {}
+        for key, value in metrics.items():
+            metrics_final[key + "_final"] = value
 
         # log metrics and image to loggers
         img_path = f"{img_path}{plot_name}.png"
         if self.comet_logger is not None:
             self.comet_logger.log_image(img_path, name="A_final_plot")
-            self.comet_logger.log_metrics(w_dists_final)
+            self.comet_logger.log_metrics(metrics_final)
         if self.wandb_logger is not None:
             self.wandb_logger.log({"A_final_plot": wandb.Image(img_path)})
-            self.wandb_logger.log(w_dists_final)
+            self.wandb_logger.log(metrics_final)
 
     def _get_checkpoint(self, trainer: pl.Trainer) -> None:
         """Get checkpoint path based on the selected checkpoint callback."""
