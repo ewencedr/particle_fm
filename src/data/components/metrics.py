@@ -5,14 +5,19 @@ from jetnet.evaluation import w1efp, w1m, w1p
 from scipy.stats import wasserstein_distance
 from torch import Tensor
 
+rng = np.random.default_rng()
 
-def wasserstein_distance_batched(data1: np.array, data2: np.array, num_batches: int):
+
+def wasserstein_distance_batched(
+    data1: np.array, data2: np.array, num_eval_samples: int, num_batches: int
+):
     """Calculate the Wasserstein distance between two datasets multiple times and return mean and
     std.
 
     Args:
         data1 (np.array): Data1 usually the real data, can be num_batches times smaller than data2
         data2 (np.array): Data2 usually the generated data, can be num_batches times larger than data1
+        num_eval_samples (int): Number of samples to use for each Wasserstein distance calculation
         num_batches (int): Number of batches to split the data into
 
     Returns:
@@ -22,10 +27,9 @@ def wasserstein_distance_batched(data1: np.array, data2: np.array, num_batches: 
     num_eval_samples = len(data1) // num_batches
     w1 = []
     i = 0
-    for _ in range(num_batches):
-        rand1 = [*range(0, len(data1))]  # whole real dataset
-        rand2 = [*range(i, i + num_eval_samples)]  # batches of the fake dataset
-        i += num_eval_samples
+    for j in range(num_batches):
+        rand1 = rng.choice(len(data1), size=num_eval_samples)
+        rand2 = rng.choice(len(data2), size=num_eval_samples)
         rand_sample1 = data2[rand1]
         rand_sample2 = data2[rand2]
         w1.append(wasserstein_distance(rand_sample1, rand_sample2))
