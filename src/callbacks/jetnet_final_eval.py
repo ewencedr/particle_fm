@@ -197,7 +197,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
 
         # Plotting
         plot_name = "final_plot"
-        img_path = "/".join(ckpt.split("/")[:-2]) + "/final_plots.png"
+        img_path = "/".join(ckpt.split("/")[:-2]) + "/"
         fig = plot_data(
             particle_data=np.array([data]),
             sim_data=sim_data,
