@@ -1282,3 +1282,87 @@ def load_data_from_file(key, file_dict):
         return np.load(file_dict[key])
     else:
         raise ValueError("Key not found in file_dict")
+
+
+def plot_substructure(
+    tau21: np.array,
+    tau32: np.array,
+    d2: np.array,
+    tau21_jetnet: np.array,
+    tau32_jetnet: np.array,
+    d2_jetnet: np.array,
+    bins: int = 100,
+    save_fig: bool = True,
+    close_fig: bool = True,
+    save_folder: str = None,
+    save_name: str = None,
+    model_name: str = "Model",
+) -> None:
+    """Plot the tau21, tau32 and d2 distributions."""
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+
+    hist_tau21_jetnet = ax1.hist(
+        tau21_jetnet, bins=bins, label="JetNet", histtype="stepfilled", alpha=0.5
+    )
+    hist_tau21 = ax1.hist(tau21, bins=hist_tau21_jetnet[1], label=f"{model_name}", histtype="step")
+    ax1.set_title(r"$\tau_{21}$")
+    ax1.legend(loc="best")
+
+    hist_tau32_jetnet = ax2.hist(
+        tau32_jetnet, bins=bins, label="JetNet", histtype="stepfilled", alpha=0.5
+    )
+    hist_tau32 = ax2.hist(tau32, bins=hist_tau32_jetnet[1], label=f"{model_name}", histtype="step")
+    ax2.set_title(r"$\tau_{32}$")
+    ax2.legend(loc="best")
+
+    hist_d2_jetnet = ax3.hist(
+        d2_jetnet, bins=bins, label="JetNet", histtype="stepfilled", alpha=0.5
+    )
+    hist_d2 = ax3.hist(d2, bins=hist_d2_jetnet[1], label=f"{model_name}", histtype="step")
+    ax3.set_title(r"$d_2$")
+    ax3.legend(loc="best")
+
+    plt.legend(loc="best")
+    plt.tight_layout()
+    if save_fig:
+        plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
+    if close_fig:
+        plt.close(fig)
+    return fig
+
+
+def plot_full_substructure(
+    data_substructure: np.array,
+    data_substructure_jetnet: np.array,
+    keys: np.array,
+    bins: int = 100,
+    model_name: str = "Model",
+    save_fig: bool = True,
+    close_fig: bool = True,
+    save_folder: str = None,
+    save_name: str = None,
+) -> None:
+    """Plot all substructure distributions."""
+    fig, axs = plt.subplots(4, 3, figsize=(15, 20))
+
+    for i, ax in enumerate(axs.flatten()):
+        hist_jetnet = ax.hist(
+            data_substructure_jetnet[i],
+            bins=bins,
+            label="JetNet",
+            histtype="stepfilled",
+            alpha=0.5,
+        )
+        hist = ax.hist(
+            data_substructure[i], bins=hist_jetnet[1], label=f"{model_name}", histtype="step"
+        )
+        ax.set_title(keys[i])
+        ax.legend(loc="best")
+
+    plt.legend(loc="best")
+    plt.tight_layout()
+    if save_fig:
+        plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
+    if close_fig:
+        plt.close(fig)
+    return fig
