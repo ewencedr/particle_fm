@@ -235,26 +235,16 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             dump_hlvs(background_data, substructure_full_path_jetnet, plot=True)
 
             # load substructure for model generated data
-            keys = []
-            data_substructure = []
-            with h5py.File(full_path + ".h5", "r") as f:
+            with h5py.File(substructure_full_path + ".h5", "r") as f:
                 tau21 = np.array(f["tau21"])
                 tau32 = np.array(f["tau32"])
                 d2 = np.array(f["d2"])
-                for key in f.keys():
-                    keys.append(key)
-                    data_substructure.append(np.array(f[key]))
-            data_substructure = np.array(data_substructure)
 
             # load substructure for JetNet data
-            data_substructure_jetnet = []
             with h5py.File(substructure_full_path_jetnet + ".h5", "r") as f:
                 tau21_jetnet = np.array(f["tau21"])
                 tau32_jetnet = np.array(f["tau32"])
                 d2_jetnet = np.array(f["d2"])
-                for key in f.keys():
-                    data_substructure_jetnet.append(np.array(f[key]))
-            data_substructure_jetnet = np.array(data_substructure_jetnet)
 
             w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
                 tau21_jetnet, tau21, **self.w_dist_config
