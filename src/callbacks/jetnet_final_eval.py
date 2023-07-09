@@ -297,7 +297,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
                 d2_jetnet=d2_jetnet,
                 save_fig=True,
                 save_folder=img_path,
-                save_name="substructure_3plots.png",
+                save_name="substructure_3plots",
                 close_fig=True,
             )
             plot_full_substructure(
@@ -306,7 +306,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
                 keys=keys,
                 save_fig=True,
                 save_folder=img_path,
-                save_name="substructure_full.png",
+                save_name="substructure_full",
                 close_fig=True,
             )
 
