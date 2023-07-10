@@ -12,7 +12,7 @@ from zuko.utils import odeint
 from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
-from .components import EPiC_generator, IterativeNormLayer
+from .components import EPiC_encoder, IterativeNormLayer
 from .components.losses import (
     ConditionalFlowMatchingLoss,
     ConditionalFlowMatchingOTLoss,
@@ -76,7 +76,6 @@ class CNF(nn.Module):
         layers (int, optional): Number of Layers to use. Defaults to 8.
         global_cond_dim (int, optional): Dimension to concatenate to the global feature in EPiC Layer. Must be zero for no conditioning. Defaults to 0.
         local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
-        return_latent_space (bool, optional): Return latent space. Defaults to False.
         dropout (float, optional): Dropout value for dropout layers. Defaults to 0.0.
         latent (int, optional): Latent dimension. Defaults to 16.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
@@ -87,6 +86,7 @@ class CNF(nn.Module):
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
+        sum_scale (float, optional): Factor that is multiplied with the sum pooling. Defaults to 1e-2.
     """
 
     def __init__(
@@ -98,7 +98,6 @@ class CNF(nn.Module):
         layers: int = 8,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
-        return_latent_space: bool = False,
         dropout: float = 0.0,
         latent: int = 16,
         activation: str = "leaky_relu",
@@ -109,19 +108,19 @@ class CNF(nn.Module):
         t_emb: str = "sincos",
         loss_type: str = "FM-OT",
         diff_config: Mapping[str, Any] = {"max_sr": 0.999, "min_sr": 0.02},
+        sum_scale: float = 1e-2,
     ):
         super().__init__()
         self.latent = latent
         self.add_time_to_input = add_time_to_input
         input_dim = features + 2 * frequencies if self.add_time_to_input else features
 
-        self.net = EPiC_generator(
+        self.net = EPiC_encoder(
             input_dim=input_dim,
             feats=features,
             latent=latent,
             equiv_layers=layers,
             hid_d=hidden_dim,
-            return_latent_space=return_latent_space,
             activation=activation,
             wrapper_func=wrapper_func,
             frequencies=frequencies,
@@ -131,6 +130,7 @@ class CNF(nn.Module):
             global_cond_dim=global_cond_dim,
             local_cond_dim=local_cond_dim,
             dropout=dropout,
+            sum_scale=sum_scale,
         )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
@@ -163,10 +163,7 @@ class CNF(nn.Module):
         if self.add_time_to_input:
             x = torch.cat((t, x), dim=-1)  # (batch_size,num_particles,features+2*frequencies)
 
-        x_global = torch.randn_like(torch.ones(x.shape[0], self.latent, device=x.device))
-        x_local = x
-
-        x = self.net(t, x_global, x_local, cond, mask)
+        x = self.net(t, x, cond, mask)
 
         return x
 
@@ -333,11 +330,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         use_normaliser (bool, optional): Use layers that learn to normalise the input and conditioning. Defaults to True.
         normaliser_config (Mapping, optional): Normaliser config. Defaults to None.
         latent (int, optional): Latent dimension. Defaults to 16.
-        return_latent_space (bool, optional): Return latent space. Defaults to False.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
         add_time_to_input (bool, optional): Concat time to input. Defaults to False.
         dropout (float, optional): Value for dropout layers. Defaults to 0.0.
+        sum_scale (float, optional): Factor that is multiplied with the sum pooling. Defaults to 1e-2.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
         diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
@@ -360,13 +357,13 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         normaliser_config: Mapping = {},
         # epic
         latent: int = 16,
-        return_latent_space: bool = False,
         t_local_cat: bool = False,
         t_global_cat: bool = False,
         add_time_to_input: bool = True,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
         dropout: float = 0.0,
+        sum_scale: float = 1e-2,
         # loss
         loss_type: str = "FM-OT",
         sigma: float = 1e-4,
@@ -391,7 +388,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     global_cond_dim=global_cond_dim,
                     local_cond_dim=local_cond_dim,
                     latent=latent,
-                    return_latent_space=return_latent_space,
                     dropout=dropout,
                     activation=activation,
                     wrapper_func=wrapper_func,
@@ -401,6 +397,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     t_emb=t_emb,
                     loss_type=loss_type,
                     diff_config=diff_config,
+                    sum_scale=sum_scale,
                 )
             )
 
