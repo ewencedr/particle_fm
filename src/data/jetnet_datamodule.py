@@ -235,7 +235,6 @@ class JetNetDataModule(LightningDataModule):
                     raise ValueError("Conditioning tensor and data tensor must have same length.")
 
             if self.hparams.normalize:
-                print(f"data_train: {dataset_train.shape}")
                 means = np.ma.mean(dataset_train, axis=(0, 1))
                 stds = np.ma.std(dataset_train, axis=(0, 1))
 
