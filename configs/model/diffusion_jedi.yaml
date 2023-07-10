@@ -35,9 +35,9 @@ dropout: 0.0
 
 t_emb: cosine
 frequencies: 16
-t_global_cat: False
+t_global_cat: True
 t_local_cat: True
-add_time_to_input: True
+add_time_to_input: False
 
 loss_type: 'diffusion'
 diff_config:
