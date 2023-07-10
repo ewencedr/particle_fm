@@ -19,7 +19,6 @@ from .components import (
 log = get_pylogger("JetNetDataModule")
 
 
-# TODO make cond None when not conditioning
 # TODO variable_jet_sizes=False does not work with conditioning
 class JetNetDataModule(LightningDataModule):
     """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
@@ -109,6 +108,8 @@ class JetNetDataModule(LightningDataModule):
 
         self.means: Optional[torch.Tensor] = None
         self.stds: Optional[torch.Tensor] = None
+        self.cond_means: Optional[torch.Tensor] = None
+        self.cond_stds: Optional[torch.Tensor] = None
         self.tensor_test: Optional[torch.Tensor] = None
         self.mask_test: Optional[torch.Tensor] = None
         self.tensor_val: Optional[torch.Tensor] = None
@@ -201,10 +202,6 @@ class JetNetDataModule(LightningDataModule):
                 use_calculated_base_distribution=self.hparams.use_calculated_base_distribution,
             )
 
-            # conditioning
-            conditioning_data = self._handle_conditioning(jet_data)
-            tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
-
             n_samples_val = int(self.hparams.val_fraction * len(x))
             n_samples_test = int(self.hparams.test_fraction * len(x))
 
@@ -218,21 +215,27 @@ class JetNetDataModule(LightningDataModule):
                     len(x_ma) - 1 - n_samples_test,
                 ],
             )
-            conditioning_train, conditioning_val, conditioning_test = np.split(
-                conditioning_data,
-                [
-                    len(conditioning_data) - 1 - (n_samples_val + n_samples_test),
-                    len(conditioning_data) - 1 - n_samples_test,
-                ],
-            )
-            tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
-            tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
-            tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
 
-            if len(tensor_conditioning) != len(x_ma):
-                raise ValueError("Conditioning tensor and data tensor must have same length.")
+            # conditioning
+            conditioning_data = self._handle_conditioning(jet_data)
+            if conditioning_data is not None:
+                tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
+                conditioning_train, conditioning_val, conditioning_test = np.split(
+                    conditioning_data,
+                    [
+                        len(conditioning_data) - 1 - (n_samples_val + n_samples_test),
+                        len(conditioning_data) - 1 - n_samples_test,
+                    ],
+                )
+                tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
+                tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
+                tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
+
+                if len(tensor_conditioning) != len(x_ma):
+                    raise ValueError("Conditioning tensor and data tensor must have same length.")
 
             if self.hparams.normalize:
+                print(f"data_train: {dataset_train.shape}")
                 means = np.ma.mean(dataset_train, axis=(0, 1))
                 stds = np.ma.std(dataset_train, axis=(0, 1))
 
@@ -255,6 +258,38 @@ class JetNetDataModule(LightningDataModule):
                 mask_val = mask_val.astype(int)
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
+
+                if conditioning_data is not None:
+                    means_cond = torch.mean(tensor_conditioning_train, axis=0)
+                    stds_cond = torch.std(tensor_conditioning_train, axis=0)
+
+                    # Train
+                    tensor_conditioning_train = normalize_tensor(
+                        tensor_conditioning_train,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    # Validation
+                    tensor_conditioning_val = normalize_tensor(
+                        tensor_conditioning_val,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    # Test
+                    tensor_conditioning_test = normalize_tensor(
+                        tensor_conditioning_test,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+                else:
+                    tensor_conditioning_train = torch.zeros(len(dataset_train))
+                    tensor_conditioning_val = torch.zeros(len(dataset_val))
+                    tensor_conditioning_test = torch.zeros(len(dataset_test))
 
             # Train without normalization
             unnormalized_tensor_train = torch.tensor(dataset_train)
@@ -287,6 +322,10 @@ class JetNetDataModule(LightningDataModule):
 
                 self.means = torch.tensor(means)
                 self.stds = torch.tensor(stds)
+
+                if conditioning_data is not None:
+                    self.cond_means = means_cond
+                    self.cond_stds = stds_cond
             else:
                 self.data_train = TensorDataset(
                     unnormalized_tensor_train, unnormalized_mask_train, tensor_conditioning_train
@@ -382,7 +421,7 @@ class JetNetDataModule(LightningDataModule):
             and not self.hparams.conditioning_mass
             and not self.hparams.conditioning_num_particles
         ):
-            return np.zeros(len(jet_data))
+            return None
 
         # select the columns which correspond to the conditioning variables that should be used
         one_hot_len = len(categories)
