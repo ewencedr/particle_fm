@@ -191,6 +191,12 @@ class EMAModelCheckpoint(ModelCheckpoint):
         # call the parent class constructor with the provided kwargs
         super().__init__(**kwargs)
         self.metric_map = metric_map
+        self.best_k_models_ema = {}
+        self.kth_best_model_path_ema = ""
+        self.best_model_score_ema = None
+        self.best_model_path_ema = ""
+        self.model_parallel_size_ema = None
+        self.last_model_path_ema = ""
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
@@ -209,6 +215,8 @@ class EMAModelCheckpoint(ModelCheckpoint):
             if self.verbose:
                 rank_zero_info(f"Saving EMA weights to separate checkpoint {filepath}")
             super()._save_checkpoint(trainer, filepath)
+            if "last-EMA.ckpt" in filepath:
+                self.last_model_path_ema = filepath
             ema_callback.restore_original_weights(trainer.lightning_module)
             if self.save_top_k != -1:
                 self.topk_check_ema()
@@ -217,12 +225,6 @@ class EMAModelCheckpoint(ModelCheckpoint):
         return filepath.replace(self.FILE_EXTENSION, f"-EMA{self.FILE_EXTENSION}")
 
     def topk_check_ema(self):
-        self.best_k_models_ema = {}
-        self.kth_best_model_path_ema = ""
-        self.best_model_score_ema = None
-        self.best_model_path_ema = ""
-        self.model_parallel_size_ema = None
-
         checkpoints = list(Path(self.dirpath).rglob("*-EMA.ckpt"))
         log.debug(f"checkpoints: {checkpoints}")
         for checkpoint in checkpoints:

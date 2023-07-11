@@ -36,7 +36,8 @@ class JetNetFinalEvaluationCallback(pl.Callback):
     Args:
         use_ema (bool, optional): Use exponential moving average weights for logging. Defaults to False.
         dataset (str, optional): Dataset to evaluate on. Defaults to "test".
-        nr_checkpoint_callbacks (int, optional): Number of checkpoint callback that is used to select best epoch. Will only be used when ckpt_path is None. Defaults to 1.
+        nr_checkpoint_callbacks (int, optional): Number of checkpoint callback that is used to select best epoch. Will only be used when ckpt_path is None. Defaults to 0.
+        use_last_checkpoint (bool, optional): Use last checkpoint instead of best checkpoint. Defaults to True.
         ckpt_path (Optional[str], optional): Path to checkpoint. If given, this ckpt will be used for evaluation. Defaults to None.
         num_jet_samples (int, optional): How many jet samples to generate. Negative values define the amount of times the whole dataset is taken, e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
         fix_seed (bool, optional): Fix seed for data generation to have better reproducibility and comparability between epochs. Defaults to True.
@@ -50,7 +51,8 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         self,
         use_ema: bool = True,
         dataset: str = "test",
-        nr_checkpoint_callbacks: int = 1,
+        nr_checkpoint_callbacks: int = 0,
+        use_last_checkpoint: bool = True,
         ckpt_path: Optional[str] = None,
         num_jet_samples: int = -1,
         fix_seed: bool = True,
@@ -74,6 +76,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         self.dataset = dataset
         self.ckpt_path = ckpt_path
         self.nr_checkpoint_callbacks = nr_checkpoint_callbacks
+        self.use_last_checkpoint = use_last_checkpoint
         self.num_jet_samples = num_jet_samples
         self.fix_seed = fix_seed
         self.evaluate_substructure = evaluate_substructure
@@ -122,7 +125,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
     def on_test_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         log.info(f"Evaluating model on {self.dataset} dataset.")
 
-        ckpt = self._get_checkpoint(trainer)
+        ckpt = self._get_checkpoint(trainer, use_last_checkpoint=self.use_last_checkpoint)
 
         log.info(f"Loading checkpoint from {ckpt}")
         model = pl_module.load_from_checkpoint(ckpt)
@@ -347,7 +350,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             self.wandb_logger.log({"A_final_plot": wandb.Image(img_path_data)})
             self.wandb_logger.log(metrics_final)
 
-    def _get_checkpoint(self, trainer: pl.Trainer) -> None:
+    def _get_checkpoint(self, trainer: pl.Trainer, use_last_checkpoint: bool = True) -> None:
         """Get checkpoint path based on the selected checkpoint callback."""
         if self.ckpt_path is None:
             if self.use_ema:
@@ -355,14 +358,27 @@ class JetNetFinalEvaluationCallback(pl.Callback):
                     type(trainer.checkpoint_callbacks[self.nr_checkpoint_callbacks])
                     == EMAModelCheckpoint
                 ):
-                    return trainer.checkpoint_callbacks[
-                        self.nr_checkpoint_callbacks
-                    ].best_model_path_ema
+                    if use_last_checkpoint:
+                        return trainer.checkpoint_callbacks[
+                            self.nr_checkpoint_callbacks
+                        ].last_model_path_ema
+                    else:
+                        return trainer.checkpoint_callbacks[
+                            self.nr_checkpoint_callbacks
+                        ].best_model_path_ema
+
                 else:
                     raise ValueError(
                         "JetNetFinalEvaluationCallback was told to use EMA weights for evaluation but the provided checkpoint callback is not of type EMAModelCheckpoint"
                     )
             else:
-                return trainer.checkpoint_callbacks[self.nr_checkpoint_callbacks].best_model_path
+                if use_last_checkpoint:
+                    return trainer.checkpoint_callbacks[
+                        self.nr_checkpoint_callbacks
+                    ].last_model_path
+                else:
+                    return trainer.checkpoint_callbacks[
+                        self.nr_checkpoint_callbacks
+                    ].best_model_path
         else:
             return self.ckpt_path

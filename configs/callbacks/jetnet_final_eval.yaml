@@ -3,7 +3,8 @@ jetnet_final_eval:
   _target_: src.callbacks.jetnet_final_eval.JetNetFinalEvaluationCallback
   use_ema: true
   dataset: "test"
-  nr_checkpoint_callbacks: 1
+  nr_checkpoint_callbacks: 0
+  use_last_checkpoint: true
   ckpt_path: null
   num_jet_samples: -5
   fix_seed: true
