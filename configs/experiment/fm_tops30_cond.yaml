@@ -4,8 +4,8 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: /jetnet/jetnet_tops_30.yaml
-  - override /model: cnf_flow_matching.yaml
+  - override /data: /jetnet/jetnet_tops_30_jedi.yaml
+  - override /model: flow_matching.yaml
   - override /callbacks: jetnet.yaml
   - override /trainer: gpu.yaml
 
@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops"]
+tags: ["flow_matching", "tops30", "cond"]
 
 seed: 12345
 
@@ -22,39 +22,11 @@ trainer:
   min_epochs: 1000
   max_epochs: 10000
   gradient_clip_val: 0.5
-  devices: 1
 
 model:
-  optimizer:
-    lr: 0.001
-  features: 3
-  hidden_dim: 128
-  num_particles: 150
-  frequencies: 6
-  layers: 6
-  n_transforms: 1
-  activation: leaky_relu
-  wrapper_func: weight_norm
-  # epic
-  latent: 16
-  return_latent_space: False
+  num_particles: 30
   global_cond_dim: 2 # needs to be calculated when using conditioning
-  local_cond_dim: 0
-  t_local_cat: True
-  t_global_cat: False
-
-  dropout: 0.0
-  # loss
-  loss_type: FM-OT
-  sigma: 1e-4
-  t_emb: gaussian
-  # scheduler
-  scheduler:
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
-  #cosine_annealing:
-  #scheduler:
-  #  T_max: ${trainer.max_epochs}
+  local_cond_dim: 2
 
 data:
   jet_type:
@@ -66,7 +38,7 @@ data:
   batch_size: 1024
   num_particles: ${model.num_particles}
   variable_jet_sizes: True
-  centering: True
+  centering: False
   normalize: True
   normalize_sigma: 5
   use_calculated_base_distribution: False
@@ -79,7 +51,7 @@ data:
 
 callbacks:
   ema:
-    decay: 0.9999
+    decay: 0.999
     apply_ema_every_n_steps: 1
     start_step: 0
     save_ema_weights_in_callback_state: True
