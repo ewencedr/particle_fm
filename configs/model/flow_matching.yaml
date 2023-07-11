@@ -11,27 +11,30 @@ scheduler:
   _partial_: true
   warmup: 1000
   max_iters: 10000
-#scheduler:
-#  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-#  _partial_: true
 
 features: 3
 n_transforms: 1
 layers: 6
 hidden_dim: 128
-latent: 16
+latent: 10
 activation: leaky_relu
 wrapper_func: weight_norm
 dropout: 0.0
+sum_scale: 1e-2
 
-t_emb: gaussian
-frequencies: 6
-t_global_cat: False
+t_emb: cosine
+frequencies: 16
+t_global_cat: True
 t_local_cat: True
-add_time_to_input: True
+add_time_to_input: False
 
 loss_type: 'FM-OT'
+diff_config:
+  max_sr: 0.999
+  min_sr: 0.02
 criterion: 'mse'
 sigma: 1e-4
 
 use_normaliser: False
+normaliser_config:
+  max_n: 2000

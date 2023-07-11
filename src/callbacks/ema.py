@@ -175,18 +175,28 @@ class EMA(Callback):
             self.restore_original_weights(pl_module)
 
 
+# TODO breaks when task_name contains metric_map keys
 class EMAModelCheckpoint(ModelCheckpoint):
     """Light wrapper around Lightning's `ModelCheckpoint` to, upon request, save an EMA copy of the
     model as well. Should only be used with `EMACallback`. Should only work for trainings with a
     single GPU. For custom checkpoint names use the metric map.
 
+    Args:
+        metric_map (Dict[str, str]): A dictionary mapping the metric name that is logged to the name of the metric in the checkpoint file name.
+
     Adapted from: https://github.com/NVIDIA/NeMo/blob/be0804f61e82dd0f63da7f9fe8a4d8388e330b18/nemo/utils/exp_manager.py#L744
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, metric_map={"val/loss": "loss"}, **kwargs):
         # call the parent class constructor with the provided kwargs
         super().__init__(**kwargs)
-        self.metric_map = {"val/loss": "loss", "w1m_mean_1b": "w1m", "w1p_mean_1b": "w1p"}
+        self.metric_map = metric_map
+        self.best_k_models_ema = {}
+        self.kth_best_model_path_ema = ""
+        self.best_model_score_ema = None
+        self.best_model_path_ema = ""
+        self.model_parallel_size_ema = None
+        self.last_model_path_ema = ""
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
@@ -205,6 +215,8 @@ class EMAModelCheckpoint(ModelCheckpoint):
             if self.verbose:
                 rank_zero_info(f"Saving EMA weights to separate checkpoint {filepath}")
             super()._save_checkpoint(trainer, filepath)
+            if "last-EMA.ckpt" in filepath:
+                self.last_model_path_ema = filepath
             ema_callback.restore_original_weights(trainer.lightning_module)
             if self.save_top_k != -1:
                 self.topk_check_ema()
@@ -213,12 +225,6 @@ class EMAModelCheckpoint(ModelCheckpoint):
         return filepath.replace(self.FILE_EXTENSION, f"-EMA{self.FILE_EXTENSION}")
 
     def topk_check_ema(self):
-        self.best_k_models_ema = {}
-        self.kth_best_model_path_ema = ""
-        self.best_model_score_ema = None
-        self.best_model_path_ema = ""
-        self.model_parallel_size_ema = None
-
         checkpoints = list(Path(self.dirpath).rglob("*-EMA.ckpt"))
         log.debug(f"checkpoints: {checkpoints}")
         for checkpoint in checkpoints:

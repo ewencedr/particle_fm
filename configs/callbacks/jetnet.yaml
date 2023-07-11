@@ -19,6 +19,8 @@ model_checkpoint:
   mode: "min"
   save_last: True
   auto_insert_metric_name: False
+  metric_map:
+    "val/loss": "loss"
 
 model_checkpoint2:
   dirpath: ${paths.output_dir}/checkpoints
@@ -26,6 +28,9 @@ model_checkpoint2:
   monitor: "w1m_mean"
   mode: "min"
   auto_insert_metric_name: False
+  every_n_epochs: 1
+  metric_map:
+    "w1m_mean": "w1m"
 
 model_checkpoint3:
   dirpath: ${paths.output_dir}/checkpoints
@@ -33,6 +38,9 @@ model_checkpoint3:
   monitor: "w1p_mean"
   mode: "min"
   auto_insert_metric_name: False
+  every_n_epochs: 1
+  metric_map:
+    "w1p_mean": "w1p"
 
 #early_stopping:
 #  monitor: "val/loss"
@@ -43,7 +51,7 @@ model_summary:
   max_depth: -1
 
 ema:
-  decay: 0.9999
+  decay: 0.999
   apply_ema_every_n_steps: 1
   start_step: 0
   save_ema_weights_in_callback_state: true

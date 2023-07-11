@@ -4,8 +4,8 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: /jetnet/jetnet_tops_30.yaml
-  - override /model: cnf_flow_matching.yaml
+  - override /data: /jetnet/jetnet_tops_30_jedi.yaml
+  - override /model: flow_matching.yaml
   - override /callbacks: jetnet.yaml
   - override /trainer: gpu.yaml
 
@@ -14,47 +14,19 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops", "30", "test_runs"]
+tags: ["flow_matching", "tops150", "uncond"]
 
 seed: 12345
 
 trainer:
-  min_epochs: 3
-  max_epochs: 30
+  min_epochs: 1000
+  max_epochs: 10000
   gradient_clip_val: 0.5
-  devices: 1
-  # detect_anomaly: true # raise exception if NaN or +/-inf is detected in any tensor
 
 model:
-  optimizer:
-    lr: 0.001
-  features: 3
-  hidden_dim: 128
-  num_particles: 30
-  frequencies: 16
-  layers: 6
-  n_transforms: 1
-  activation: leaky_relu
-  wrapper_func: weight_norm
-  # epic
-  latent: 10
-  global_cond_dim: 2 # needs to be calculated when using conditioning
-  local_cond_dim: 2
-  t_local_cat: True
-  t_global_cat: True
-
-  dropout: 0.0
-  # loss
-  loss_type: diffusion
-  sigma: 1e-4
-  t_emb: cosine
-  # scheduler
-  scheduler:
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
-  #cosine_annealing:
-  #scheduler:
-  #  T_max: ${trainer.max_epochs}
+  num_particles: 150
+  global_cond_dim: 0 # needs to be calculated when using conditioning
+  local_cond_dim: 0
 
 data:
   jet_type:
@@ -71,49 +43,44 @@ data:
   normalize_sigma: 5
   use_calculated_base_distribution: False
   conditioning_type: False
-  conditioning_pt: True
+  conditioning_pt: False
   conditioning_eta: False
-  conditioning_mass: True
+  conditioning_mass: False
   conditioning_num_particles: False
-  val_fraction: 0.1
-  test_fraction: 0.3
-  drop_last: False
-  # global_cond_dim needs to be set when using conditioning
+# global_cond_dim needs to be set when using conditioning
 
 callbacks:
   ema:
-    decay: 0.9999
+    decay: 0.999
     apply_ema_every_n_steps: 1
     start_step: 0
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
 
   jetnet_eval:
-    every_n_epochs: 5
-    num_jet_samples: 10000
+    every_n_epochs: epochs10000
+    num_jet_samples: -1
     data_type: "val"
     use_ema: ${callbacks.ema.evaluate_ema_weights_instead}
     generation_config:
-      ode_solver: "em"
-      verbose: True
+      ode_solver: "midpoint"
     w_dist_config:
-      num_batches: 5
+      num_batches: 40
     plot_config:
       plot_w_dists: False
+      plot_jet_features: True
 
   #early_stopping:
   #  monitor: "val/loss"
   #  patience: 2000
   #  mode: "min"
 
-task_name: "fm_tops-${model.num_particles}-1"
+task_name: "fm_tops-${model.num_particles}"
 
 logger:
   wandb:
-    project: "test_runs"
     tags: ${tags}
     group: "fm_tops"
     name: ${task_name}
   comet:
     experiment_name: ${task_name}
-    project_name: "test_runs"
