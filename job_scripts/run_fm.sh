@@ -18,4 +18,4 @@ source ~/.bashrc
 cd /home/birkjosc/repositories/EPiC-FM/
 
 singularity exec --nv -B /home -B /beegfs /beegfs/desy/user/birkjosc/singularity_images/pytorch-image-v0.0.8.img \
-    bash -c "source /opt/conda/bin/activate && python src/train.py experiment=fm_tops_slurm"
+    bash -c "source /opt/conda/bin/activate && python src/train.py experiment=fm_tops150_cond"
