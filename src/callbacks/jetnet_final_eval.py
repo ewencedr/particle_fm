@@ -63,11 +63,11 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         suffix: str = "",
         cond_path: Optional[str] = None,
         w_dist_config: Mapping = {
-            "num_eval_samples": 10_000,
+            "num_eval_samples": 50_000,
             "num_batches": 40,
         },
         generation_config: Mapping = {
-            "batch_size": 256,
+            "batch_size": 1024,
             "ode_solver": "midpoint",
             "ode_steps": 200,
         },
