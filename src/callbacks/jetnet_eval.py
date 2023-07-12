@@ -174,13 +174,15 @@ class JetNetEvaluationCallback(pl.Callback):
                     : self.num_jet_samples
                 ]
 
+            mask = background_mask
+            cond = background_cond
+
             # maximum number of samples to plot is the number of samples in the dataset
             num_plot_samples = len(background_data)
 
             if self.datasets_multiplier > 1:
-                background_data = np.repeat(background_data, self.datasets_multiplier, axis=0)
-                background_mask = np.repeat(background_mask, self.datasets_multiplier, axis=0)
-                background_cond = np.repeat(background_cond, self.datasets_multiplier, axis=0)
+                mask = np.repeat(mask, self.datasets_multiplier, axis=0)
+                cond = np.repeat(cond, self.datasets_multiplier, axis=0)
 
             # Get EMA weights if available
             if (
@@ -195,10 +197,10 @@ class JetNetEvaluationCallback(pl.Callback):
             # Generate data
             data, generation_time = generate_data(
                 model=pl_module,
-                num_jet_samples=len(background_data),
-                cond=torch.tensor(background_cond),
+                num_jet_samples=len(mask),
+                cond=torch.tensor(cond),
                 variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
-                mask=torch.tensor(background_mask),
+                mask=torch.tensor(mask),
                 normalized_data=trainer.datamodule.hparams.normalize,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
@@ -255,13 +257,12 @@ class JetNetEvaluationCallback(pl.Callback):
                 efps_sim[0],
                 pt_selected_particles_sim[0],
             )
-            sim_data = np.concatenate([background_data, background_mask], axis=-1)
 
             # Plotting
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
             fig = plot_data(
                 particle_data=np.array([data]),
-                sim_data=sim_data,
+                sim_data=background_data,
                 jet_data_sim=jet_data_sim,
                 jet_data=jet_data,
                 efps_sim=efps_sim,

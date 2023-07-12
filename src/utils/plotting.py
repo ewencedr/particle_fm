@@ -462,7 +462,7 @@ def plot_data(
         ax7.set_yscale("log")
 
     ax8 = fig.add_subplot(gs[gs_counter + 1])
-    data1 = np.sum(sim_data[:, :, 3], axis=1)
+    data1 = np.count_nonzero(sim_data[:, :, 2], axis=1)
     if not plot_data_only:
         data = [np.count_nonzero(d[:, :, 2], axis=1) for d in particle_data]
         x_min, x_max = (
