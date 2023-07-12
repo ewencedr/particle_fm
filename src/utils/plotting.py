@@ -469,6 +469,8 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+    if plottype == "sim_data":
+        x_min, x_max = data1.min(), data1.max()
     if variable_jet_sizes_plotting:
         binwidth = 1
         if not plot_data_only:
