@@ -114,6 +114,8 @@ class JetNetFinalEvaluationCallback(pl.Callback):
                 )
         else:
             self.datasets_multiplier = -1
+        if self.cond_path is not None:
+            self.datasets_multiplier = -1
 
         # get loggers
         for logger in trainer.loggers:
@@ -181,11 +183,6 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         else:
             mask = background_mask
             cond = background_cond
-
-        if len(background_data) != len(mask) or len(background_data) != len(cond):
-            raise ValueError(
-                f"Number of samples in data ({len(background_data)}), mask ({len(mask)}) and conditioning ({len(cond)}) do not match."
-            )
 
         # maximum number of samples to plot is the number of samples in the dataset
         num_plot_samples = len(background_data)
