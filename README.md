@@ -49,9 +49,10 @@ pip install -r requirements.txt
 Create .env file to set paths and API keys
 
 ```bash
-COMET_API_TOKEN="XXXXXXXXXX"
+PROJEKT_ROOT="/folder/folder/"
 DATA_DIR="/folder/folder/"
 LOG_DIR="/folder/folder/"
+COMET_API_TOKEN="XXXXXXXXXX"
 ```
 
 Train model with default configuration
