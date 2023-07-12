@@ -10,7 +10,7 @@ jetnet_final_eval:
   fix_seed: true
   evaluate_substructure: true
   suffix: ""
-  cond_path: ${paths.root_dir}data/conditioning.h5
+  cond_path: ${paths.root_dir}/data/conditioning.h5
   w_dist_config:
     num_eval_samples: 50_000
     num_batches: 40
