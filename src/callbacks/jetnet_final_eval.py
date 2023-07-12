@@ -30,6 +30,7 @@ from .ema import EMA, EMAModelCheckpoint
 log = get_pylogger("JetNetFinalEvaluationCallback")
 
 
+# TODO cond_path is currently only working for mass and pt
 class JetNetFinalEvaluationCallback(pl.Callback):
     """Callback to do final evaluation of the model after training. Specific to JetNet dataset.
 
@@ -43,6 +44,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         fix_seed (bool, optional): Fix seed for data generation to have better reproducibility and comparability between epochs. Defaults to True.
         evaluate_substructure (bool, optional): Evaluate substructure metrics. Takes very long. Defaults to True.
         suffix (str, optional): Suffix for logging. Defaults to "".
+        cond_path (Optional[str], optional): Path for conditioning that is used during generation. If not provided, the selected dataset will be used for conditioning. Defaults to None.
         w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
         generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 200}.
         plot_config (Mapping, optional): Configuration for plotting. Defaults to {}.
@@ -59,6 +61,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         fix_seed: bool = True,
         evaluate_substructure: bool = True,
         suffix: str = "",
+        cond_path: Optional[str] = None,
         w_dist_config: Mapping = {
             "num_eval_samples": 10_000,
             "num_batches": 40,
@@ -83,6 +86,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         self.fix_seed = fix_seed
         self.evaluate_substructure = evaluate_substructure
         self.suffix = suffix
+        self.cond_path = cond_path
         # loggers
         self.comet_logger = None
         self.wandb_logger = None
@@ -137,6 +141,24 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             # fix seed for better reproducibility and comparable results
             torch.manual_seed(9999)
 
+        # load conditioning data if provided
+        if self.cond_path is not None:
+            with h5py.File(self.cond_path) as f:
+                pt_c = np.expand_dims(f["pt"][:], axis=-1)
+                mass_c = np.expand_dims(f["mass"][:], axis=-1)
+                num_particles_c = f["num_particles"][:]
+
+            # masking for jet size
+            jet_size = trainer.datamodule.hparams.jet_size
+            num_particles_ctemp = np.array(
+                [n if n <= jet_size else jet_size for n in num_particles_c]
+            )
+            mask_c = np.expand_dims(np.tri(jet_size)[num_particles_ctemp.astype(int) - 1], axis=-1)
+
+            # get conditioning data
+            # TODO implement other conditioning options
+            cond_c = np.concatenate((pt_c, mass_c), axis=-1)
+
         # Get background data for plotting and calculating Wasserstein distances
         if self.dataset == "test":
             background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
@@ -150,6 +172,16 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             background_cond = np.array(trainer.datamodule.tensor_conditioning_val)[
                 : self.num_jet_samples
             ]
+        if self.cond_path is not None:
+            background_mask = mask_c[: self.num_jet_samples]
+            background_cond = cond_c[: self.num_jet_samples]
+
+        if len(background_data) != len(background_mask) or len(background_data) != len(
+            background_cond
+        ):
+            raise ValueError(
+                f"Number of samples in data ({len(background_data)}), mask ({len(background_mask)}) and conditioning ({len(background_cond)}) do not match."
+            )
 
         # maximum number of samples to plot is the number of samples in the dataset
         num_plot_samples = len(background_data)
