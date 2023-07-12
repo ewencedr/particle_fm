@@ -12,7 +12,7 @@ import torch
 import wandb
 import yaml
 
-from src.data.components import calculate_all_wasserstein_metrics
+from src.data.components import calculate_all_wasserstein_metrics, normalize_tensor
 from src.data.components.metrics import wasserstein_distance_batched
 from src.utils.data_generation import generate_data
 from src.utils.jet_substructure import dump_hlvs
@@ -162,7 +162,15 @@ class JetNetFinalEvaluationCallback(pl.Callback):
 
             # get conditioning data
             # TODO implement other conditioning options
-            cond_c = np.concatenate((pt_c, mass_c), axis=-1)
+            print(f"conditioning: {trainer.datamodule.num_cond_features}")
+            if trainer.datamodule.num_cond_features != 0:
+                cond_means = np.array(trainer.datamodule.cond_means)
+                cond_stds = np.array(trainer.datamodule.cond_stds)
+                pt_norm = normalize_tensor(pt_c.copy(), [cond_means[0]], [cond_stds[0]])
+                mass_norm = normalize_tensor(mass_c.copy(), [cond_means[1]], [cond_stds[1]])
+                cond_c = np.concatenate((pt_norm, mass_norm), axis=-1)
+            else:
+                cond_c = np.concatenate((pt_c, mass_c), axis=-1)
 
         # Get background data for plotting and calculating Wasserstein distances
         if self.dataset == "test":
