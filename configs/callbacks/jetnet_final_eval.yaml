@@ -19,4 +19,4 @@ jetnet_final_eval:
     ode_solver: "midpoint"
     ode_steps: 200
   plot_config:
-    plot_efps: false
+    plot_efps: true

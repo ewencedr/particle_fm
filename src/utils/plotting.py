@@ -167,7 +167,7 @@ def plot_data(
         lengths.append(particle_data[count].shape[0])
         lengths.append(jet_data[count].shape[0])
         if plot_efps:
-            lengths.append(efps_values[count].shape[1])
+            lengths.append(efps_values[count].shape[0])
     if any(np.array(lengths) < num_samples):
         raise ValueError("num_samples is larger than the smallest dataset")
     sim_data = sim_data[:num_samples]
