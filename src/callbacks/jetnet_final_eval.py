@@ -42,6 +42,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         num_jet_samples (int, optional): How many jet samples to generate. Negative values define the amount of times the whole dataset is taken, e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
         fix_seed (bool, optional): Fix seed for data generation to have better reproducibility and comparability between epochs. Defaults to True.
         evaluate_substructure (bool, optional): Evaluate substructure metrics. Takes very long. Defaults to True.
+        suffix (str, optional): Suffix for logging. Defaults to "".
         w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
         generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 200}.
         plot_config (Mapping, optional): Configuration for plotting. Defaults to {}.
@@ -57,6 +58,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         num_jet_samples: int = -1,
         fix_seed: bool = True,
         evaluate_substructure: bool = True,
+        suffix: str = "",
         w_dist_config: Mapping = {
             "num_eval_samples": 10_000,
             "num_batches": 40,
@@ -80,6 +82,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         self.num_jet_samples = num_jet_samples
         self.fix_seed = fix_seed
         self.evaluate_substructure = evaluate_substructure
+        self.suffix = suffix
         # loggers
         self.comet_logger = None
         self.wandb_logger = None
@@ -171,7 +174,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
 
         # save generated data
         path = "/".join(ckpt.split("/")[:-2]) + "/"
-        file_name = "final_generated_data.npy"
+        file_name = f"final_generated_data{self.suffix}.npy"
         full_path = path + file_name
         np.save(full_path, data)
 
@@ -210,7 +213,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         sim_data = np.concatenate([background_data, background_mask], axis=-1)
 
         # Plotting
-        plot_name = "final_plot"
+        plot_name = f"final_plot{self.suffix}"
         img_path = "/".join(ckpt.split("/")[:-2]) + "/"
         fig = plot_data(
             particle_data=np.array([data]),
@@ -233,14 +236,14 @@ class JetNetFinalEvaluationCallback(pl.Callback):
 
         if self.evaluate_substructure:
             substructure_path = "/".join(ckpt.split("/")[:-2]) + "/"
-            substructure_file_name = "substructure"
+            substructure_file_name = f"substructure{self.suffix}"
             substructure_full_path = substructure_path + substructure_file_name
 
             # calculate substructure for generated data
             dump_hlvs(data, substructure_full_path, plot=False)
 
             substructure_path_jetnet = "/".join(ckpt.split("/")[:-2]) + "/"
-            substructure_file_name_jetnet = "substructure_jetnet"
+            substructure_file_name_jetnet = f"substructure_jetnet{self.suffix}"
             substructure_full_path_jetnet = (
                 substructure_path_jetnet + substructure_file_name_jetnet
             )
@@ -291,6 +294,8 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             metrics["w_dist_d2_std"] = w_dist_d2_std
 
             # plot substructure
+            file_name_substructure = f"substructure_3plots{self.suffix}"
+            file_name_full_substructure = f"substructure_full{self.suffix}"
             plot_substructure(
                 tau21=tau21,
                 tau32=tau32,
@@ -300,7 +305,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
                 d2_jetnet=d2_jetnet,
                 save_fig=True,
                 save_folder=img_path,
-                save_name="substructure_3plots",
+                save_name=file_name_substructure,
                 close_fig=True,
             )
             plot_full_substructure(
@@ -309,25 +314,33 @@ class JetNetFinalEvaluationCallback(pl.Callback):
                 keys=keys,
                 save_fig=True,
                 save_folder=img_path,
-                save_name="substructure_full",
+                save_name=file_name_full_substructure,
                 close_fig=True,
             )
 
             # log substructure images
-            img_path_substructure = f"{img_path}substructure_3plots.png"
-            img_path_substructure_full = f"{img_path}substructure_full.png"
+            img_path_substructure = f"{img_path}{file_name_substructure}.png"
+            img_path_substructure_full = f"{img_path}{file_name_full_substructure}.png"
             if self.comet_logger is not None:
-                self.comet_logger.log_image(img_path_substructure, name="A_final_substructure")
                 self.comet_logger.log_image(
-                    img_path_substructure_full, name="A_final_substructure_full"
+                    img_path_substructure, name=f"A_final_substructure{self.suffix}"
+                )
+                self.comet_logger.log_image(
+                    img_path_substructure_full, name=f"A_final_substructure_full{self.suffix}"
                 )
             if self.wandb_logger is not None:
-                self.wandb_logger.log({"A_final_substructure": wandb.Image(img_path_substructure)})
                 self.wandb_logger.log(
-                    {"A_final_substructure_full": wandb.Image(img_path_substructure_full)}
+                    {f"A_final_substructure{self.suffix}": wandb.Image(img_path_substructure)}
+                )
+                self.wandb_logger.log(
+                    {
+                        f"A_final_substructure_full{self.suffix}": wandb.Image(
+                            img_path_substructure_full
+                        )
+                    }
                 )
 
-        yaml_path = "/".join(ckpt.split("/")[:-2]) + "/final_eval_metrics.yml"
+        yaml_path = "/".join(ckpt.split("/")[:-2]) + f"/final_eval_metrics{self.suffix}.yml"
         log.info(f"Writing final evaluation metrics to {yaml_path}")
 
         # transform numpy.float64 for better readability in yaml file
@@ -339,15 +352,15 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         # rename wasserstein distances for better distinction
         metrics_final = {}
         for key, value in metrics.items():
-            metrics_final[key + "_final"] = value
+            metrics_final[key + f"_final{self.suffix}"] = value
 
         # log metrics and image to loggers
         img_path_data = f"{img_path}{plot_name}.png"
         if self.comet_logger is not None:
-            self.comet_logger.log_image(img_path_data, name="A_final_plot")
+            self.comet_logger.log_image(img_path_data, name=f"A_final_plot{self.suffix}")
             self.comet_logger.log_metrics(metrics_final)
         if self.wandb_logger is not None:
-            self.wandb_logger.log({"A_final_plot": wandb.Image(img_path_data)})
+            self.wandb_logger.log({f"A_final_plot{self.suffix}": wandb.Image(img_path_data)})
             self.wandb_logger.log(metrics_final)
 
     def _get_checkpoint(self, trainer: pl.Trainer, use_last_checkpoint: bool = True) -> None:
