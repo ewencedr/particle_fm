@@ -144,16 +144,19 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         # load conditioning data if provided
         if self.cond_path is not None:
             with h5py.File(self.cond_path) as f:
-                pt_c = np.expand_dims(f["pt"][:], axis=-1)
-                mass_c = np.expand_dims(f["mass"][:], axis=-1)
-                num_particles_c = f["num_particles"][:]
+                pt_c = f["pt"][:]
+                mass_c = f["mass"][:]
+                num_particles_c = f["num_particles"][:].squeeze()
 
             # masking for jet size
-            jet_size = trainer.datamodule.hparams.jet_size
+            jet_size = trainer.datamodule.hparams.num_particles
             num_particles_ctemp = np.array(
                 [n if n <= jet_size else jet_size for n in num_particles_c]
             )
-            mask_c = np.expand_dims(np.tri(jet_size)[num_particles_ctemp.astype(int) - 1], axis=-1)
+
+            mask_c = np.expand_dims(
+                np.tri(jet_size)[num_particles_ctemp.astype(int) - 1], axis=-1
+            ).astype(np.float32)
 
             # get conditioning data
             # TODO implement other conditioning options

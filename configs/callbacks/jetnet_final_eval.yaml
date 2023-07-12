@@ -8,6 +8,9 @@ jetnet_final_eval:
   ckpt_path: null
   num_jet_samples: -5
   fix_seed: true
+  evaluate_substructure: true
+  suffix: ""
+  cond_path: null
   w_dist_config:
     num_eval_samples: 50_000
     num_batches: 40
