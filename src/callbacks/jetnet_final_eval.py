@@ -222,6 +222,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         metrics = calculate_all_wasserstein_metrics(background_data, data, **self.w_dist_config)
 
         # Prepare Data for Plotting
+        data_plotting = data[:num_plot_samples]
         plot_prep_config = {
             "calculate_efps" if key == "plot_efps" else key: value
             for key, value in self.plot_config.items()
@@ -233,7 +234,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
             efps_values,
             pt_selected_particles,
             pt_selected_multiplicities,
-        ) = prepare_data_for_plotting(np.array([data]), **plot_prep_config)
+        ) = prepare_data_for_plotting(np.array([data_plotting]), **plot_prep_config)
 
         (
             jet_data_sim,
@@ -254,7 +255,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         plot_name = f"final_plot{self.suffix}"
         img_path = "/".join(ckpt.split("/")[:-2]) + "/"
         fig = plot_data(
-            particle_data=np.array([data]),
+            particle_data=np.array([data_plotting]),
             sim_data=background_data,
             jet_data_sim=jet_data_sim,
             jet_data=jet_data,
