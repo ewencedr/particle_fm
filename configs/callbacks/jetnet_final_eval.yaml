@@ -17,6 +17,6 @@ jetnet_final_eval:
   generation_config:
     batch_size: 1024
     ode_solver: "midpoint"
-    ode_steps: 200
+    ode_steps: 100
   plot_config:
     plot_efps: true

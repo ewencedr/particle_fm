@@ -46,7 +46,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         suffix (str, optional): Suffix for logging. Defaults to "".
         cond_path (Optional[str], optional): Path for conditioning that is used during generation. If not provided, the selected dataset will be used for conditioning. Defaults to None.
         w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
-        generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 200}.
+        generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 100}.
         plot_config (Mapping, optional): Configuration for plotting. Defaults to {}.
     """
 
@@ -69,7 +69,7 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         generation_config: Mapping = {
             "batch_size": 1024,
             "ode_solver": "midpoint",
-            "ode_steps": 200,
+            "ode_steps": 100,
         },
         plot_config: Mapping = {"plot_efps": False},
     ):
