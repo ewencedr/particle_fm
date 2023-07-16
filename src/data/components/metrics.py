@@ -24,7 +24,6 @@ def wasserstein_distance_batched(
         float: Mean Wasserstein distance of all batches
         float: Standard deviation of the Wasserstein distances of all batches
     """
-    num_eval_samples = len(data1) // num_batches
     w1 = []
     i = 0
     for j in range(num_batches):
