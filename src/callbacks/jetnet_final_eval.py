@@ -162,7 +162,6 @@ class JetNetFinalEvaluationCallback(pl.Callback):
 
             # get conditioning data
             # TODO implement other conditioning options
-            print(f"conditioning: {trainer.datamodule.num_cond_features}")
             if trainer.datamodule.num_cond_features != 0:
                 cond_means = np.array(trainer.datamodule.cond_means)
                 cond_stds = np.array(trainer.datamodule.cond_stds)
