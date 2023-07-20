@@ -406,20 +406,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
         if loss_type == "FM-OT":
             self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma, criterion=criterion)
-        elif loss_type == "CFM":
-            self.loss = ConditionalFlowMatchingLoss(
-                flows=self.flows, sigma=sigma, criterion=criterion
-            )
-        elif loss_type == "CFM-OT":
-            self.loss = ConditionalFlowMatchingOTLoss(
-                flows=self.flows, sigma=sigma, criterion=criterion
-            )
-        elif loss_type == "diffusion":
-            self.loss = DiffusionLoss(
-                flows=self.flows, sigma=sigma, diff_config=diff_config, criterion=criterion
-            )
-        elif loss_type == "droid":
-            self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma, criterion=criterion)
         else:
             raise NotImplementedError(f"Loss type {loss_type} not implemented.")
 
