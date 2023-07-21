@@ -70,6 +70,20 @@ class LHCODataModule(LightningDataModule):
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
 
+        self.means: Optional[torch.Tensor] = None
+        self.stds: Optional[torch.Tensor] = None
+        self.cond_means: Optional[torch.Tensor] = None
+        self.cond_stds: Optional[torch.Tensor] = None
+        self.tensor_test: Optional[torch.Tensor] = None
+        self.mask_test: Optional[torch.Tensor] = None
+        self.tensor_val: Optional[torch.Tensor] = None
+        self.mask_val: Optional[torch.Tensor] = None
+        self.tensor_train: Optional[torch.Tensor] = None
+        self.mask_train: Optional[torch.Tensor] = None
+        self.tensor_conditioning_train: Optional[torch.Tensor] = None
+        self.tensor_conditioning_val: Optional[torch.Tensor] = None
+        self.tensor_conditioning_test: Optional[torch.Tensor] = None
+
     def prepare_data(self):
         """Download data if needed.
 
@@ -99,8 +113,8 @@ class LHCODataModule(LightningDataModule):
             dataset_train, dataset_val, dataset_test = np.split(
                 data,
                 [
-                    len(data) - 1 - (n_samples_val + n_samples_test),
-                    len(data) - 1 - n_samples_test,
+                    len(data) - (n_samples_val + n_samples_test),
+                    len(data) - n_samples_test,
                 ],
             )
             tensor_conditioning_train = torch.zeros(len(dataset_train))
@@ -121,6 +135,22 @@ class LHCODataModule(LightningDataModule):
                 torch.tensor(np.expand_dims(dataset_test[:, :, 3], axis=-1), dtype=torch.float32),
                 tensor_conditioning_test,
             )
+
+            self.tensor_train = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
+            self.mask_train = torch.tensor(
+                np.expand_dims(dataset_train[:, :, 3], axis=-1), dtype=torch.float32
+            )
+            self.tensor_test = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
+            self.mask_test = torch.tensor(
+                np.expand_dims(dataset_test[:, :, 3], axis=-1), dtype=torch.float32
+            )
+            self.tensor_val = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
+            self.mask_val = torch.tensor(
+                np.expand_dims(dataset_val[:, :, 3], axis=-1), dtype=torch.float32
+            )
+            self.tensor_conditioning_train = tensor_conditioning_train
+            self.tensor_conditioning_val = tensor_conditioning_val
+            self.tensor_conditioning_test = tensor_conditioning_test
 
     def train_dataloader(self):
         return DataLoader(
