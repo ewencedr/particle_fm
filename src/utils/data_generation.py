@@ -27,7 +27,7 @@ def generate_data(
     stds=None,
     shuffle_mask: bool = False,
     verbose: bool = True,
-    ode_solver: str = "dopri5_zuko",
+    ode_solver: str = "midpoint",
     ode_steps: int = 100,
 ):
     """Generate data with a model in batches and measure time.
