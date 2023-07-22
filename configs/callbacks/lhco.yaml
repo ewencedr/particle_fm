@@ -10,6 +10,7 @@ defaults:
   - ema.yaml
   #- jetnet_eval.yaml
   #- jetnet_final_eval.yaml
+  - lhco_eval.yaml
   - _self_
 
 model_checkpoint:

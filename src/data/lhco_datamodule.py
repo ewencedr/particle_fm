@@ -59,6 +59,11 @@ class LHCODataModule(LightningDataModule):
         drop_last: bool = False,
         verbose: bool = True,
         variable_jet_sizes: bool = True,
+        # preprocessing
+        centering: bool = False,
+        normalize: bool = False,
+        normalize_sigma: int = 5,
+        use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
 
