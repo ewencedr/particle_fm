@@ -418,6 +418,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             self.loss = DiffusionLoss(
                 flows=self.flows, sigma=sigma, diff_config=diff_config, criterion=criterion
             )
+        elif loss_type == "droid":
+            self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma, criterion=criterion)
         else:
             raise NotImplementedError(f"Loss type {loss_type} not implemented.")
 

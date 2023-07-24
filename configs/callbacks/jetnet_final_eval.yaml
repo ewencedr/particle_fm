@@ -8,12 +8,15 @@ jetnet_final_eval:
   ckpt_path: null
   num_jet_samples: -5
   fix_seed: true
+  evaluate_substructure: true
+  suffix: ""
+  cond_path: ${paths.root_dir}/data/conditioning.h5
   w_dist_config:
     num_eval_samples: 50_000
     num_batches: 40
   generation_config:
     batch_size: 1024
     ode_solver: "midpoint"
-    ode_steps: 200
+    ode_steps: 100
   plot_config:
-    plot_efps: false
+    plot_efps: true

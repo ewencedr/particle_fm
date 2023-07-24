@@ -24,7 +24,7 @@ trainer:
   gradient_clip_val: 0.5
 
 model:
-  num_particles: 150
+  num_particles: 30
   global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
 

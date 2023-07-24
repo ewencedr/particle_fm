@@ -24,13 +24,12 @@ def wasserstein_distance_batched(
         float: Mean Wasserstein distance of all batches
         float: Standard deviation of the Wasserstein distances of all batches
     """
-    num_eval_samples = len(data1) // num_batches
     w1 = []
     i = 0
     for j in range(num_batches):
         rand1 = rng.choice(len(data1), size=num_eval_samples)
         rand2 = rng.choice(len(data2), size=num_eval_samples)
-        rand_sample1 = data2[rand1]
+        rand_sample1 = data1[rand1]
         rand_sample2 = data2[rand2]
         w1.append(wasserstein_distance(rand_sample1, rand_sample2))
     return np.mean(w1), np.std(w1)

@@ -167,7 +167,7 @@ def plot_data(
         lengths.append(particle_data[count].shape[0])
         lengths.append(jet_data[count].shape[0])
         if plot_efps:
-            lengths.append(efps_values[count].shape[1])
+            lengths.append(efps_values[count].shape[0])
     if any(np.array(lengths) < num_samples):
         raise ValueError("num_samples is larger than the smallest dataset")
     sim_data = sim_data[:num_samples]
@@ -462,13 +462,15 @@ def plot_data(
         ax7.set_yscale("log")
 
     ax8 = fig.add_subplot(gs[gs_counter + 1])
-    data1 = np.sum(sim_data[:, :, 3], axis=1)
+    data1 = np.count_nonzero(sim_data[:, :, 2], axis=1)
     if not plot_data_only:
         data = [np.count_nonzero(d[:, :, 2], axis=1) for d in particle_data]
         x_min, x_max = (
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+    if plottype == "sim_data":
+        x_min, x_max = data1.min(), data1.max()
     if variable_jet_sizes_plotting:
         binwidth = 1
         if not plot_data_only:
