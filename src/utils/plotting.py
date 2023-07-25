@@ -882,7 +882,7 @@ def create_and_plot_data(
     sim_data_label: str = "JetNet",
     file_dict: dict = None,
     close_fig: bool = False,
-    ode_solver: str = "dopri5_zuko",
+    ode_solver: str = "midpoint",
     ode_steps: int = 100,
 ):
     """Generate data for plotting and plot it.
@@ -917,7 +917,7 @@ def create_and_plot_data(
         sim_data_label (str, optional): _description_. Defaults to "JetNet".
         file_dict (_type_, optional): _description_. Defaults to None.
         close_fig (bool, optional): Close fig after saving. Defaults to False.
-        ode_solver (str, optional): ODE solver used for sampling. Defaults to "dopri5_zuko".
+        ode_solver (str, optional): ODE solver used for sampling. Defaults to "midpoint".
         ode_steps (int, optional): Number of steps for ODE solver. Defaults to 100.
 
     Raises:
@@ -1056,7 +1056,7 @@ def do_timing_plots(
     variable_set_sizes=False,
     mask=None,
     save_path="/home/ewencedr/equivariant-flows",
-    ode_solver: str = "dopri5_zuko",
+    ode_solver: str = "midpoint",
     ode_steps: int = 100,
 ):
     if not (len(models) == len(labels)):
@@ -1172,7 +1172,7 @@ def create_data_for_plotting(
     file_dict: dict = None,
     calculate_efps: bool = False,
     cond: list[torch.Tensor] = None,
-    ode_solver: str = "dopri5_zuko",
+    ode_solver: str = "midpoint",
     ode_steps: int = 100,
 ):
     data = []

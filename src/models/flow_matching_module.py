@@ -543,7 +543,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         n_samples: int,
         cond: torch.Tensor = None,
         mask: torch.Tensor = None,
-        ode_solver: str = "dopri5_zuko",
+        ode_solver: str = "midpoint",
         ode_steps: int = 100,
     ):
         """Generate Samples.

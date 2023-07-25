@@ -1,0 +1,41 @@
+defaults:
+  - model_checkpoint.yaml
+  #- model_checkpoint2.yaml
+  #- model_checkpoint3.yaml
+  #- early_stopping.yaml
+  - model_summary.yaml
+  - lr_monitor.yaml
+  # - device_stats_monitor.yaml
+  - rich_progress_bar.yaml
+  - ema.yaml
+  #- jetnet_eval.yaml
+  #- jetnet_final_eval.yaml
+  - lhco_eval.yaml
+  - _self_
+
+model_checkpoint:
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "epoch_{epoch:03d}_loss_{val/loss:.5f}"
+  monitor: "val/loss"
+  mode: "min"
+  save_last: True
+  auto_insert_metric_name: False
+  metric_map:
+    "val/loss": "loss"
+
+
+
+#early_stopping:
+#  monitor: "val/loss"
+#  patience: 100
+#  mode: "min"
+
+model_summary:
+  max_depth: -1
+
+ema:
+  decay: 0.999
+  apply_ema_every_n_steps: 1
+  start_step: 0
+  save_ema_weights_in_callback_state: true
+  evaluate_ema_weights_instead: true
