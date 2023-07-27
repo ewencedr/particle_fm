@@ -33,6 +33,7 @@ data:
   conditioning_eta: False
   conditioning_mass: False
   conditioning_num_particles: False
+  use_custom_eta_centering: False
 
 callbacks:
   ema:

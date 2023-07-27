@@ -79,6 +79,7 @@ class JetClassDataModule(LightningDataModule):
         normalize: bool = False,
         normalize_sigma: int = 5,
         use_calculated_base_distribution: bool = True,
+        use_custom_eta_centering: bool = True,
     ):
         super().__init__()
 
@@ -146,6 +147,13 @@ class JetClassDataModule(LightningDataModule):
             jet_pt_index = get_feat_index(names_jet_features, "jet_pt")
             part_pt_index = get_feat_index(names_part_features, "part_pt")
             particle_features[..., part_pt_index] /= np.expand_dims(jet_features[:, jet_pt_index], axis=1)
+
+            # instead of using the part_deta variable, use part_eta - jet_eta
+            if self.hparams.use_custom_eta_centering:
+                jet_eta_repeat = jet_features[:, get_feat_index(names_jet_features, "jet_eta")][:, np.newaxis].repeat(particle_features.shape[1], 1)
+                particle_eta_minus_jet_eta = particle_features[:, :, get_feat_index(names_part_features, "part_eta")] - jet_eta_repeat
+                mask = (particle_features[:, :, 0] != 0).astype(int)
+                particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(particle_features))
