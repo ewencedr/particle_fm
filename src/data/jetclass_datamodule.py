@@ -11,6 +11,17 @@ from src.utils.pylogger import get_pylogger
 log = get_pylogger("JetClassDataModule")
 
 
+def get_feat_index(names_array: np.array, name: str):
+    """Helper function that returns the index of the features name in the
+    jet_data array.
+
+    Args:
+        names_array (np.array): Array of feature names.
+        name (str): Name of the feature to find.
+    """
+    return np.argwhere(names_array == name)[0][0]
+
+
 class JetClassDataModule(LightningDataModule):
     """LightningDataModule for JetClass dataset. If no conditioning is used, the conditioning tensor
     will be a tensor of zeros.
@@ -59,6 +70,10 @@ class JetClassDataModule(LightningDataModule):
         drop_last: bool = False,
         verbose: bool = True,
         variable_jet_sizes: bool = True,
+        conditioning_pt: bool = True,
+        conditioning_eta: bool = True,
+        conditioning_mass: bool = True,
+        conditioning_num_particles: bool = True,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -96,6 +111,17 @@ class JetClassDataModule(LightningDataModule):
         """
         pass
 
+    @property
+    def num_cond_features(self):
+        return sum(
+            [
+                self.hparams.conditioning_pt,
+                self.hparams.conditioning_eta,
+                self.hparams.conditioning_mass,
+                self.hparams.conditioning_num_particles,
+            ]
+        )
+
     def setup(self, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
 
@@ -112,10 +138,14 @@ class JetClassDataModule(LightningDataModule):
 
             particle_features = npfile["part_features"]
             jet_features = npfile["jet_features"]
-            labels = npfile["labels"]
-            
+            names_part_features = npfile["names_part_features"]
+            names_jet_features = npfile["names_jet_features"]
+            # labels = npfile["labels"]
+
             # divide particle pt by jet pt
-            particle_features[..., 2] /= np.expand_dims(jet_features[:, 2], axis=1)
+            jet_pt_index = get_feat_index(names_jet_features, "jet_pt")
+            part_pt_index = get_feat_index(names_part_features, "part_pt")
+            particle_features[..., part_pt_index] /= np.expand_dims(jet_features[:, jet_pt_index], axis=1)
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(particle_features))
@@ -127,27 +157,34 @@ class JetClassDataModule(LightningDataModule):
                     len(particle_features) - n_samples_test,
                 ],
             )
-            tensor_conditioning_train = torch.zeros(len(dataset_train))
-            tensor_conditioning_val = torch.zeros(len(dataset_val))
-            tensor_conditioning_test = torch.zeros(len(dataset_test))
+            if self.num_cond_features == 0:
+                self.tensor_conditioning_train = torch.zeros(len(dataset_train))
+                self.tensor_conditioning_val = torch.zeros(len(dataset_val))
+                self.tensor_conditioning_test = torch.zeros(len(dataset_test))
+            else:
+                jet_features = self._handle_conditioning(
+                    jet_features, names_jet_features
+                )
+                (conditioning_train, conditioning_val, conditioning_test) = np.split(
+                    jet_features,
+                    [
+                        len(jet_features) - (n_samples_val + n_samples_test),
+                        len(jet_features) - n_samples_test,
+                    ],
+                )
+                self.tensor_conditioning_train = torch.tensor(
+                    conditioning_train, dtype=torch.float32
+                )
+                self.tensor_conditioning_val = torch.tensor(
+                    conditioning_val, dtype=torch.float32
+                )
+                self.tensor_conditioning_test = torch.tensor(
+                    conditioning_test, dtype=torch.float32
+                )
 
-            self.data_train = TensorDataset(
-                torch.tensor(dataset_train[:, :, :3], dtype=torch.float32),
-                torch.tensor(np.expand_dims(dataset_train[:, :, 3], axis=-1), dtype=torch.float32),
-                tensor_conditioning_train,
+            self.tensor_train = torch.tensor(
+                dataset_train[:, :, :3], dtype=torch.float32
             )
-            self.data_val = TensorDataset(
-                torch.tensor(dataset_val[:, :, :3], dtype=torch.float32),
-                torch.tensor(np.expand_dims(dataset_val[:, :, 3], axis=-1), dtype=torch.float32),
-                tensor_conditioning_val,
-            )
-            self.data_test = TensorDataset(
-                torch.tensor(dataset_test[:, :, :3], dtype=torch.float32),
-                torch.tensor(np.expand_dims(dataset_test[:, :, 3], axis=-1), dtype=torch.float32),
-                tensor_conditioning_test,
-            )
-
-            self.tensor_train = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
             self.mask_train = torch.tensor(
                 np.expand_dims(dataset_train[:, :, 3] > 0, axis=-1), dtype=torch.float32
             )
@@ -159,9 +196,22 @@ class JetClassDataModule(LightningDataModule):
             self.mask_val = torch.tensor(
                 np.expand_dims(dataset_val[:, :, 3] > 0, axis=-1), dtype=torch.float32
             )
-            self.tensor_conditioning_train = tensor_conditioning_train
-            self.tensor_conditioning_val = tensor_conditioning_val
-            self.tensor_conditioning_test = tensor_conditioning_test
+
+            self.data_train = TensorDataset(
+                self.tensor_train,
+                self.mask_train,
+                self.tensor_conditioning_train,
+            )
+            self.data_val = TensorDataset(
+                self.tensor_val,
+                self.mask_val,
+                self.tensor_conditioning_val,
+            )
+            self.data_test = TensorDataset(
+                self.tensor_test,
+                self.mask_test,
+                self.tensor_conditioning_test,
+            )
 
     def train_dataloader(self):
         return DataLoader(
@@ -204,6 +254,35 @@ class JetClassDataModule(LightningDataModule):
     def load_state_dict(self, state_dict: Dict[str, Any]):
         """Things to do when loading checkpoint."""
         pass
+
+    def _handle_conditioning(self, jet_data: np.array, names_jet_data: np.array):
+        """Select the conditioning variables.
+        jet_data: np.array of shape (n_jets, n_features)
+        names_jet_data: np.array of shape (n_features,) which contains the names of
+            the features
+        """
+
+        if (
+            not self.hparams.conditioning_pt
+            and not self.hparams.conditioning_eta
+            and not self.hparams.conditioning_mass
+            and not self.hparams.conditioning_num_particles
+        ):
+            return None
+
+        # select the columns which correspond to the conditioning variables that should be used
+
+        keep_col = []
+        if self.hparams.conditioning_pt:
+            keep_col.append(get_feat_index(names_jet_data, "jet_pt"))
+        if self.hparams.conditioning_eta:
+            keep_col.append(get_feat_index(names_jet_data, "jet_eta"))
+        if self.hparams.conditioning_mass:
+            keep_col.append(get_feat_index(names_jet_data, "jet_sdmass"))
+        if self.hparams.conditioning_num_particles:
+            keep_col.append(get_feat_index(names_jet_data, "jet_nparticles"))
+
+        return jet_data[:, keep_col]
 
 
 if __name__ == "__main__":
