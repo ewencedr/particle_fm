@@ -143,7 +143,9 @@ class JetClassDataModule(LightningDataModule):
             jet_features = npfile["jet_features"]
             if self.hparams.number_of_used_jets is not None:
                 if self.hparams.number_of_used_jets < len(jet_features):
-                    particle_features = particle_features[: self.hparams.number_of_used_jets]
+                    particle_features = particle_features[
+                        : self.hparams.number_of_used_jets
+                    ]
                     jet_features = jet_features[: self.hparams.number_of_used_jets]
 
             names_part_features = npfile["names_part_features"]
@@ -154,21 +156,32 @@ class JetClassDataModule(LightningDataModule):
             # divide particle pt by jet pt
             jet_pt_index = get_feat_index(names_jet_features, "jet_pt")
             part_pt_index = get_feat_index(names_part_features, "part_pt")
-            particle_features[..., part_pt_index] /= np.expand_dims(jet_features[:, jet_pt_index], axis=1)
-            
+            particle_features[..., part_pt_index] /= np.expand_dims(
+                jet_features[:, jet_pt_index], axis=1
+            )
+
             # instead of using the part_deta variable, use part_eta - jet_eta
             if self.hparams.use_custom_eta_centering:
-                jet_eta_repeat = jet_features[:, get_feat_index(names_jet_features, "jet_eta")][:, np.newaxis].repeat(particle_features.shape[1], 1)
-                particle_eta_minus_jet_eta = particle_features[:, :, get_feat_index(names_part_features, "part_eta")] - jet_eta_repeat
+                jet_eta_repeat = jet_features[
+                    :, get_feat_index(names_jet_features, "jet_eta")
+                ][:, np.newaxis].repeat(particle_features.shape[1], 1)
+                particle_eta_minus_jet_eta = (
+                    particle_features[
+                        :, :, get_feat_index(names_part_features, "part_eta")
+                    ]
+                    - jet_eta_repeat
+                )
                 mask = (particle_features[:, :, 0] != 0).astype(int)
                 particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
-                
+
             if self.hparams.remove_etadiff_tails:
                 # remove/zero-padd particles with |eta - jet_eta| > 1
                 mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
                 particle_features[:, :, :][mask_etadiff_larger_1] = 0
-                assert np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0, "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
-
+                assert (
+                    np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten())
+                    == 0
+                ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(particle_features))
