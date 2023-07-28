@@ -28,6 +28,9 @@ model:
   global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
 
+data:
+  normalize: True
+
 callbacks:
   ema:
     decay: 0.999

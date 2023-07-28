@@ -1,6 +1,13 @@
 _target_: src.data.lhco_datamodule.LHCODataModule
+data_dir: ${paths.data_dir}
 batch_size: 1024
 num_workers: 32
 pin_memory: False
-val_fraction: 0.10
-test_fraction: 0.30
+val_fraction: 0.15
+test_fraction: 0.15
+jet_type: "qcd"
+num_particles: 279
+variable_jet_sizes: True
+centering: False
+normalize: True
+use_calculated_base_distribution: True
