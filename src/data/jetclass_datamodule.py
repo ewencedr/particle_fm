@@ -134,7 +134,7 @@ class JetClassDataModule(LightningDataModule):
         if not self.data_train and not self.data_val and not self.data_test:
             # data loading
             # TODO: use better filename
-            path = f"{self.hparams.data_dir}/train.npz"
+            path = f"{self.hparams.data_dir}/jetclass.npz"
             npfile = np.load(path, allow_pickle=True)
 
             particle_features = npfile["part_features"]
@@ -147,6 +147,11 @@ class JetClassDataModule(LightningDataModule):
             jet_pt_index = get_feat_index(names_jet_features, "jet_pt")
             part_pt_index = get_feat_index(names_part_features, "part_pt")
             particle_features[..., part_pt_index] /= np.expand_dims(jet_features[:, jet_pt_index], axis=1)
+            
+            # TODO: log the length of the dataset as a hyperparameter 
+            # (and make it an option in the datamodule)
+            # dataset_length = len(particle_features)
+            
 
             # instead of using the part_deta variable, use part_eta - jet_eta
             if self.hparams.use_custom_eta_centering:
