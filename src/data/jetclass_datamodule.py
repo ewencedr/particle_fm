@@ -62,6 +62,8 @@ class JetClassDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
+        data_filename: str = "jetclass.npz",
+        number_of_used_jets: int = None,
         val_fraction: float = 0.15,
         test_fraction: float = 0.15,
         batch_size: int = 256,
@@ -133,14 +135,19 @@ class JetClassDataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             # data loading
-            # TODO: use better filename
-            path = f"{self.hparams.data_dir}/jetclass.npz"
+            path = f"{self.hparams.data_dir}/{self.hparams.data_filename}"
             npfile = np.load(path, allow_pickle=True)
 
             particle_features = npfile["part_features"]
             jet_features = npfile["jet_features"]
+            if self.hparams.number_of_used_jets is not None:
+                if self.hparams.number_of_used_jets < len(jet_features):
+                    particle_features = particle_features[: self.hparams.number_of_used_jets]
+                    jet_features = jet_features[: self.hparams.number_of_used_jets]
+
             names_part_features = npfile["names_part_features"]
             names_jet_features = npfile["names_jet_features"]
+            # TODO: anything to do with labels?
             # labels = npfile["labels"]
 
             # divide particle pt by jet pt
@@ -148,11 +155,6 @@ class JetClassDataModule(LightningDataModule):
             part_pt_index = get_feat_index(names_part_features, "part_pt")
             particle_features[..., part_pt_index] /= np.expand_dims(jet_features[:, jet_pt_index], axis=1)
             
-            # TODO: log the length of the dataset as a hyperparameter 
-            # (and make it an option in the datamodule)
-            # dataset_length = len(particle_features)
-            
-
             # instead of using the part_deta variable, use part_eta - jet_eta
             if self.hparams.use_custom_eta_centering:
                 jet_eta_repeat = jet_features[:, get_feat_index(names_jet_features, "jet_eta")][:, np.newaxis].repeat(particle_features.shape[1], 1)
