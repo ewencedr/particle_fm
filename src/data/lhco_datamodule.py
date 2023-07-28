@@ -106,20 +106,25 @@ class LHCODataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             # data loading
-            path = "/beegfs/desy/user/ewencedr/data/lhco/events_anomalydetection_v2_processed.h5"
+            path = (
+                "/beegfs/desy/user/ewencedr/data/lhco/final_data/processed_data_background_rel.h5"
+            )
             with h5py.File(path, "r") as f:
-                data = f["data"][:]
+                jet_data = f["jet_data"][:]
+                particle_data = f["constituents"][:]
                 mask = f["mask"][:]
-            data = data[:, :, :3]
-            data = np.concatenate([data, np.expand_dims(mask, axis=-1)], axis=-1)
+            particle_data = particle_data[:, 0]
+            mask = mask[:, 0]
+            particle_data = particle_data[:, :, [1, 2, 0]]
+            particle_data = np.concatenate([particle_data, mask], axis=-1)
             # data splitting
-            n_samples_val = int(self.hparams.val_fraction * len(data))
-            n_samples_test = int(self.hparams.test_fraction * len(data))
+            n_samples_val = int(self.hparams.val_fraction * len(particle_data))
+            n_samples_test = int(self.hparams.test_fraction * len(particle_data))
             dataset_train, dataset_val, dataset_test = np.split(
-                data,
+                particle_data,
                 [
-                    len(data) - (n_samples_val + n_samples_test),
-                    len(data) - n_samples_test,
+                    len(particle_data) - (n_samples_val + n_samples_test),
+                    len(particle_data) - n_samples_test,
                 ],
             )
             tensor_conditioning_train = torch.zeros(len(dataset_train))
