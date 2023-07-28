@@ -82,6 +82,7 @@ class JetClassDataModule(LightningDataModule):
         normalize_sigma: int = 5,
         use_calculated_base_distribution: bool = True,
         use_custom_eta_centering: bool = True,
+        remove_etadiff_tails: bool = True,
     ):
         super().__init__()
 
@@ -161,6 +162,13 @@ class JetClassDataModule(LightningDataModule):
                 particle_eta_minus_jet_eta = particle_features[:, :, get_feat_index(names_part_features, "part_eta")] - jet_eta_repeat
                 mask = (particle_features[:, :, 0] != 0).astype(int)
                 particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
+                
+            if self.hparams.remove_etadiff_tails:
+                # remove/zero-padd particles with |eta - jet_eta| > 1
+                mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
+                particle_features[:, :, :][mask_etadiff_larger_1] = 0
+                assert np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0, "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
+
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(particle_features))
