@@ -29,7 +29,7 @@ model:
   local_cond_dim: 0
 
 data:
-  # n_umber_of_used_jets: 100000
+  n_umber_of_used_jets: 1000000
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   conditioning_pt: False
   conditioning_eta: False
