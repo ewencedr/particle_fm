@@ -1,6 +1,5 @@
 from typing import Any, Dict, Optional
 
-import h5py
 import numpy as np
 import torch
 from pytorch_lightning import LightningDataModule
