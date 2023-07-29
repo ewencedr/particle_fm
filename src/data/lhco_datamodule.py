@@ -120,7 +120,10 @@ class LHCODataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             # data loading
-            path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background.h5"
+            if self.hparams.relative_coords:
+                path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
+            else:
+                path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background.h5"
             with h5py.File(path, "r") as f:
                 jet_data = f["jet_data"][:]
                 particle_data = f["constituents"][:]
