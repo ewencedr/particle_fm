@@ -19,14 +19,17 @@ tags: ["flow_matching", "LHCO", "uncond"]
 seed: 12345
 
 trainer:
-  min_epochs: 300
-  max_epochs: 3000
+  min_epochs: 100
+  max_epochs: 1000
   gradient_clip_val: 0.5
 
 model:
   num_particles: 558
   global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
+  scheduler:
+    warmup: ${model.min_epochs}
+    max_iters: ${trainer.max_epochs}
 
 data:
   normalize: True
