@@ -25,11 +25,12 @@ trainer:
 
 model:
   num_particles: 279
-  global_cond_dim: 0 # needs to be calculated when using conditioning
-  local_cond_dim: 0
+  global_cond_dim: 4 # needs to be calculated when using conditioning
+  local_cond_dim: 4
 
 data:
   normalize: True
+  conditioning: True
 
 callbacks:
   ema:

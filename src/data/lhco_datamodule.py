@@ -71,11 +71,7 @@ class LHCODataModule(LightningDataModule):
         jet_type: str | list[str] = "qcd",
         num_particles: int = 279,
         variable_jet_sizes: bool = True,
-        conditioning_type: bool = False,
-        # conditioning_pt: bool = True,
-        # conditioning_eta: bool = True,
-        # conditioning_mass: bool = True,
-        # conditioning_num_particles: bool = True,
+        conditioning: bool = False,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -132,6 +128,7 @@ class LHCODataModule(LightningDataModule):
                 mask = f["mask"][:]
             particle_data = particle_data[:, 0]
             mask = mask[:, 0]
+            jet_data = jet_data[:, 0]
             particle_data = particle_data[:, :, [1, 2, 0]]
             particle_data = np.concatenate([particle_data, mask], axis=-1)
 
@@ -159,22 +156,21 @@ class LHCODataModule(LightningDataModule):
             )
 
             # conditioning
-            # conditioning_data = self._handle_conditioning(jet_data)
-            # if conditioning_data is not None:
-            #    tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
-            #    conditioning_train, conditioning_val, conditioning_test = np.split(
-            #        conditioning_data,
-            #        [
-            #            len(conditioning_data) - 1 - (n_samples_val + n_samples_test),
-            #            len(conditioning_data) - 1 - n_samples_test,
-            #        ],
-            #    )
-            #    tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
-            #    tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
-            #    tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
-            #
-            #    if len(tensor_conditioning) != len(x_ma):
-            #        raise ValueError("Conditioning tensor and data tensor must have same length.")
+            conditioning_data = self._handle_conditioning(jet_data)
+            if conditioning_data is not None:
+                tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
+                conditioning_train, conditioning_val, conditioning_test = np.split(
+                    conditioning_data,
+                    [
+                        len(conditioning_data) - (n_samples_val + n_samples_test),
+                        len(conditioning_data) - n_samples_test,
+                    ],
+                )
+                tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)
+                tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
+                tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
+                if len(tensor_conditioning) != len(x_ma):
+                    raise ValueError("Conditioning tensor and data tensor must have same length.")
 
             if self.hparams.normalize:
                 means = np.ma.mean(dataset_train, axis=(0, 1))
@@ -200,41 +196,38 @@ class LHCODataModule(LightningDataModule):
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
 
-                # if conditioning_data is not None:
-                #    means_cond = torch.mean(tensor_conditioning_train, axis=0)
-                #    stds_cond = torch.std(tensor_conditioning_train, axis=0)
-            #
-            #    # Train
-            #    tensor_conditioning_train = normalize_tensor(
-            #        tensor_conditioning_train,
-            #        means_cond,
-            #        stds_cond,
-            #        sigma=self.hparams.normalize_sigma,
-            #    )
-            #
-            #    # Validation
-            #    tensor_conditioning_val = normalize_tensor(
-            #        tensor_conditioning_val,
-            #        means_cond,
-            #        stds_cond,
-            #        sigma=self.hparams.normalize_sigma,
-            #    )
-            #
-            #    # Test
-            #    tensor_conditioning_test = normalize_tensor(
-            #        tensor_conditioning_test,
-            #        means_cond,
-            #        stds_cond,
-            #        sigma=self.hparams.normalize_sigma,
-            #    )
-            # else:
-            #    tensor_conditioning_train = torch.zeros(len(dataset_train))
-            #    tensor_conditioning_val = torch.zeros(len(dataset_val))
-            #    tensor_conditioning_test = torch.zeros(len(dataset_test))
+                if conditioning_data is not None:
+                    means_cond = torch.mean(tensor_conditioning_train, axis=0)
+                    stds_cond = torch.std(tensor_conditioning_train, axis=0)
 
-            tensor_conditioning_train = torch.zeros(len(dataset_train))
-            tensor_conditioning_val = torch.zeros(len(dataset_val))
-            tensor_conditioning_test = torch.zeros(len(dataset_test))
+                    # Train
+                    tensor_conditioning_train = normalize_tensor(
+                        tensor_conditioning_train,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    # Validation
+                    tensor_conditioning_val = normalize_tensor(
+                        tensor_conditioning_val,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    # Test
+                    tensor_conditioning_test = normalize_tensor(
+                        tensor_conditioning_test,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                else:
+                    tensor_conditioning_train = torch.zeros(len(dataset_train))
+                    tensor_conditioning_val = torch.zeros(len(dataset_val))
+                    tensor_conditioning_test = torch.zeros(len(dataset_test))
 
             # Train without normalization
             unnormalized_tensor_train = torch.tensor(dataset_train)
@@ -268,9 +261,9 @@ class LHCODataModule(LightningDataModule):
                 self.means = torch.tensor(means)
                 self.stds = torch.tensor(stds)
 
-                # if conditioning_data is not None:
-                #    self.cond_means = means_cond
-                #    self.cond_stds = stds_cond
+                if conditioning_data is not None:
+                    self.cond_means = means_cond
+                    self.cond_stds = stds_cond
             else:
                 self.data_train = TensorDataset(
                     unnormalized_tensor_train, unnormalized_mask_train, tensor_conditioning_train
@@ -288,6 +281,10 @@ class LHCODataModule(LightningDataModule):
                 # log.info(
                 #    f"Conditioning on {tensor_conditioning_train.shape[-1] if len(tensor_conditioning_train.shape)==2 else 0} variables, consisting of jet_type: {len(self.hparams.jet_type) if self.hparams.conditioning_type else 0}, pt: {1 if self.hparams.conditioning_pt else 0}, eta: {1 if self.hparams.conditioning_eta else 0}, mass: {1 if self.hparams.conditioning_mass else 0}, num_particles: {1 if self.hparams.conditioning_num_particles else 0}"
                 # )
+                if self.hparams.conditioning:
+                    log.info(
+                        f"Conditioning on {tensor_conditioning_train.shape[-1]} jet variables (pt, eta, phi, mass)"
+                    )
                 if self.hparams.normalize:
                     log.info(f"{'Training data shape:':<23} {tensor_train.shape}")
                     log.info(f"{'Validation data shape:':<23} {tensor_val.shape}")
@@ -347,6 +344,14 @@ class LHCODataModule(LightningDataModule):
     def load_state_dict(self, state_dict: Dict[str, Any]):
         """Things to do when loading checkpoint."""
         pass
+
+    def _handle_conditioning(self, jet_data: np.array):
+        """Select the conditioning variables and one-hot encode the type conditioning of jets."""
+
+        if self.hparams.conditioning:
+            return jet_data
+        else:
+            return None
 
 
 if __name__ == "__main__":

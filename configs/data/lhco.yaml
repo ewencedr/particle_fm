@@ -10,4 +10,5 @@ num_particles: 279
 variable_jet_sizes: True
 centering: False
 normalize: True
+conditioning: True
 use_calculated_base_distribution: True
