@@ -28,7 +28,7 @@ model:
   global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
   scheduler:
-    warmup: ${model.min_epochs}
+    warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}
 
 data:
