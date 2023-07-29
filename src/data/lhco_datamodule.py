@@ -74,6 +74,7 @@ class LHCODataModule(LightningDataModule):
         conditioning: bool = False,
         relative_coords: bool = True,
         use_all_jets: bool = False,
+        one_pc: bool = False,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -130,11 +131,19 @@ class LHCODataModule(LightningDataModule):
                 particle_data = f["constituents"][:]
                 mask = f["mask"][:]
             if self.hparams.use_all_jets:
-                jet_data = jet_data.reshape(-1, jet_data.shape[-1])
-                particle_data = particle_data.reshape(
-                    -1, particle_data.shape[-2], particle_data.shape[-1]
-                )
-                mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
+                if self.hparams.one_pc:
+                    particle_data = particle_data.reshape(
+                        particle_data.shape[0], -1, particle_data.shape[-1]
+                    )
+                    mask = mask.reshape(mask.shape[0], -1, mask.shape[-1])
+                    if self.hparams.conditioning:
+                        raise ValueError("Conditioning does not make sense for one_pc")
+                else:
+                    jet_data = jet_data.reshape(-1, jet_data.shape[-1])
+                    particle_data = particle_data.reshape(
+                        -1, particle_data.shape[-2], particle_data.shape[-1]
+                    )
+                    mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
             else:
                 particle_data = particle_data[:, 0]
                 mask = mask[:, 0]

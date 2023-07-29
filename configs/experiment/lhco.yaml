@@ -24,15 +24,17 @@ trainer:
   gradient_clip_val: 0.5
 
 model:
-  num_particles: 279
-  global_cond_dim: 4 # needs to be calculated when using conditioning
-  local_cond_dim: 4
+  num_particles: 558
+  global_cond_dim: 0 # needs to be calculated when using conditioning
+  local_cond_dim: 0
 
 data:
   normalize: True
-  conditioning: True
-  relative_coords: True
+  conditioning: False
+  relative_coords: False
   use_all_jets: True
+  one_pc: True
+  num_particles: ${model.num_particles}
 
 callbacks:
   ema:

@@ -13,4 +13,5 @@ normalize: True
 conditioning: True
 relative_coords: True
 use_all_jets: False
+one_pc: False
 use_calculated_base_distribution: True
