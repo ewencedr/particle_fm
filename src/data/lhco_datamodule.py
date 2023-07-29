@@ -73,6 +73,7 @@ class LHCODataModule(LightningDataModule):
         variable_jet_sizes: bool = True,
         conditioning: bool = False,
         relative_coords: bool = True,
+        use_all_jets: bool = False,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -128,9 +129,16 @@ class LHCODataModule(LightningDataModule):
                 jet_data = f["jet_data"][:]
                 particle_data = f["constituents"][:]
                 mask = f["mask"][:]
-            particle_data = particle_data[:, 0]
-            mask = mask[:, 0]
-            jet_data = jet_data[:, 0]
+            if self.hparams.use_all_jets:
+                jet_data = jet_data.reshape(-1, jet_data.shape[-1])
+                particle_data = particle_data.reshape(
+                    -1, particle_data.shape[-2], particle_data.shape[-1]
+                )
+                mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
+            else:
+                particle_data = particle_data[:, 0]
+                mask = mask[:, 0]
+                jet_data = jet_data[:, 0]
             particle_data = particle_data[:, :, [1, 2, 0]]
             particle_data = np.concatenate([particle_data, mask], axis=-1)
 

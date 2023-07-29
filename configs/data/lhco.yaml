@@ -12,4 +12,5 @@ centering: False
 normalize: True
 conditioning: True
 relative_coords: True
+use_all_jets: False
 use_calculated_base_distribution: True

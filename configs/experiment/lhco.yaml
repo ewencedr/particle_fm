@@ -32,6 +32,7 @@ data:
   normalize: True
   conditioning: True
   relative_coords: True
+  use_all_jets: True
 
 callbacks:
   ema:
