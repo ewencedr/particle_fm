@@ -75,6 +75,7 @@ class LHCODataModule(LightningDataModule):
         relative_coords: bool = True,
         use_all_jets: bool = False,
         one_pc: bool = False,
+        shuffle_data: bool = True,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -150,6 +151,13 @@ class LHCODataModule(LightningDataModule):
                 jet_data = jet_data[:, 0]
             particle_data = particle_data[:, :, [1, 2, 0]]
             particle_data = np.concatenate([particle_data, mask], axis=-1)
+
+            # shuffle data
+            if self.hparams.shuffle_data:
+                perm = np.random.permutation(len(particle_data))
+                if len(jet_data) == len(particle_data):
+                    jet_data = jet_data[perm]
+                particle_data = particle_data[perm]
 
             # mask and select number of particles, mainly relevant for smaller jet sizes
             x, mask, masked_particle_data, masked_jet_data = mask_data(

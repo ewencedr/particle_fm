@@ -14,4 +14,5 @@ conditioning: True
 relative_coords: True
 use_all_jets: False
 one_pc: False
+shuffle_data: True
 use_calculated_base_distribution: True
