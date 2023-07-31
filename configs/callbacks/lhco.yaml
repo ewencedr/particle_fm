@@ -8,9 +8,8 @@ defaults:
   # - device_stats_monitor.yaml
   - rich_progress_bar.yaml
   - ema.yaml
-  #- jetnet_eval.yaml
+  - jetnet_eval.yaml
   #- jetnet_final_eval.yaml
-  - lhco_eval.yaml
   - _self_
 
 model_checkpoint:
