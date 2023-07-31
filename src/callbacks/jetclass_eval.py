@@ -124,6 +124,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 )
         else:
             self.datasets_multiplier = -1
+        self.log("number_of_generated_val_jets", self.num_jet_samples)
 
         # get loggers
         for logger in trainer.loggers:
@@ -233,7 +234,12 @@ class JetClassEvaluationCallback(pl.Callback):
             self.log("w1p_std", w_dists["w1p_std"])
 
             if self.comet_logger is not None:
-                text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+                text = (
+                    f"W-Dist epoch:{trainer.current_epoch} "
+                    f"W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, "
+                    f"W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, "
+                    f"W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+                )
                 self.comet_logger.log_text(text)
 
             # Prepare Data for Plotting
