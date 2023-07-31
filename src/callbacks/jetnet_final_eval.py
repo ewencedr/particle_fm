@@ -420,7 +420,8 @@ class JetNetFinalEvaluationCallback(pl.Callback):
 
                 else:
                     raise ValueError(
-                        "JetNetFinalEvaluationCallback was told to use EMA weights for evaluation but the provided checkpoint callback is not of type EMAModelCheckpoint"
+                        "JetNetFinalEvaluationCallback was told to use EMA weights for evaluation"
+                        " but the provided checkpoint callback is not of type EMAModelCheckpoint"
                     )
             else:
                 if use_last_checkpoint:

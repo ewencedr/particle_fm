@@ -92,12 +92,14 @@ class EPiC_layer(nn.Module):
 
         if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
-                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is {self.local_cond_dim} but no global_cond is given"
+                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is"
+                f" {self.local_cond_dim} but no global_cond is given"
             )
 
         if t is None and (self.t_local_cat or self.t_global_cat):
             raise ValueError(
-                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no t is given"
+                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no"
+                " t is given"
             )
 
         # conditioning
@@ -309,11 +311,13 @@ class EPiC_encoder(nn.Module):
             raise ValueError("x_local is None")
         if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
             raise ValueError(
-                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is {self.local_cond_dim} but no global_cond is given"
+                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is"
+                f" {self.local_cond_dim} but no global_cond is given"
             )
         if t_in is None and (self.t_local_cat or self.t_global_cat):
             raise ValueError(
-                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no t is given"
+                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no"
+                " t is given"
             )
         if t_in is None:
             t = torch.Tensor().to(x_local.device)

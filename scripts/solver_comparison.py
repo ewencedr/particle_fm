@@ -147,7 +147,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint",
         "-ckpt",
-        default="/beegfs/desy/user/ewencedr/deep-learning/logs/150 warmuplr midpoint/runs/2023-06-02_21-46-33/checkpoints/epoch_9761_w1m_0.00064797.ckpt",
+        default=(
+            "/beegfs/desy/user/ewencedr/deep-learning/logs/150 warmuplr"
+            " midpoint/runs/2023-06-02_21-46-33/checkpoints/epoch_9761_w1m_0.00064797.ckpt"
+        ),
         help="checkpoint to load",
         type=str,
     )

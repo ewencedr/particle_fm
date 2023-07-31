@@ -130,7 +130,8 @@ class EMA(Callback):
                 self._ema_model_weights = ema_state_dict["state_dict"].values()
                 del ema_state_dict
                 log.info(
-                    "EMA weights have been loaded successfully. Continuing training with saved EMA weights."
+                    "EMA weights have been loaded successfully. Continuing training with saved EMA"
+                    " weights."
                 )
             else:
                 warnings.warn(
