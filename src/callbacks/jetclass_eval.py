@@ -1,3 +1,4 @@
+"""Callback for evaluating the model on the JetClass dataset."""
 import warnings
 from typing import Any, Callable, Dict, Mapping, Optional
 
@@ -34,8 +35,8 @@ class JetClassEvaluationCallback(pl.Callback):
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
-        num_jet_samples (int, optional): How many jet samples to generate. 
-            Negative values define the amount of times the whole dataset is taken, 
+        num_jet_samples (int, optional): How many jet samples to generate.
+            Negative values define the amount of times the whole dataset is taken,
             e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
         image_path (str, optional): Folder where the images are saved. Defaults to "./logs/callback_images/".
         model_name (str, optional): Name for saving the model. Defaults to "model-test".
@@ -106,7 +107,7 @@ class JetClassEvaluationCallback(pl.Callback):
         # log something, so that metrics exists and the checkpoint callback doesn't crash
         self.log("w1m_mean", 0.005)
         self.log("w1p_mean", 0.005)
-        
+
         self.log("training_dataset_size", float(len(trainer.datamodule.tensor_train)))
         self.log("validation_dataset_size", float(len(trainer.datamodule.tensor_val)))
         self.log("test_dataset_size", float(len(trainer.datamodule.tensor_test)))
@@ -137,7 +138,8 @@ class JetClassEvaluationCallback(pl.Callback):
         self.ema_callback = self._get_ema_callback(trainer)
         if self.ema_callback is None and self.use_ema:
             warnings.warn(
-                "JetNet Evaluation Callbacks was told to use EMA weights, but EMA callback was not found. Using normal weights."
+                "JetClass Evaluation Callbacks was told to use EMA weights, but EMA callback was"
+                " not found. Using normal weights."
             )
         elif self.ema_callback is not None and self.use_ema:
             log.info("Using EMA weights for logging.")

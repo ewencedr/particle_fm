@@ -1,3 +1,4 @@
+"""PyTorch Lightning DataModule for JetClass dataset."""
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -11,8 +12,7 @@ log = get_pylogger("JetClassDataModule")
 
 
 def get_feat_index(names_array: np.array, name: str):
-    """Helper function that returns the index of the features name in the
-    jet_data array.
+    """Helper function that returns the index of the features name in the jet_data array.
 
     Args:
         names_array (np.array): Array of feature names.
@@ -22,8 +22,8 @@ def get_feat_index(names_array: np.array, name: str):
 
 
 class JetClassDataModule(LightningDataModule):
-    """LightningDataModule for JetClass dataset. If no conditioning is used, the conditioning tensor
-    will be a tensor of zeros.
+    """LightningDataModule for JetClass dataset. If no conditioning is used, the conditioning
+    tensor will be a tensor of zeros.
 
     Args:
         val_fraction (float, optional): Fraction of data to use for validation. Between 0 and 1. Defaults to 0.15.
@@ -142,9 +142,7 @@ class JetClassDataModule(LightningDataModule):
             jet_features = npfile["jet_features"]
             if self.hparams.number_of_used_jets is not None:
                 if self.hparams.number_of_used_jets < len(jet_features):
-                    particle_features = particle_features[
-                        : self.hparams.number_of_used_jets
-                    ]
+                    particle_features = particle_features[: self.hparams.number_of_used_jets]
                     jet_features = jet_features[: self.hparams.number_of_used_jets]
 
             names_part_features = npfile["names_part_features"]
@@ -161,13 +159,11 @@ class JetClassDataModule(LightningDataModule):
 
             # instead of using the part_deta variable, use part_eta - jet_eta
             if self.hparams.use_custom_eta_centering:
-                jet_eta_repeat = jet_features[
-                    :, get_feat_index(names_jet_features, "jet_eta")
-                ][:, np.newaxis].repeat(particle_features.shape[1], 1)
+                jet_eta_repeat = jet_features[:, get_feat_index(names_jet_features, "jet_eta")][
+                    :, np.newaxis
+                ].repeat(particle_features.shape[1], 1)
                 particle_eta_minus_jet_eta = (
-                    particle_features[
-                        :, :, get_feat_index(names_part_features, "part_eta")
-                    ]
+                    particle_features[:, :, get_feat_index(names_part_features, "part_eta")]
                     - jet_eta_repeat
                 )
                 mask = (particle_features[:, :, 0] != 0).astype(int)
@@ -178,8 +174,7 @@ class JetClassDataModule(LightningDataModule):
                 mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
                 particle_features[:, :, :][mask_etadiff_larger_1] = 0
                 assert (
-                    np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten())
-                    == 0
+                    np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0
                 ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
 
             # data splitting
@@ -197,9 +192,7 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_val = torch.zeros(len(dataset_val))
                 self.tensor_conditioning_test = torch.zeros(len(dataset_test))
             else:
-                jet_features = self._handle_conditioning(
-                    jet_features, names_jet_features
-                )
+                jet_features = self._handle_conditioning(jet_features, names_jet_features)
                 (conditioning_train, conditioning_val, conditioning_test) = np.split(
                     jet_features,
                     [
@@ -210,16 +203,12 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_train = torch.tensor(
                     conditioning_train, dtype=torch.float32
                 )
-                self.tensor_conditioning_val = torch.tensor(
-                    conditioning_val, dtype=torch.float32
-                )
+                self.tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
                 self.tensor_conditioning_test = torch.tensor(
                     conditioning_test, dtype=torch.float32
                 )
 
-            self.tensor_train = torch.tensor(
-                dataset_train[:, :, :3], dtype=torch.float32
-            )
+            self.tensor_train = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
             self.mask_train = torch.tensor(
                 np.expand_dims(dataset_train[:, :, 3] > 0, axis=-1), dtype=torch.float32
             )
@@ -292,6 +281,7 @@ class JetClassDataModule(LightningDataModule):
 
     def _handle_conditioning(self, jet_data: np.array, names_jet_data: np.array):
         """Select the conditioning variables.
+
         jet_data: np.array of shape (n_jets, n_features)
         names_jet_data: np.array of shape (n_features,) which contains the names of
             the features

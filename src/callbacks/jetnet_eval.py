@@ -130,7 +130,8 @@ class JetNetEvaluationCallback(pl.Callback):
         self.ema_callback = self._get_ema_callback(trainer)
         if self.ema_callback is None and self.use_ema:
             warnings.warn(
-                "JetNet Evaluation Callbacks was told to use EMA weights, but EMA callback was not found. Using normal weights."
+                "JetNet Evaluation Callbacks was told to use EMA weights, but EMA callback was not"
+                " found. Using normal weights."
             )
         elif self.ema_callback is not None and self.use_ema:
             log.info("Using EMA weights for logging.")
@@ -226,7 +227,12 @@ class JetNetEvaluationCallback(pl.Callback):
             self.log("w1p_std", w_dists["w1p_std"])
 
             if self.comet_logger is not None:
-                text = f"W-Dist epoch:{trainer.current_epoch} W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+                text = (
+                    f"W-Dist epoch:{trainer.current_epoch} W1m:"
+                    f" {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p:"
+                    f" {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp:"
+                    f" {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+                )
                 self.comet_logger.log_text(text)
 
             # Prepare Data for Plotting
