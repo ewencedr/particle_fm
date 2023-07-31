@@ -107,9 +107,9 @@ class JetClassEvaluationCallback(pl.Callback):
         self.log("w1m_mean", 0.005)
         self.log("w1p_mean", 0.005)
         
-        self.log("training_sample_size", float(len(trainer.datamodule.tensor_train)))
-        self.log("validation_sample_size", float(len(trainer.datamodule.tensor_val)))
-        self.log("test_sample_size", float(len(trainer.datamodule.tensor_test)))
+        self.log("training_dataset_size", float(len(trainer.datamodule.tensor_train)))
+        self.log("validation_dataset_size", float(len(trainer.datamodule.tensor_val)))
+        self.log("test_dataset_size", float(len(trainer.datamodule.tensor_test)))
 
         # set number of jet samples if negative
         if self.num_jet_samples < 0:
