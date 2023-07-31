@@ -29,12 +29,13 @@ model:
   local_cond_dim: 0
     
 data:
+  number_of_used_jets: 200000
+  use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
+  remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   conditioning_pt: True
   conditioning_eta: False
   conditioning_mass: True
   conditioning_num_particles: False
-  use_custom_eta_centering: True
-  remove_etadiff_tails: False
 
 callbacks:
   ema:
