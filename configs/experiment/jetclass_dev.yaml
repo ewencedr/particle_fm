@@ -20,7 +20,7 @@ seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 3
+  max_epochs: 1000
   gradient_clip_val: 0.5
 
 model:
@@ -29,12 +29,14 @@ model:
   local_cond_dim: 0
 
 data:
-  number_of_used_jets: 1000
+  number_of_used_jets: 200000
+  remove_etadiff_tails: True
+  use_custom_eta_centering: True
   conditioning_pt: False
   conditioning_eta: False
   conditioning_mass: False
   conditioning_num_particles: False
-  use_custom_eta_centering: False
+  
 
 callbacks:
   ema:
