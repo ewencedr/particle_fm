@@ -1,0 +1,8 @@
+_target_: src.data.jetclass_datamodule.JetClassDataModule
+data_dir: /beegfs/desy/user/birkjosc/datasets/jetclass_npz
+data_filename: jetclass_TTBar_200_000.npz
+batch_size: 1024
+num_workers: 32
+pin_memory: False
+val_fraction: 0.10
+test_fraction: 0.30
