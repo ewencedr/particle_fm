@@ -34,8 +34,10 @@ class JetClassEvaluationCallback(pl.Callback):
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
-        num_jet_samples (int, optional): How many jet samples to generate. Negative values define the amount of times the whole dataset is taken, e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
-        image_path (str, optional): Folder where the images are saved. Defaults to "/beegfs/desy/user/ewencedr/comet_logs".
+        num_jet_samples (int, optional): How many jet samples to generate. 
+            Negative values define the amount of times the whole dataset is taken, 
+            e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
+        image_path (str, optional): Folder where the images are saved. Defaults to "./logs/callback_images/".
         model_name (str, optional): Name for saving the model. Defaults to "model-test".
         log_times (bool, optional): Log generation times of data. Defaults to True.
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
