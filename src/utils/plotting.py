@@ -670,7 +670,8 @@ def plot_data(
                     label=f"{labels[count]}",
                 )
         ax13.set_xlabel(
-            rf"Particle $p_\mathrm{{T}}^\mathrm{{rel}}$ of Jets with {selected_multiplicities[0]} Particles"
+            r"Particle $p_\mathrm{T}^\mathrm{rel}$ of Jets with"
+            rf" {selected_multiplicities[0]} Particles"
         )
         ax13.set_yscale("log")
 
@@ -704,7 +705,8 @@ def plot_data(
                     label=f"{labels[count]}",
                 )
         ax14.set_xlabel(
-            rf"Particle $p_\mathrm{{T}}^\mathrm{{rel}}$ of Jets with {selected_multiplicities[1]} Particles"
+            r"Particle $p_\mathrm{T}^\mathrm{rel}$ of Jets with"
+            rf" {selected_multiplicities[1]} Particles"
         )
         ax14.set_yscale("log")
 
@@ -738,7 +740,8 @@ def plot_data(
                     label=f"{labels[count]}",
                 )
         ax15.set_xlabel(
-            rf"Particle $p_\mathrm{{T}}^\mathrm{{rel}}$ of Jets with {selected_multiplicities[2]} Particles"
+            r"Particle $p_\mathrm{T}^\mathrm{rel}$ of Jets with"
+            rf" {selected_multiplicities[2]} Particles"
         )
         ax15.set_yscale("log")
 
@@ -772,7 +775,8 @@ def plot_data(
                     label=f"{labels[count]}",
                 )
         ax16.set_xlabel(
-            rf"Particle $p_\mathrm{{T}}^\mathrm{{rel}}$ of Jets with {selected_multiplicities[3]} Particles"
+            r"Particle $p_\mathrm{T}^\mathrm{rel}$ of Jets with"
+            rf" {selected_multiplicities[3]} Particles"
         )
         ax16.set_yscale("log")
 
@@ -806,7 +810,8 @@ def plot_data(
                     label=f"{labels[count]}",
                 )
         ax17.set_xlabel(
-            rf"Particle $p_\mathrm{{T}}^\mathrm{{rel}}$ of Jets with {selected_multiplicities[4]} Particles"
+            r"Particle $p_\mathrm{T}^\mathrm{rel}$ of Jets with"
+            rf" {selected_multiplicities[4]} Particles"
         )
         ax17.set_yscale("log")
 
@@ -840,7 +845,8 @@ def plot_data(
                     label=f"{labels[count]}",
                 )
         ax18.set_xlabel(
-            rf"Particle $p_\mathrm{{T}}^\mathrm{{rel}}$ of Jets with {selected_multiplicities[5]} Particles"
+            r"Particle $p_\mathrm{T}^\mathrm{rel}$ of Jets with"
+            rf" {selected_multiplicities[5]} Particles"
         )
         ax18.set_yscale("log")
 

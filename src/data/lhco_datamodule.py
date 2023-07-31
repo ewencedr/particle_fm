@@ -310,7 +310,8 @@ class LHCODataModule(LightningDataModule):
                 # )
                 if self.hparams.conditioning:
                     log.info(
-                        f"Conditioning on {tensor_conditioning_train.shape[-1]} jet variables (pt, eta, phi, mass)"
+                        f"Conditioning on {tensor_conditioning_train.shape[-1]} jet variables (pt,"
+                        " eta, phi, mass)"
                     )
                 if self.hparams.normalize:
                     log.info(f"{'Training data shape:':<23} {tensor_train.shape}")

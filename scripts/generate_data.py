@@ -104,7 +104,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint",
         "-ckpt",
-        default="/beegfs/desy/user/ewencedr/deep-learning/logs/150 epoch10000 oldsetup/runs/2023-05-22_18-00-11/checkpoints/epoch_1216_loss_2.60804.ckpt",
+        default=(
+            "/beegfs/desy/user/ewencedr/deep-learning/logs/150 epoch10000"
+            " oldsetup/runs/2023-05-22_18-00-11/checkpoints/epoch_1216_loss_2.60804.ckpt"
+        ),
         help="checkpoint to sample from",
         type=str,
     )

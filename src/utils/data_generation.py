@@ -60,7 +60,8 @@ def generate_data(
         raise ValueError("Please use mask when using variable_set_sizes=True")
     if len(mask) != num_jet_samples:
         raise ValueError(
-            f"Mask should have the same length as num_jet_samples ({len(mask)} != {num_jet_samples})"
+            f"Mask should have the same length as num_jet_samples ({len(mask)} !="
+            f" {num_jet_samples})"
         )
     if verbose:
         print(f"Generating data. Device: {torch.device(device)}")
