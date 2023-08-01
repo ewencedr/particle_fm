@@ -35,6 +35,7 @@ class JetClassEvaluationCallback(pl.Callback):
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
+        additional_eval_epochs (list, optional): Log additional epochs. Defaults to [].
         num_jet_samples (int, optional): How many jet samples to generate.
             Negative values define the amount of times the whole dataset is taken,
             e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
@@ -59,6 +60,7 @@ class JetClassEvaluationCallback(pl.Callback):
     def __init__(
         self,
         every_n_epochs: int | Callable = 10,
+        additional_eval_epochs: list[int] = None,
         num_jet_samples: int = -1,
         image_path: str = "./logs/callback_images/",
         model_name: str = "model",
@@ -80,6 +82,7 @@ class JetClassEvaluationCallback(pl.Callback):
     ):
         super().__init__()
         self.every_n_epochs = every_n_epochs
+        self.additional_eval_epochs = additional_eval_epochs
         self.num_jet_samples = num_jet_samples
         self.log_times = log_times
         self.log_epoch_zero = log_epoch_zero
@@ -162,7 +165,6 @@ class JetClassEvaluationCallback(pl.Callback):
 
         # determine if logging should happen
         log = False
-        print(f"Finishing epoch {trainer.current_epoch}")
         if type(self.every_n_epochs) is int:
             if trainer.current_epoch % self.every_n_epochs == 0 and log_epoch:
                 log = True
@@ -174,8 +176,13 @@ class JetClassEvaluationCallback(pl.Callback):
                 log = custom_logging_schedule(trainer.current_epoch)
             except KeyError:
                 raise KeyError("Custom logging schedule not available.")
+        # log at additional epochs
+        if self.additional_eval_epochs is not None:
+            if trainer.current_epoch in self.additional_eval_epochs and log_epoch:
+                log = True
 
         if log:
+            log.info(f"Evaluating model after epoch {trainer.current_epoch}.")
             # Get background data for plotting and calculating Wasserstein distances
             if self.data_type == "test":
                 background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
