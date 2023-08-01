@@ -65,6 +65,13 @@ repos:
       - id: bandit
         args: ["-s", "B101"]
 
+  # python ruff linter
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.0.254"
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
   # yaml formatting
   #- repo: https://github.com/pre-commit/mirrors-prettier
   #  rev: v2.1.0
