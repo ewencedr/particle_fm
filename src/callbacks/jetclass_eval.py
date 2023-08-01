@@ -21,7 +21,7 @@ from src.utils.pylogger import get_pylogger
 
 from .ema import EMA
 
-log = get_pylogger("JetClassEvaluationCallback")
+pylogger = get_pylogger("JetClassEvaluationCallback")
 
 # TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
@@ -151,7 +151,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 " not found. Using normal weights."
             )
         elif self.ema_callback is not None and self.use_ema:
-            log.info("Using EMA weights for logging.")
+            pylogger.info("Using EMA weights for logging.")
 
     def on_train_epoch_end(self, trainer, pl_module):
         if self.fix_seed:
@@ -182,7 +182,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 log = True
 
         if log:
-            log.info(f"Evaluating model after epoch {trainer.current_epoch}.")
+            pylogger.info(f"Evaluating model after epoch {trainer.current_epoch}.")
             # Get background data for plotting and calculating Wasserstein distances
             if self.data_type == "test":
                 background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]

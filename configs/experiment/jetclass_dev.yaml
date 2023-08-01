@@ -49,6 +49,7 @@ callbacks:
     evaluate_ema_weights_instead: True
   jetclass_eval:
     every_n_epochs: 5 # evaluate every n epochs
+    additional_eval_epochs: [1, 3] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
 
   #early_stopping:
@@ -65,3 +66,4 @@ logger:
     name: ${task_name}
   comet:
     experiment_name: ${task_name}
+    project_name: "flow-matching"
