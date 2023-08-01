@@ -304,6 +304,9 @@ def plot_data(
             )
     ax3.set_xlabel(r"Particle $\phi^\mathrm{rel}$")
     ax3.set_yscale("log")
+    ax3.set_ylim(
+        0.5,
+    )
 
     if plot_jet_features:
         ax4 = fig.add_subplot(gs[gs_counter + 3])

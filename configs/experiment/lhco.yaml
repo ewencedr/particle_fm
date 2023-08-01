@@ -67,6 +67,7 @@ callbacks:
       verbose: False
     plot_config:
       plot_efps: False
+      plottype: ""
 
   #early_stopping:
   #  monitor: "val/loss"
