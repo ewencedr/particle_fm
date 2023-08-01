@@ -1,5 +1,8 @@
 # @package _global_
 
+# NOTE: this config is just used to test the overall training/evaluation loop
+#       it is not used for any actual training
+
 # to execute this experiment run:
 # python train.py experiment=jetclass
 
@@ -14,13 +17,13 @@ defaults:
 
 
 
-tags: ["flow_matching", "JetClass", "uncond", "dev"]
+tags: ["flow_matching", "JetClass", "uncond", "dev", "debug"]
 
 seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 1000
+  max_epochs: 2
   gradient_clip_val: 0.5
 
 model:
@@ -29,7 +32,7 @@ model:
   local_cond_dim: 0
 
 data:
-  number_of_used_jets: 200000
+  number_of_used_jets: 2000
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   conditioning_pt: False
@@ -44,6 +47,9 @@ callbacks:
     start_step: 0
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
+  jetclass_eval:
+    every_n_epochs: 1 # evaluate every n epochs
+    num_jet_samples: 100 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"
