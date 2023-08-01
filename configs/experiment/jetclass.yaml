@@ -19,7 +19,7 @@ tags: ["flow_matching", "JetClass", "uncond"]
 seed: 12345
 
 trainer:
-  min_epochs: 10
+  min_epochs: 1
   max_epochs: 8000
   gradient_clip_val: 0.5
 
@@ -49,7 +49,7 @@ callbacks:
     additional_eval_epochs: [10, 30, 50, 75] # evaluate at these epochs as well
     num_jet_samples: 50000 # jet samples to generate
   jetclass_eval_test:
-    num_jet_samples: 200000 # jet samples to generate
+    num_jet_samples: 60000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"
