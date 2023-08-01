@@ -231,6 +231,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 stds=trainer.datamodule.stds,
                 **self.generation_config,
             )
+            pylogger.info(f"Generated {len(data)} samples in {generation_time:.0f} seconds.")
 
             # Get normal weights back after sampling
             if (
