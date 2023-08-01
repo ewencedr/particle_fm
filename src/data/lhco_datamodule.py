@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 
 import h5py
 import numpy as np
+import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
@@ -75,6 +76,7 @@ class LHCODataModule(LightningDataModule):
         relative_coords: bool = True,
         use_all_jets: bool = False,
         one_pc: bool = False,
+        use_all_data: bool = False,
         shuffle_data: bool = True,
         # preprocessing
         centering: bool = False,
@@ -123,39 +125,53 @@ class LHCODataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             # data loading
-            if self.hparams.relative_coords:
-                path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
+            if self.hparams.use_all_data:
+                path = f"{self.hparams.data_dir}/lhco/events_anomalydetection_v2.h5"
+                df = pd.read_hdf(path)
+                df_np = np.array(df)
+                background = df_np[df_np[:, 2100] == 0]
+                particle_data = background[:, :2100].reshape(-1, 700, 3)[:, :560, :]
+                mask = np.expand_dims((particle_data[..., 0] > 0).astype(int), axis=-1)
+
+                jet_data = None
             else:
-                path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background.h5"
-            with h5py.File(path, "r") as f:
-                jet_data = f["jet_data"][:]
-                particle_data = f["constituents"][:]
-                mask = f["mask"][:]
-            if self.hparams.use_all_jets:
-                if self.hparams.one_pc:
-                    particle_data = particle_data.reshape(
-                        particle_data.shape[0], -1, particle_data.shape[-1]
+                if self.hparams.relative_coords:
+                    path = (
+                        f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
                     )
-                    mask = mask.reshape(mask.shape[0], -1, mask.shape[-1])
-                    if self.hparams.conditioning:
-                        raise ValueError("Conditioning does not make sense for one_pc")
                 else:
-                    jet_data = jet_data.reshape(-1, jet_data.shape[-1])
-                    particle_data = particle_data.reshape(
-                        -1, particle_data.shape[-2], particle_data.shape[-1]
-                    )
-                    mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
-            else:
-                particle_data = particle_data[:, 0]
-                mask = mask[:, 0]
-                jet_data = jet_data[:, 0]
+                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background.h5"
+                with h5py.File(path, "r") as f:
+                    jet_data = f["jet_data"][:]
+                    particle_data = f["constituents"][:]
+                    mask = f["mask"][:]
+                if self.hparams.use_all_jets:
+                    if self.hparams.one_pc:
+                        particle_data = particle_data.reshape(
+                            particle_data.shape[0], -1, particle_data.shape[-1]
+                        )
+                        mask = mask.reshape(mask.shape[0], -1, mask.shape[-1])
+                        if self.hparams.conditioning:
+                            raise ValueError("Conditioning does not make sense for one_pc")
+                    else:
+                        jet_data = jet_data.reshape(-1, jet_data.shape[-1])
+                        particle_data = particle_data.reshape(
+                            -1, particle_data.shape[-2], particle_data.shape[-1]
+                        )
+                        mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
+                else:
+                    particle_data = particle_data[:, 0]
+                    mask = mask[:, 0]
+                    jet_data = jet_data[:, 0]
+
+            # reorder to eta, phi, pt to match the order of jetnet
             particle_data = particle_data[:, :, [1, 2, 0]]
             particle_data = np.concatenate([particle_data, mask], axis=-1)
 
             # shuffle data
             if self.hparams.shuffle_data:
                 perm = np.random.permutation(len(particle_data))
-                if len(jet_data) == len(particle_data):
+                if jet_data is not None and len(jet_data) == len(particle_data):
                     jet_data = jet_data[perm]
                 particle_data = particle_data[perm]
 
