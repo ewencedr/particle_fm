@@ -125,7 +125,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 )
         else:
             self.datasets_multiplier = -1
-        self.log("number_of_generated_val_jets", self.num_jet_samples)
+        self.log("number_of_generated_val_jets", float(self.num_jet_samples))
 
         # get loggers
         for logger in trainer.loggers:

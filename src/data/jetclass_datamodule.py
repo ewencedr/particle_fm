@@ -75,6 +75,7 @@ class JetClassDataModule(LightningDataModule):
         conditioning_eta: bool = True,
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
+        num_particles: int = 128,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
