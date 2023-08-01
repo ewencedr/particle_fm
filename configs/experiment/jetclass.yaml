@@ -48,6 +48,8 @@ callbacks:
     every_n_epochs: 100 # evaluate every n epochs
     additional_eval_epochs: [1, 10, 30, 50, 75] # evaluate at these epochs as well
     num_jet_samples: 50000 # jet samples to generate
+  jetclass_eval_test:
+    num_jet_samples: 200000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"

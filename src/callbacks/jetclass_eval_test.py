@@ -72,7 +72,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
         fix_seed: bool = True,
         evaluate_substructure: bool = True,
         suffix: str = "",
-        cond_path: Optional[str] = None,
+        cond_path: Optional[str] = None,  # TODO: figure out when to use this
         w_dist_config: Mapping = {
             "num_eval_samples": 50_000,
             "num_batches": 40,
