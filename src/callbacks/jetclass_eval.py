@@ -117,10 +117,6 @@ class JetClassEvaluationCallback(pl.Callback):
         self.log("w1m_mean", 0.005)
         self.log("w1p_mean", 0.005)
 
-        self.log("training_dataset_size", float(len(trainer.datamodule.tensor_train)))
-        self.log("validation_dataset_size", float(len(trainer.datamodule.tensor_val)))
-        self.log("test_dataset_size", float(len(trainer.datamodule.tensor_test)))
-
         # set number of jet samples if negative
         if self.num_jet_samples < 0:
             self.datasets_multiplier = abs(self.num_jet_samples)
@@ -134,10 +130,16 @@ class JetClassEvaluationCallback(pl.Callback):
                 )
         else:
             self.datasets_multiplier = -1
-        self.log("number_of_generated_val_jets", float(self.num_jet_samples))
 
+        hparams_to_log = {
+            "training_dataset_size": float(len(trainer.datamodule.tensor_train)),
+            "validation_dataset_size": float(len(trainer.datamodule.tensor_val)),
+            "test_dataset_size": float(len(trainer.datamodule.tensor_test)),
+            "number_of_generated_val_jets": float(self.num_jet_samples),
+        }
         # get loggers
         for logger in trainer.loggers:
+            logger.log_hyperparams(hparams_to_log)
             if isinstance(logger, pl.loggers.CometLogger):
                 self.comet_logger = logger.experiment
             elif isinstance(logger, pl.loggers.WandbLogger):
