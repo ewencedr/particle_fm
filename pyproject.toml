@@ -26,3 +26,6 @@ exclude_lines = [
 [tool.black]
 line-length = 99
 preview = "True"
+
+[tool.ruff]
+line-length = 99
