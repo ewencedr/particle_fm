@@ -11,6 +11,7 @@ variable_jet_sizes: True
 centering: False
 normalize: True
 conditioning: True
+use_all_data: True
 relative_coords: True
 use_all_jets: False
 one_pc: False
