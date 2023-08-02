@@ -1,6 +1,6 @@
 """Callback for evaluating the model on the JetClass dataset."""
 import warnings
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Callable, Mapping, Optional
 
 import numpy as np
 import pytorch_lightning as pl
@@ -38,15 +38,21 @@ class JetClassEvaluationCallback(pl.Callback):
         num_jet_samples (int, optional): How many jet samples to generate.
             Negative values define the amount of times the whole dataset is taken,
             e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
-        image_path (str, optional): Folder where the images are saved. Defaults to "./logs/callback_images/".
+        image_path (str, optional): Folder where the images are saved. Defaults
+            to "./logs/callback_images/".
         model_name (str, optional): Name for saving the model. Defaults to "model-test".
         log_times (bool, optional): Log generation times of data. Defaults to True.
         log_epoch_zero (bool, optional): Log in first epoch. Default to False.
-        data_type (str, optional): Type of data to plot. Options are 'test' and 'val'. Defaults to "test".
-        use_ema (bool, optional): Use exponential moving average weights for logging. Defaults to False.
-        fix_seed (bool, optional): Fix seed for data generation to have better reproducibility and comparability between epochs. Defaults to True.
-        w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
-        generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 100}.
+        data_type (str, optional): Type of data to plot. Options are 'test' and 'val'.
+            Defaults to "test".
+        use_ema (bool, optional): Use exponential moving average weights for logging.
+            Defaults to False.
+        fix_seed (bool, optional): Fix seed for data generation to have better
+            reproducibility and comparability between epochs. Defaults to True.
+        w_dist_config (Mapping, optional): Configuration for Wasserstein distance
+            calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
+        generation_config (Mapping, optional): Configuration for data generation.
+            Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 100}.
         plot_config (Mapping, optional): Configuration for plotting. Defaults to {}.
     """
 
@@ -275,7 +281,7 @@ class JetClassEvaluationCallback(pl.Callback):
 
             # Plotting
             plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
-            fig = plot_data(
+            _ = plot_data(
                 particle_data=np.array([data]),
                 sim_data=background_data,
                 jet_data_sim=jet_data_sim,
