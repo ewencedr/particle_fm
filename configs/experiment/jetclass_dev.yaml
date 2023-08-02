@@ -32,7 +32,7 @@ model:
   local_cond_dim: 0
 
 data:
-  number_of_used_jets: 2000
+  number_of_used_jets: 200
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   conditioning_pt: False
@@ -48,8 +48,11 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
   jetclass_eval:
-    every_n_epochs: 1 # evaluate every n epochs
+    every_n_epochs: 5 # evaluate every n epochs
+    additional_eval_epochs: [1] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
+  jetclass_eval_test:
+    num_jet_samples: 6000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"
@@ -65,3 +68,4 @@ logger:
     name: ${task_name}
   comet:
     experiment_name: ${task_name}
+    project_name: "flow-matching"

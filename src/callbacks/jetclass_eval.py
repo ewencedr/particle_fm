@@ -21,7 +21,7 @@ from src.utils.pylogger import get_pylogger
 
 from .ema import EMA
 
-log = get_pylogger("JetClassEvaluationCallback")
+pylogger = get_pylogger("JetClassEvaluationCallback")
 
 # TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
@@ -35,6 +35,7 @@ class JetClassEvaluationCallback(pl.Callback):
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
+        additional_eval_epochs (list, optional): Log additional epochs. Defaults to [].
         num_jet_samples (int, optional): How many jet samples to generate.
             Negative values define the amount of times the whole dataset is taken,
             e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
@@ -59,6 +60,7 @@ class JetClassEvaluationCallback(pl.Callback):
     def __init__(
         self,
         every_n_epochs: int | Callable = 10,
+        additional_eval_epochs: list[int] = None,
         num_jet_samples: int = -1,
         image_path: str = "./logs/callback_images/",
         model_name: str = "model",
@@ -80,6 +82,7 @@ class JetClassEvaluationCallback(pl.Callback):
     ):
         super().__init__()
         self.every_n_epochs = every_n_epochs
+        self.additional_eval_epochs = additional_eval_epochs
         self.num_jet_samples = num_jet_samples
         self.log_times = log_times
         self.log_epoch_zero = log_epoch_zero
@@ -114,10 +117,6 @@ class JetClassEvaluationCallback(pl.Callback):
         self.log("w1m_mean", 0.005)
         self.log("w1p_mean", 0.005)
 
-        self.log("training_dataset_size", float(len(trainer.datamodule.tensor_train)))
-        self.log("validation_dataset_size", float(len(trainer.datamodule.tensor_val)))
-        self.log("test_dataset_size", float(len(trainer.datamodule.tensor_test)))
-
         # set number of jet samples if negative
         if self.num_jet_samples < 0:
             self.datasets_multiplier = abs(self.num_jet_samples)
@@ -131,10 +130,16 @@ class JetClassEvaluationCallback(pl.Callback):
                 )
         else:
             self.datasets_multiplier = -1
-        self.log("number_of_generated_val_jets", float(self.num_jet_samples))
 
+        hparams_to_log = {
+            "training_dataset_size": float(len(trainer.datamodule.tensor_train)),
+            "validation_dataset_size": float(len(trainer.datamodule.tensor_val)),
+            "test_dataset_size": float(len(trainer.datamodule.tensor_test)),
+            "number_of_generated_val_jets": float(self.num_jet_samples),
+        }
         # get loggers
         for logger in trainer.loggers:
+            logger.log_hyperparams(hparams_to_log)
             if isinstance(logger, pl.loggers.CometLogger):
                 self.comet_logger = logger.experiment
             elif isinstance(logger, pl.loggers.WandbLogger):
@@ -148,7 +153,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 " not found. Using normal weights."
             )
         elif self.ema_callback is not None and self.use_ema:
-            log.info("Using EMA weights for logging.")
+            pylogger.info("Using EMA weights for evaluation.")
 
     def on_train_epoch_end(self, trainer, pl_module):
         if self.fix_seed:
@@ -162,7 +167,6 @@ class JetClassEvaluationCallback(pl.Callback):
 
         # determine if logging should happen
         log = False
-        print(f"Finishing epoch {trainer.current_epoch}")
         if type(self.every_n_epochs) is int:
             if trainer.current_epoch % self.every_n_epochs == 0 and log_epoch:
                 log = True
@@ -174,8 +178,13 @@ class JetClassEvaluationCallback(pl.Callback):
                 log = custom_logging_schedule(trainer.current_epoch)
             except KeyError:
                 raise KeyError("Custom logging schedule not available.")
+        # log at additional epochs
+        if self.additional_eval_epochs is not None:
+            if trainer.current_epoch in self.additional_eval_epochs and log_epoch:
+                log = True
 
         if log:
+            pylogger.info(f"Evaluating model after epoch {trainer.current_epoch}.")
             # Get background data for plotting and calculating Wasserstein distances
             if self.data_type == "test":
                 background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
@@ -222,6 +231,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 stds=trainer.datamodule.stds,
                 **self.generation_config,
             )
+            pylogger.info(f"Generated {len(data)} samples in {generation_time:.0f} seconds.")
 
             # Get normal weights back after sampling
             if (

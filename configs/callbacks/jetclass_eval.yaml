@@ -2,7 +2,8 @@
 jetclass_eval:
   _target_: src.callbacks.jetclass_eval.JetClassEvaluationCallback
   every_n_epochs: 100 # evaluate every n epochs
-  num_jet_samples: 50000 # jet samples to generate
+  additional_eval_epochs: [1, 20, 50, 80] # evaluate at these epochs as well
+  num_jet_samples: 50_000 # jet samples to generate for evaluation
   image_path: ${paths.log_dir}callback_logs/
   model_name: "model-test"
   use_ema: True
@@ -14,7 +15,7 @@ jetclass_eval:
     num_batches: 40
     calculate_efps: False
   generation_config:
-    batch_size: 1000
+    batch_size: 1_000
     ode_solver: "midpoint"
     ode_steps: 200
     verbose: False

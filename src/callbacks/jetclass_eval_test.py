@@ -27,7 +27,7 @@ from src.utils.pylogger import get_pylogger
 
 from .ema import EMA, EMAModelCheckpoint
 
-log = get_pylogger("JetClassTestEvaluationCallback")
+pylogger = get_pylogger("JetClassTestEvaluationCallback")
 
 
 # TODO cond_path is currently only working for mass and pt
@@ -35,18 +35,29 @@ class JetClassTestEvaluationCallback(pl.Callback):
     """Callback to do final evaluation of the model after training. Specific to JetClass dataset.
 
     Args:
-        use_ema (bool, optional): Use exponential moving average weights for logging. Defaults to False.
+        use_ema (bool, optional): Use exponential moving average weights for logging.
+            Defaults to False.
         dataset (str, optional): Dataset to evaluate on. Defaults to "test".
-        nr_checkpoint_callbacks (int, optional): Number of checkpoint callback that is used to select best epoch. Will only be used when ckpt_path is None. Defaults to 0.
-        use_last_checkpoint (bool, optional): Use last checkpoint instead of best checkpoint. Defaults to True.
-        ckpt_path (Optional[str], optional): Path to checkpoint. If given, this ckpt will be used for evaluation. Defaults to None.
-        num_jet_samples (int, optional): How many jet samples to generate. Negative values define the amount of times the whole dataset is taken, e.g. -2 would use 2*len(dataset) samples. Defaults to -1.
-        fix_seed (bool, optional): Fix seed for data generation to have better reproducibility and comparability between epochs. Defaults to True.
-        evaluate_substructure (bool, optional): Evaluate substructure metrics. Takes very long. Defaults to True.
+        nr_checkpoint_callbacks (int, optional): Number of checkpoint callback that is used to
+            select best epoch. Will only be used when ckpt_path is None. Defaults to 0.
+        use_last_checkpoint (bool, optional): Use last checkpoint instead of best checkpoint.
+            Defaults to True.
+        ckpt_path (Optional[str], optional): Path to checkpoint. If given, this ckpt will be
+            used for evaluation. Defaults to None.
+        num_jet_samples (int, optional): How many jet samples to generate. Negative values define
+            the amount of times the whole dataset is taken, e.g. -2 would use 2*len(dataset)
+            samples. Defaults to -1.
+        fix_seed (bool, optional): Fix seed for data generation to have better reproducibility
+            and comparability between epochs. Defaults to True.
+        evaluate_substructure (bool, optional): Evaluate substructure metrics. Takes very long.
+            Defaults to True.
         suffix (str, optional): Suffix for logging. Defaults to "".
-        cond_path (Optional[str], optional): Path for conditioning that is used during generation. If not provided, the selected dataset will be used for conditioning. Defaults to None.
-        w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation. Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
-        generation_config (Mapping, optional): Configuration for data generation. Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 100}.
+        cond_path (Optional[str], optional): Path for conditioning that is used during generation.
+            If not provided, the selected dataset will be used for conditioning. Defaults to None.
+        w_dist_config (Mapping, optional): Configuration for Wasserstein distance calculation.
+            Defaults to {'num_jet_samples': 10_000, 'num_batches': 40}.
+        generation_config (Mapping, optional): Configuration for data generation.
+            Defaults to {"batch_size": 256, "ode_solver": "midpoint", "ode_steps": 100}.
         plot_config (Mapping, optional): Configuration for plotting. Defaults to {}.
     """
 
@@ -61,7 +72,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
         fix_seed: bool = True,
         evaluate_substructure: bool = True,
         suffix: str = "",
-        cond_path: Optional[str] = None,
+        cond_path: Optional[str] = None,  # TODO: figure out when to use this
         w_dist_config: Mapping = {
             "num_eval_samples": 50_000,
             "num_batches": 40,
@@ -97,7 +108,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
         self.plot_config = plot_config
 
     def on_test_start(self, trainer, pl_module) -> None:
-        log.info(
+        pylogger.info(
             "JetClassFinalEvaluationCallback will be used for evaluating the model after training."
         )
 
@@ -132,11 +143,11 @@ class JetClassTestEvaluationCallback(pl.Callback):
         return ema_callback
 
     def on_test_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        log.info(f"Evaluating model on {self.dataset} dataset.")
+        pylogger.info(f"Evaluating model on {self.dataset} dataset.")
 
         ckpt = self._get_checkpoint(trainer, use_last_checkpoint=self.use_last_checkpoint)
 
-        log.info(f"Loading checkpoint from {ckpt}")
+        pylogger.info(f"Loading checkpoint from {ckpt}")
         model = pl_module.load_from_checkpoint(ckpt)
 
         if self.fix_seed:
@@ -210,6 +221,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
             stds=trainer.datamodule.stds,
             **self.generation_config,
         )
+        pylogger.info(f"Generated {len(data)} samples in {generation_time:.0f} seconds.")
 
         # save generated data
         path = "/".join(ckpt.split("/")[:-2]) + "/"
@@ -253,7 +265,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
         # Plotting
         plot_name = f"final_plot{self.suffix}"
         img_path = "/".join(ckpt.split("/")[:-2]) + "/"
-        fig = plot_data(
+        plot_data(
             particle_data=np.array([data_plotting]),
             sim_data=background_data,
             jet_data_sim=jet_data_sim,
@@ -379,7 +391,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                 )
 
         yaml_path = "/".join(ckpt.split("/")[:-2]) + f"/final_eval_metrics{self.suffix}.yml"
-        log.info(f"Writing final evaluation metrics to {yaml_path}")
+        pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
 
         # transform numpy.float64 for better readability in yaml file
         metrics = {k: float(v) for k, v in metrics.items()}
