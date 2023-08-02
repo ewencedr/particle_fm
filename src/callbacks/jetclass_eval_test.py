@@ -357,6 +357,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                 save_folder=img_path,
                 save_name=file_name_substructure,
                 close_fig=True,
+                simulation_name="JetClass",
             )
             plot_full_substructure(
                 data_substructure=data_substructure,
@@ -366,6 +367,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                 save_folder=img_path,
                 save_name=file_name_full_substructure,
                 close_fig=True,
+                simulation_name="JetClass",
             )
 
             # log substructure images

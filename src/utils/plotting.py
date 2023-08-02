@@ -116,32 +116,48 @@ def plot_data(
 
     Args:
         sim_data (np.ndarray): Reference data. Background histogram.
-        particle_data (list): List of data to be plotted. Can be an empty list. shape: (num_dataset,num_samples,particles,features)
+        particle_data (list): List of data to be plotted.
+            Can be an empty list. shape: (num_dataset,num_samples,particles,features)
         jet_data_sim (np.ndarray): Jet data of the reference data.
         jet_data (list): Jet data of the data to be plotted.
         efps_sim (np.ndarray): EFPs of the reference data.
         efps_values (list): EFPS of the data to be plotted.
-        num_samples (int, optional): Number of samples to be plotted. Defaults to length of first dataset in particle_data.
+        num_samples (int, optional): Number of samples to be plotted.
+            Defaults to length of first dataset in particle_data.
         labels (list): Labels of the plot to describe the data.
-        sim_data_label (str, optional): Label of the plot for the reference data. Defaults to "Sim. data".
+        sim_data_label (str, optional): Label of the plot for the reference data.
+            Defaults to "Sim. data".
         plot_jet_features (bool, optional): Plot Jet Features. Defaults to False.
-        plot_w_dists (bool, optional): Plot wasserstein distances inside of jet mass plot. Defaults to False.
-        w_dist_m (float, optional): wasserstein distances to be plotted if plot_w_dists==True. Defaults to 0.
+        plot_w_dists (bool, optional): Plot wasserstein distances inside of jet mass plot.
+            Defaults to False.
+        w_dist_m (float, optional): wasserstein distances to be plotted if plot_w_dists==True.
+            Defaults to 0.
         mass_linear (bool, optional): Plot jet mass in linear scale. Defaults to True.
         plot_efps (bool, optional): Plot EFPs. Defaults to True.
-        variable_jet_sizes_plotting (bool, optional): Plot p_t distributions of selected jets. Count by p_t. Defaults to True.
-        selected_particles (list, optional): Highest p_t particles for which the distributions are plotted if variable_jet_sizes_plotting==True. Defaults to [1, 5, 20].
-        pt_selected_particles_sim (list, optional): Data from reference model for the plots if variable_jet_sizes_plotting==True. Defaults to None.
-        pt_selected_particles (list, optional): Data from models for the plots if variable_jet_sizes_plotting==True. Defaults to None.
-        plot_selected_multiplicities (bool, optional): Plot data of jets with selected multiplicities. Defaults to False.
-        muselected_ltiplicities (list, optional): Jet multiplicities to plot if plot_selected_multiplicities==True. Defaults to [10, 20, 30, 40, 50, 80].
-        pt_selected_multiplicities_sim (list, optional): Data from reference model for the plots if plot_selected_multiplicities==True. Defaults to None.
-        pt_selected_multiplicities (list, optional): Data from models for the plots if plot_selected_multiplicities==True. Defaults to None.
-        plottype (str, optional): Presets for setting the x_lims. "sim_data" sets the x_lims to the min and max of the reference data. Defaults to "sim_data".
+        variable_jet_sizes_plotting (bool, optional): Plot p_t distributions of selected jets.
+            Count by p_t. Defaults to True.
+        selected_particles (list, optional): Highest p_t particles for which the distributions
+            are plotted if variable_jet_sizes_plotting==True. Defaults to [1, 5, 20].
+        pt_selected_particles_sim (list, optional): Data from reference model for the plots if
+            variable_jet_sizes_plotting==True. Defaults to None.
+        pt_selected_particles (list, optional): Data from models for the plots if
+            variable_jet_sizes_plotting==True. Defaults to None.
+        plot_selected_multiplicities (bool, optional): Plot data of jets with selected
+            multiplicities. Defaults to False.
+        muselected_ltiplicities (list, optional): Jet multiplicities to plot if
+            plot_selected_multiplicities==True. Defaults to [10, 20, 30, 40, 50, 80].
+        pt_selected_multiplicities_sim (list, optional): Data from reference model for
+            the plots if plot_selected_multiplicities==True. Defaults to None.
+        pt_selected_multiplicities (list, optional): Data from models for the plots if
+            plot_selected_multiplicities==True. Defaults to None.
+        plottype (str, optional): Presets for setting the x_lims. "sim_data" sets the
+            x_lims to the min and max of the reference data. Defaults to "sim_data".
         bins (int, optional): Number of bins for all histograms. Defaults to 100.
         save_fig (bool, optional): Save the fig. Defaults to True.
-        save_folder (str, optional): Folder for saving the fig if save_fig==True. Defaults to "logs/plots/".
-        save_name (str, optional): Filename for saving the fig if save_fig==True. Defaults to "plot".
+        save_folder (str, optional): Folder for saving the fig if save_fig==True.
+            Defaults to "logs/plots/".
+        save_name (str, optional): Filename for saving the fig if save_fig==True.
+            Defaults to "plot".
         close_fig (bool, optional): Close the fig after saving it. Defaults to False.
 
     Returns:
@@ -208,7 +224,7 @@ def plot_data(
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
         x_min, x_max = -0.1, 1
-    hist1 = ax1.hist(
+    ax1.hist(
         data1,
         bins=bins,
         histtype="stepfilled",
@@ -218,7 +234,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax1.hist(
+            ax1.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -249,7 +265,7 @@ def plot_data(
         x_min = -1
     if plottype == "q_max_particles":
         x_min, x_max = 0.01, 0.85
-    hist1 = ax2.hist(
+    ax2.hist(
         data1,
         bins=bins,
         histtype="stepfilled",
@@ -259,7 +275,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax2.hist(
+            ax2.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -288,7 +304,7 @@ def plot_data(
         x_min = -1
     if plottype == "q_max_particles":
         x_min, x_max = -1.5, 1.5
-    hist1 = ax3.hist(
+    ax3.hist(
         data1,
         bins=bins,
         histtype="stepfilled",
@@ -298,7 +314,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax3.hist(
+            ax3.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -328,7 +344,7 @@ def plot_data(
         if plottype == "q" or plottype == "q_max_particles":
             x_max = 1.25
         x_min, x_max = 0.5, 1.5
-        hist1 = ax4.hist(
+        ax4.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -338,7 +354,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax4.hist(
+                ax4.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -365,7 +381,7 @@ def plot_data(
             x_min = -0.1
         if plottype == "q" or plottype == "q_max_particles":
             x_max = 0.1
-        hist1 = ax5.hist(
+        ax5.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -374,7 +390,7 @@ def plot_data(
             label=sim_data_label,
         )
         for count, model in enumerate(particle_data):
-            hist = ax5.hist(
+            ax5.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -399,7 +415,7 @@ def plot_data(
             x_min, x_max = -0.01, 0.01
         if (plottype == "t") or plottype == "t30":
             x_min = -0.1
-        hist1 = ax6.hist(
+        ax6.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -409,7 +425,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax6.hist(
+                ax6.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -439,7 +455,7 @@ def plot_data(
         x_max = 0.3
     elif plottype == "q" or plottype == "q_max_particles":
         x_max = 0.3
-    hist1 = ax7.hist(
+    ax7.hist(
         data1,
         bins=bins,
         histtype="stepfilled",
@@ -449,7 +465,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax7.hist(
+            ax7.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -489,7 +505,7 @@ def plot_data(
     else:
         bins_pm = range(0, particles_per_jet)
 
-    hist1 = ax8.hist(
+    ax8.hist(
         data1,
         bins=bins_pm,
         histtype="stepfilled",
@@ -499,7 +515,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax8.hist(
+            ax8.hist(
                 data[count],
                 bins=bins_pm,
                 histtype="step",
@@ -527,7 +543,7 @@ def plot_data(
             x_min, x_max = 0, 0.0002
         elif plottype == "t":
             x_min, x_max = 0, 0.01
-        hist1 = ax9.hist(
+        ax9.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -537,7 +553,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax9.hist(
+                ax9.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -562,7 +578,7 @@ def plot_data(
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
         x_max = 0.5
-    hist1 = ax10.hist(
+    ax10.hist(
         data1,
         bins=bins,
         histtype="stepfilled",
@@ -572,7 +588,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax10.hist(
+            ax10.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -597,7 +613,7 @@ def plot_data(
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
         x_max = 0.125
-    hist1 = ax11.hist(
+    ax11.hist(
         data1,
         bins=bins,
         histtype="stepfilled",
@@ -607,7 +623,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax11.hist(
+            ax11.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -632,7 +648,7 @@ def plot_data(
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
         x_max = 0.025
-    hist1 = ax12.hist(
+    ax12.hist(
         data1,
         bins=bins,
         histtype="stepfilled",
@@ -642,7 +658,7 @@ def plot_data(
     )
     if not plot_data_only:
         for count, model in enumerate(particle_data):
-            hist = ax12.hist(
+            ax12.hist(
                 data[count],
                 bins=bins,
                 histtype="step",
@@ -668,7 +684,7 @@ def plot_data(
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
             x_max = 0.025
-        hist1 = ax13.hist(
+        ax13.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -678,7 +694,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax13.hist(
+                ax13.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -704,7 +720,7 @@ def plot_data(
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
             x_max = 0.025
-        hist1 = ax14.hist(
+        ax14.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -714,7 +730,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax14.hist(
+                ax14.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -740,7 +756,7 @@ def plot_data(
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
             x_max = 0.025
-        hist1 = ax15.hist(
+        ax15.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -750,7 +766,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax15.hist(
+                ax15.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -776,7 +792,7 @@ def plot_data(
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
             x_max = 0.025
-        hist1 = ax16.hist(
+        ax16.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -786,7 +802,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax16.hist(
+                ax16.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -812,7 +828,7 @@ def plot_data(
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
             x_max = 0.025
-        hist1 = ax17.hist(
+        ax17.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -822,7 +838,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax17.hist(
+                ax17.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -848,7 +864,7 @@ def plot_data(
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
             x_max = 0.025
-        hist1 = ax18.hist(
+        ax18.hist(
             data1,
             bins=bins,
             histtype="stepfilled",
@@ -858,7 +874,7 @@ def plot_data(
         )
         if not plot_data_only:
             for count, model in enumerate(particle_data):
-                hist = ax18.hist(
+                ax18.hist(
                     data[count],
                     bins=bins,
                     histtype="step",
@@ -917,14 +933,16 @@ def create_and_plot_data(
     Args:
         sim_data (_type_): _description_
         gen_models (_type_): _description_
-        cond (list[torch.Tensor], optional): Condition data in case of conditioned model. Defaults to None.
+        cond (list[torch.Tensor], optional): Condition data in case of conditioned model.
+            Defaults to None.
         save_name (_type_): _description_
         labels (_type_): _description_
         num_jet_samples (int, optional): _description_. Defaults to 10000.
         batch_size (int, optional): Batch size for generating. Defaults to 10000.
         plot_efps (bool, optional): Plot EFPs. Defaults to False.
         selected_particles (list, optional): _description_. Defaults to [1, 5, 20].
-        selected_multiplicities (list, optional): _description_. Defaults to [10, 20, 30, 40, 50, 80].
+        selected_multiplicities (list, optional): _description_.
+            Defaults to [10, 20, 30, 40, 50, 80].
         plottype (str, optional): _description_. Defaults to "sim_data".
         variable_set_sizes (bool, optional): _description_. Defaults to False.
         mask (_type_, optional): _description_. Defaults to None.
@@ -1137,10 +1155,12 @@ def prepare_data_for_plotting(
     particles and the pt of selected multiplicities.
 
     Args:
-        data (np.ndarray): data in the shape (n_jets, n_particles, n_features) with features (pt, eta, phi)
+        data (np.ndarray): data in the shape (n_jets, n_particles, n_features) with
+            features (pt, eta, phi)
         calculate_efps (bool, optional): If efps should be calculated. Defaults to False.
         selected_particles (list[int], optional): Selected particles. Defaults to [1,3,10].
-        selected_multiplicities (list[int], optional): Selected multiplicities. Defaults to [20, 30, 40].
+        selected_multiplicities (list[int], optional): Selected multiplicities.
+            Defaults to [20, 30, 40].
 
     Returns:
         np.ndarray : jet_data
@@ -1326,28 +1346,29 @@ def plot_substructure(
     save_folder: str = None,
     save_name: str = None,
     model_name: str = "Model",
+    simulation_name: str = "JetNet",
 ) -> None:
     """Plot the tau21, tau32 and d2 distributions."""
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
 
     hist_tau21_jetnet = ax1.hist(
-        tau21_jetnet, bins=bins, label="JetNet", histtype="stepfilled", alpha=0.5
+        tau21_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
-    hist_tau21 = ax1.hist(tau21, bins=hist_tau21_jetnet[1], label=f"{model_name}", histtype="step")
+    ax1.hist(tau21, bins=hist_tau21_jetnet[1], label=model_name, histtype="step")
     ax1.set_title(r"$\tau_{21}$")
     ax1.legend(loc="best")
 
     hist_tau32_jetnet = ax2.hist(
-        tau32_jetnet, bins=bins, label="JetNet", histtype="stepfilled", alpha=0.5
+        tau32_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
-    hist_tau32 = ax2.hist(tau32, bins=hist_tau32_jetnet[1], label=f"{model_name}", histtype="step")
+    ax2.hist(tau32, bins=hist_tau32_jetnet[1], label=f"{model_name}", histtype="step")
     ax2.set_title(r"$\tau_{32}$")
     ax2.legend(loc="best")
 
     hist_d2_jetnet = ax3.hist(
-        d2_jetnet, bins=bins, label="JetNet", histtype="stepfilled", alpha=0.5
+        d2_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
-    hist_d2 = ax3.hist(d2, bins=hist_d2_jetnet[1], label=f"{model_name}", histtype="step")
+    ax3.hist(d2, bins=hist_d2_jetnet[1], label=f"{model_name}", histtype="step")
     ax3.set_title(r"$d_2$")
     ax3.legend(loc="best")
 
@@ -1366,6 +1387,7 @@ def plot_full_substructure(
     keys: np.array,
     bins: int = 100,
     model_name: str = "Model",
+    simulation_name: str = "JetNet",
     save_fig: bool = True,
     close_fig: bool = True,
     save_folder: str = None,
@@ -1378,13 +1400,11 @@ def plot_full_substructure(
         hist_jetnet = ax.hist(
             data_substructure_jetnet[i],
             bins=bins,
-            label="JetNet",
+            label=simulation_name,
             histtype="stepfilled",
             alpha=0.5,
         )
-        hist = ax.hist(
-            data_substructure[i], bins=hist_jetnet[1], label=f"{model_name}", histtype="step"
-        )
+        ax.hist(data_substructure[i], bins=hist_jetnet[1], label=f"{model_name}", histtype="step")
         ax.set_title(keys[i])
         ax.legend(loc="best")
 
