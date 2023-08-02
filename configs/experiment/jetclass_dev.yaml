@@ -49,7 +49,7 @@ callbacks:
     evaluate_ema_weights_instead: True
   jetclass_eval:
     every_n_epochs: 5 # evaluate every n epochs
-    additional_eval_epochs: [1] # evaluate at these epochs as well
+    additional_eval_epochs: [] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
   jetclass_eval_test:
     num_jet_samples: 6000 # jet samples to generate
