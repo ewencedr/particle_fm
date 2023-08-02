@@ -22,7 +22,7 @@ model_checkpoint:
   metric_map:
     "val/loss": "loss"
 
-
+# TODO: add also checkpoints for minimal wasserstein distance
 
 #early_stopping:
 #  monitor: "val/loss"

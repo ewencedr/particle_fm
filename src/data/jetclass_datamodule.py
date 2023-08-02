@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from src.utils.pylogger import get_pylogger
 
+from .components import normalize_tensor
+
 log = get_pylogger("JetClassDataModule")
 
 
@@ -26,12 +28,15 @@ class JetClassDataModule(LightningDataModule):
     tensor will be a tensor of zeros.
 
     Args:
-        val_fraction (float, optional): Fraction of data to use for validation. Between 0 and 1. Defaults to 0.15.
-        test_fraction (float, optional): Fraction of data to use for testing. Between 0 and 1. Defaults to 0.15.
+        val_fraction (float, optional): Fraction of data to use for validation.
+            Between 0 and 1. Defaults to 0.15.
+        test_fraction (float, optional): Fraction of data to use for testing.
+            Between 0 and 1. Defaults to 0.15.
         batch_size (int, optional): Batch size. Defaults to 256.
         num_workers (int, optional): Number of workers for dataloader. Defaults to 32.
         pin_memory (bool, optional): Pin memory for dataloader. Defaults to False.
-        drop_last (bool, optional): Drop last batch for train and val dataloader. Defaults to False.
+        drop_last (bool, optional): Drop last batch for train and val dataloader.
+            Defaults to False.
 
     A DataModule implements 5 key methods:
 
@@ -77,12 +82,12 @@ class JetClassDataModule(LightningDataModule):
         conditioning_num_particles: bool = True,
         num_particles: int = 128,
         # preprocessing
-        centering: bool = False,
-        normalize: bool = False,
+        normalize: bool = True,
         normalize_sigma: int = 5,
-        use_calculated_base_distribution: bool = True,
         use_custom_eta_centering: bool = True,
         remove_etadiff_tails: bool = True,
+        # centering: bool = False,
+        # use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
 
@@ -151,21 +156,42 @@ class JetClassDataModule(LightningDataModule):
             # TODO: anything to do with labels?
             # labels = npfile["labels"]
 
+            # NOTE: everything below here assumes that the particle features
+            # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
+
+            # check if the particle features are in the correct order
+            index_part_deta = get_feat_index(names_part_features, "part_deta")
+            assert index_part_deta == 0, "part_deta is not the first feature"
+            index_part_dphi = get_feat_index(names_part_features, "part_dphi")
+            assert index_part_dphi == 1, "part_dphi is not the second feature"
+            index_part_pt = get_feat_index(names_part_features, "part_pt")
+            assert index_part_pt == 2, "part_pt is not the third feature"
+
             # divide particle pt by jet pt
-            jet_pt_index = get_feat_index(names_jet_features, "jet_pt")
-            part_pt_index = get_feat_index(names_part_features, "part_pt")
-            particle_features[..., part_pt_index] /= np.expand_dims(
-                jet_features[:, jet_pt_index], axis=1
+            index_jet_pt = get_feat_index(names_jet_features, "jet_pt")
+            particle_features[..., index_part_pt] /= np.expand_dims(
+                jet_features[:, index_jet_pt], axis=1
             )
 
             # instead of using the part_deta variable, use part_eta - jet_eta
             if self.hparams.use_custom_eta_centering:
-                jet_eta_repeat = jet_features[:, get_feat_index(names_jet_features, "jet_eta")][
-                    :, np.newaxis
-                ].repeat(particle_features.shape[1], 1)
+                if "part_eta" not in names_part_features:
+                    raise ValueError(
+                        "`use_custom_eta_centering` is True, but `part_eta` is not in "
+                        "in the dataset --> check the dataset"
+                    )
+                if "jet_eta" not in names_jet_features:
+                    raise ValueError(
+                        "`use_custom_eta_centering` is True, but `jet_eta` is not in "
+                        "in the dataset --> check the dataset"
+                    )
+                index_jet_eta = get_feat_index(names_jet_features, "jet_eta")
+                jet_eta_repeat = jet_features[:, index_jet_eta][:, np.newaxis].repeat(
+                    particle_features.shape[1], 1
+                )
+                index_part_eta = get_feat_index(names_part_features, "part_eta")
                 particle_eta_minus_jet_eta = (
-                    particle_features[:, :, get_feat_index(names_part_features, "part_eta")]
-                    - jet_eta_repeat
+                    particle_features[:, :, index_part_eta] - jet_eta_repeat
                 )
                 mask = (particle_features[:, :, 0] != 0).astype(int)
                 particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
@@ -178,14 +204,25 @@ class JetClassDataModule(LightningDataModule):
                     np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0
                 ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
 
+            # from here on only use the first three features (eta_rel, phi_rel, pt_rel)
+            particle_features = particle_features[:, :, :3]
+
+            # convert to masked array (more convenient for normalization later on, because
+            # the mask is unaffected)
+            # Note: numpy masks are True for masked values
+            ma_particle_features = np.ma.masked_array(
+                particle_features,
+                mask=np.ma.make_mask(particle_features == 0),
+            )
+
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(particle_features))
             n_samples_test = int(self.hparams.test_fraction * len(particle_features))
             dataset_train, dataset_val, dataset_test = np.split(
-                particle_features,
+                ma_particle_features,
                 [
-                    len(particle_features) - (n_samples_val + n_samples_test),
-                    len(particle_features) - n_samples_test,
+                    len(ma_particle_features) - (n_samples_val + n_samples_test),
+                    len(ma_particle_features) - n_samples_test,
                 ],
             )
             if self.num_cond_features == 0:
@@ -209,31 +246,54 @@ class JetClassDataModule(LightningDataModule):
                     conditioning_test, dtype=torch.float32
                 )
 
+            # invert the masks from the masked arrays (numpy ma masks are True for masked values)
+            self.mask_train = torch.tensor(~dataset_train.mask[:, :, :1], dtype=torch.float32)
+            self.mask_test = torch.tensor(~dataset_test.mask[:, :, :1], dtype=torch.float32)
+            self.mask_val = torch.tensor(~dataset_val.mask[:, :, :1], dtype=torch.float32)
             self.tensor_train = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
-            self.mask_train = torch.tensor(
-                np.expand_dims(dataset_train[:, :, 3] > 0, axis=-1), dtype=torch.float32
-            )
             self.tensor_test = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
-            self.mask_test = torch.tensor(
-                np.expand_dims(dataset_test[:, :, 3] > 0, axis=-1), dtype=torch.float32
-            )
             self.tensor_val = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
-            self.mask_val = torch.tensor(
-                np.expand_dims(dataset_val[:, :, 3] > 0, axis=-1), dtype=torch.float32
-            )
+
+            if self.hparams.normalize:
+                # calculate means and stds only based on the training data
+                self.means = np.ma.mean(dataset_train, axis=(0, 1))
+                self.stds = np.ma.std(dataset_train, axis=(0, 1))
+                norm_kwargs = {
+                    "mean": self.means,
+                    "std": self.stds,
+                    "sigma": self.hparams.normalize_sigma,
+                }
+
+                # normalize the data
+                norm_dataset_train = normalize_tensor(np.ma.copy(dataset_train), **norm_kwargs)
+                norm_dataset_val = normalize_tensor(np.ma.copy(dataset_val), **norm_kwargs)
+                norm_dataset_test = normalize_tensor(np.ma.copy(dataset_test), **norm_kwargs)
+
+                self.tensor_train_dl = torch.tensor(
+                    norm_dataset_train[:, :, :3], dtype=torch.float32
+                )
+                self.tensor_val_dl = torch.tensor(norm_dataset_val[:, :, :3], dtype=torch.float32)
+                self.tensor_test_dl = torch.tensor(
+                    norm_dataset_test[:, :, :3], dtype=torch.float32
+                )
+
+            else:
+                self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
+                self.tensor_test_dl = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
+                self.tensor_val_dl = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
 
             self.data_train = TensorDataset(
-                self.tensor_train,
+                self.tensor_train_dl,
                 self.mask_train,
                 self.tensor_conditioning_train,
             )
             self.data_val = TensorDataset(
-                self.tensor_val,
+                self.tensor_val_dl,
                 self.mask_val,
                 self.tensor_conditioning_val,
             )
             self.data_test = TensorDataset(
-                self.tensor_test,
+                self.tensor_test_dl,
                 self.mask_test,
                 self.tensor_conditioning_test,
             )
