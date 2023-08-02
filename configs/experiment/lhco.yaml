@@ -24,7 +24,7 @@ trainer:
   gradient_clip_val: 0.5
 
 model:
-  num_particles: 558
+  num_particles: 560
   global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
   scheduler:
@@ -32,7 +32,7 @@ model:
     max_iters: ${trainer.max_epochs}
 
 data:
-  normalize: True
+  normalize: False
   conditioning: False
   relative_coords: False
   use_all_jets: True
@@ -40,6 +40,7 @@ data:
   num_particles: ${model.num_particles}
   val_fraction: 0.05
   test_fraction: 0.35
+  use_all_data: True
 
 callbacks:
   ema:
@@ -66,6 +67,7 @@ callbacks:
       verbose: False
     plot_config:
       plot_efps: False
+      plottype: ""
 
   #early_stopping:
   #  monitor: "val/loss"

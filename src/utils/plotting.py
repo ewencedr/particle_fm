@@ -203,6 +203,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
@@ -237,6 +238,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
@@ -277,6 +279,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
@@ -304,6 +307,9 @@ def plot_data(
             )
     ax3.set_xlabel(r"Particle $\phi^\mathrm{rel}$")
     ax3.set_yscale("log")
+    ax3.set_ylim(
+        0.5,
+    )
 
     if plot_jet_features:
         ax4 = fig.add_subplot(gs[gs_counter + 3])
@@ -314,6 +320,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -349,6 +356,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -384,6 +392,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -421,6 +430,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
@@ -469,6 +479,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if variable_jet_sizes_plotting:
@@ -507,6 +518,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -545,6 +557,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
@@ -579,6 +592,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
@@ -613,6 +627,7 @@ def plot_data(
             np.array([d.min() for d in data]).min(),
             np.array([d.max() for d in data]).max(),
         )
+        x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
     if plottype == "sim_data":
         x_min, x_max = data1.min(), data1.max()
     if "150" in plottype:
@@ -648,6 +663,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -683,6 +699,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -718,6 +735,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -753,6 +771,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -788,6 +807,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
@@ -823,6 +843,7 @@ def plot_data(
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
             )
+            x_min, x_max = min(x_min, np.min(data1)), max(x_max, np.max(data1))
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
         if "150" in plottype:
