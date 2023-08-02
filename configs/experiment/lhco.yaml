@@ -32,7 +32,7 @@ model:
     max_iters: ${trainer.max_epochs}
 
 data:
-  normalize: True
+  normalize: False
   conditioning: False
   relative_coords: False
   use_all_jets: True

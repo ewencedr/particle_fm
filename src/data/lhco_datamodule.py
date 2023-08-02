@@ -214,6 +214,10 @@ class LHCODataModule(LightningDataModule):
                 tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
                 if len(tensor_conditioning) != len(x_ma):
                     raise ValueError("Conditioning tensor and data tensor must have same length.")
+            else:
+                tensor_conditioning_train = torch.zeros(len(dataset_train))
+                tensor_conditioning_val = torch.zeros(len(dataset_val))
+                tensor_conditioning_test = torch.zeros(len(dataset_test))
 
             if self.hparams.normalize:
                 means = np.ma.mean(dataset_train, axis=(0, 1))
@@ -266,11 +270,6 @@ class LHCODataModule(LightningDataModule):
                         stds_cond,
                         sigma=self.hparams.normalize_sigma,
                     )
-
-                else:
-                    tensor_conditioning_train = torch.zeros(len(dataset_train))
-                    tensor_conditioning_val = torch.zeros(len(dataset_val))
-                    tensor_conditioning_test = torch.zeros(len(dataset_test))
 
             # Train without normalization
             unnormalized_tensor_train = torch.tensor(dataset_train)
