@@ -18,6 +18,7 @@ defaults:
 
 
 tags: ["flow_matching", "JetClass", "uncond", "dev", "debug"]
+run_note: "This is a note"
 
 seed: 12345
 
