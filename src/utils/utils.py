@@ -1,8 +1,6 @@
-import time
 import warnings
 from importlib.util import find_spec
-from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Callable, List
 
 import hydra
 from omegaconf import DictConfig
@@ -166,6 +164,7 @@ def log_hyperparameters(object_dict: dict) -> None:
     hparams["tags"] = cfg.get("tags")
     hparams["ckpt_path"] = cfg.get("ckpt_path")
     hparams["seed"] = cfg.get("seed")
+    hparams["run_note"] = cfg.get("run_note")
 
     # send hparams to all loggers
     for logger in trainer.loggers:

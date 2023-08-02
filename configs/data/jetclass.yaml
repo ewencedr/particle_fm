@@ -6,3 +6,5 @@ num_workers: 32
 pin_memory: False
 val_fraction: 0.10
 test_fraction: 0.30
+normalize: True
+normalize_sigma: 5
