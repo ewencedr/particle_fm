@@ -153,7 +153,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 " not found. Using normal weights."
             )
         elif self.ema_callback is not None and self.use_ema:
-            pylogger.info("Using EMA weights for logging.")
+            pylogger.info("Using EMA weights for evaluation.")
 
     def on_train_epoch_end(self, trainer, pl_module):
         if self.fix_seed:
