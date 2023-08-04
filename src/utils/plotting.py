@@ -448,6 +448,9 @@ def plot_data(
                 )
         ax6.set_xlabel(r"Jet $\phi$")
         ax6.set_yscale("log")
+        ax6.set_ylim(
+            0.5,
+        )
         gs_counter += 6
     else:
         gs_counter = 3
