@@ -349,11 +349,11 @@ def plot_data(
             x_min, x_max = data1.min(), data1.max()
         if plottype == "sim_data":
             x_min, x_max = data1.min(), data1.max()
+            x_min, x_max = 0.5, 1.5
         if "150" in plottype:
             x_min, x_max = 0.5, 1.5
         if plottype == "q" or plottype == "q_max_particles":
             x_max = 1.25
-        x_min, x_max = 0.5, 1.5
         ax4.hist(
             data1,
             bins=bins,
