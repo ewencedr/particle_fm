@@ -79,7 +79,9 @@ task_name: "lhco_flow_matching"
 logger:
   wandb:
     tags: ${tags}
+    project: "LHCO"
     group: "lhco_flow_matching"
     name: ${task_name}
   comet:
+    project_name: "LHCO"
     experiment_name: ${task_name}
