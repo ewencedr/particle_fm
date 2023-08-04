@@ -65,8 +65,8 @@ class JetClassDataModule(LightningDataModule):
 
     def __init__(
         self,
-        data_dir: str = "data/",
-        data_filename: str = "jetclass.npz",
+        data_dir: str,
+        jet_types: dict = None,
         number_of_used_jets: int = None,
         val_fraction: float = 0.15,
         test_fraction: float = 0.15,
@@ -90,6 +90,9 @@ class JetClassDataModule(LightningDataModule):
         # use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
+
+        if jet_types is None:
+            raise ValueError("`jet_types` must be specified in the datamodule.")
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
@@ -140,21 +143,88 @@ class JetClassDataModule(LightningDataModule):
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            # data loading
-            path = f"{self.hparams.data_dir}/{self.hparams.data_filename}"
-            npfile = np.load(path, allow_pickle=True)
+            particle_features_list = []
+            jet_features_list = []
+            labels_list = []
 
-            particle_features = npfile["part_features"]
-            jet_features = npfile["jet_features"]
+            names_particle_features_previous = None
+            names_jet_features_previous = None
+            names_labels_previous = None
+            filename_previous = None
+
+            print(self.hparams.jet_types)
+            # data loading
+            for jet_type, jet_type_dict in self.hparams.jet_types.items():
+                for filename in jet_type_dict["files"]:
+                    print(f"Loading {filename}")
+                    npfile = np.load(filename, allow_pickle=True)
+                    particle_features_list.append(npfile["part_features"])
+                    jet_features_list.append(npfile["jet_features"])
+                    labels_list.append(npfile["labels"])
+
+                    # Check that the labels are in the same order for all files
+                    names_particle_features = npfile["names_part_features"]
+                    names_jet_features = npfile["names_jet_features"]
+                    names_labels = npfile["names_labels"]
+
+                    if (
+                        names_particle_features_previous is None
+                        and names_jet_features_previous is None
+                        and names_labels_previous is None
+                    ):
+                        # first file
+                        pass
+                    else:
+                        if not np.all(names_particle_features == names_particle_features_previous):
+                            raise ValueError(
+                                "Names of particle features are not the same for all files."
+                                f"\n{filename_previous}: {names_particle_features_previous}"
+                                f"\n{filename}: {names_particle_features}"
+                            )
+                        if not np.all(names_jet_features == names_jet_features_previous):
+                            raise ValueError(
+                                "Names of jet features are not the same for all files."
+                                f"\n{filename_previous}: {names_jet_features_previous}"
+                                f"\n{filename}: {names_jet_features}"
+                            )
+                        if not np.all(names_labels == names_labels_previous):
+                            raise ValueError(
+                                "Names of labels are not the same for all files."
+                                f"\n{filename_previous}: {names_labels_previous}"
+                                f"\n{filename}: {names_labels}"
+                            )
+                    names_particle_features_previous = names_particle_features
+                    names_jet_features_previous = names_jet_features
+                    names_labels_previous = names_labels
+                    filename_previous = filename
+
+            particle_features = np.concatenate(particle_features_list)
+            jet_features = np.concatenate(jet_features_list)
+            labels = np.concatenate(labels_list)
+
+            # shuffle data
+            np.random.seed(42)
+            permutation = np.random.permutation(len(labels))
+            particle_features = particle_features[permutation]
+            jet_features = jet_features[permutation]
+            labels = labels[permutation]
+
+            print("Loaded data.")
+            print(f"particle_features.shape = {particle_features.shape}")
+            print(f"jet_features.shape = {jet_features.shape}")
+            print(f"labels.shape = {labels.shape}")
+
             if self.hparams.number_of_used_jets is not None:
                 if self.hparams.number_of_used_jets < len(jet_features):
                     particle_features = particle_features[: self.hparams.number_of_used_jets]
                     jet_features = jet_features[: self.hparams.number_of_used_jets]
+                    labels = labels[: self.hparams.number_of_used_jets]
 
+            # TODO: check that these are consistent over all loaded files!
+            # --> raise an error otherwise
             names_part_features = npfile["names_part_features"]
             names_jet_features = npfile["names_jet_features"]
-            # TODO: anything to do with labels?
-            # labels = npfile["labels"]
+            names_labels = npfile["names_labels"]
 
             # NOTE: everything below here assumes that the particle features
             # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
@@ -225,6 +295,13 @@ class JetClassDataModule(LightningDataModule):
                     len(ma_particle_features) - n_samples_test,
                 ],
             )
+            labels_train, labels_val, labels_test = np.split(
+                labels,
+                [
+                    len(labels) - (n_samples_val + n_samples_test),
+                    len(labels) - n_samples_test,
+                ],
+            )
             if self.num_cond_features == 0:
                 self.tensor_conditioning_train = torch.zeros(len(dataset_train))
                 self.tensor_conditioning_val = torch.zeros(len(dataset_val))
@@ -253,6 +330,12 @@ class JetClassDataModule(LightningDataModule):
             self.tensor_train = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
             self.tensor_test = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
             self.tensor_val = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
+            self.labels_train = torch.tensor(labels_train, dtype=torch.float32)
+            self.labels_test = torch.tensor(labels_test, dtype=torch.float32)
+            self.labels_val = torch.tensor(labels_val, dtype=torch.float32)
+            self.names_part_features = names_part_features
+            self.names_jet_features = names_jet_features
+            self.names_labels = names_labels
 
             if self.hparams.normalize:
                 # calculate means and stds only based on the training data

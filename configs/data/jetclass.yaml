@@ -1,6 +1,23 @@
 _target_: src.data.jetclass_datamodule.JetClassDataModule
 data_dir: /beegfs/desy/user/birkjosc/datasets/jetclass_npz
-data_filename: jetclass_TTBar_2_000_000.npz
+
+jet_types:
+  ttbar:
+    latex_label: $t(\\rightarrow qq')$
+    files:
+      - /beegfs/desy/user/birkjosc/datasets/jetclass_npz/jetclass_TTBar_100_000.npz
+      # - ${data.data_dir}/jetclass_TTBar_100_000.npz
+  qcd:
+    latex_label: QCD
+    files:
+      - /beegfs/desy/user/birkjosc/datasets/jetclass_npz/jetclass_ZJetsToNuNu_100_000.npz
+      # - ${data_dir}/jetclass_ZJetsToNuNu_100_000.npz
+  hbb:
+    latex_label: $H(\\rightarrow b\\bar{b})$
+    files:
+      - /beegfs/desy/user/birkjosc/datasets/jetclass_npz/jetclass_HToBB_100_000.npz
+      # - ${data.data_dir}/jetclass_ZJetsToNuNu_100_000.npz
+
 batch_size: 1024
 num_workers: 32
 pin_memory: False
