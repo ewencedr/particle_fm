@@ -27,7 +27,7 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 2 # needs to be calculated when using conditioning
+  global_cond_dim: 1 # needs to be calculated when using conditioning
   local_cond_dim: 0
 
 data:
