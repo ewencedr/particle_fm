@@ -30,7 +30,7 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 1 # needs to be calculated when using conditioning
+  global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
 
 data:
@@ -45,7 +45,7 @@ data:
   conditioning_eta: False
   conditioning_mass: False
   conditioning_num_particles: False
-  conditioning_jet_type: True
+  conditioning_jet_type: False
 
 callbacks:
   ema:
