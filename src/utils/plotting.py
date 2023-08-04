@@ -92,6 +92,12 @@ def plot_data(
     num_samples: int = -1,
     labels: list[str] = ["Gen. data"],
     sim_data_label: str = "Sim. data",
+    plot_xlabels: list[str] = [
+        r"Particle $p_\mathrm{T}^\mathrm{rel}$",
+        r"Particle $\eta^\mathrm{rel}$",
+        r"Particle $\phi^\mathrm{rel}$",
+        r"Rel. Jet $p_\mathrm{T}$",
+    ],
     plot_jet_features: bool = False,
     plot_w_dists: bool = False,
     w_dist_m: float = 0,
@@ -127,6 +133,8 @@ def plot_data(
         labels (list): Labels of the plot to describe the data.
         sim_data_label (str, optional): Label of the plot for the reference data.
             Defaults to "Sim. data".
+        plot_xlabels (list, optional): Labels of the x-axis for the first four plots.
+            Defaults to relative jet coordinates.
         plot_jet_features (bool, optional): Plot Jet Features. Defaults to False.
         plot_w_dists (bool, optional): Plot wasserstein distances inside of jet mass plot.
             Defaults to False.
@@ -144,7 +152,7 @@ def plot_data(
             variable_jet_sizes_plotting==True. Defaults to None.
         plot_selected_multiplicities (bool, optional): Plot data of jets with selected
             multiplicities. Defaults to False.
-        muselected_ltiplicities (list, optional): Jet multiplicities to plot if
+        selected_multiplicities (list, optional): Jet multiplicities to plot if
             plot_selected_multiplicities==True. Defaults to [10, 20, 30, 40, 50, 80].
         pt_selected_multiplicities_sim (list, optional): Data from reference model for
             the plots if plot_selected_multiplicities==True. Defaults to None.
@@ -246,7 +254,7 @@ def plot_data(
                 range=[x_min, x_max],
                 label=f"{labels[count]}",
             )
-    ax1.set_xlabel(r"Particle $p_\mathrm{T}^\mathrm{rel}$")
+    ax1.set_xlabel(plot_xlabels[0])
     ax1.set_yscale("log")
     ax1.legend(loc="best", prop={"size": 14}, frameon=False)
 
@@ -289,7 +297,7 @@ def plot_data(
                 range=[x_min, x_max],
                 label=f"{labels[count]}",
             )
-    ax2.set_xlabel(r"Particle $\eta^\mathrm{rel}$")
+    ax2.set_xlabel(plot_xlabels[1])
     ax2.set_yscale("log")
     ax3 = fig.add_subplot(gs[gs_counter + 2])
 
@@ -329,7 +337,7 @@ def plot_data(
                 range=[x_min, x_max],
                 label=f"{labels[count]}",
             )
-    ax3.set_xlabel(r"Particle $\phi^\mathrm{rel}$")
+    ax3.set_xlabel(plot_xlabels[2])
     ax3.set_yscale("log")
     ax3.set_ylim(
         0.5,
@@ -371,7 +379,7 @@ def plot_data(
                     range=[x_min, x_max],
                     label=f"{labels[count]}",
                 )
-        ax4.set_xlabel(r"Rel. Jet $p_\mathrm{T}$")
+        ax4.set_xlabel(plot_xlabels[3])
         # ax4.set_yscale("log")
 
         ax5 = fig.add_subplot(gs[gs_counter + 4])
