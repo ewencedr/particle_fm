@@ -35,7 +35,11 @@ def wasserstein_distance_batched(
 
 
 def calculate_wasserstein_metrics_jets(
-    jet_data1: np.array, jet_data2: np.array, num_eval_samples: int = 50_000, num_batches: int = 40
+    jet_data1: np.array,
+    jet_data2: np.array,
+    num_eval_samples: int = 50_000,
+    num_batches: int = 40,
+    **kwargs,
 ):
     """Calculate the Wasserstein distance for the jet coordinates (pt, eta, phi, mass)
 
