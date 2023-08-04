@@ -25,7 +25,7 @@ seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 200
+  max_epochs: 2
   gradient_clip_val: 0.5
 
 model:
@@ -35,11 +35,11 @@ model:
 
 data:
   # preprocessing
-  number_of_used_jets: 30000
+  number_of_used_jets: 300000
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   normalize: True
-  normalize_sigma: 5
+  normalize_sigma: 1
   # conditioning
   conditioning_pt: False
   conditioning_eta: False
