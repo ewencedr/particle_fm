@@ -16,7 +16,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: ""
+run_note: "Test run with conditioning on jet type"
 
 seed: 12345
 

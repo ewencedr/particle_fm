@@ -8,9 +8,9 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from src.utils.pylogger import get_pylogger
 
-from .components import normalize_tensor
+from .components import normalize_tensor, one_hot_encode
 
-log = get_pylogger("JetClassDataModule")
+pylogger = get_pylogger("JetClassDataModule")
 
 
 def get_feat_index(names_array: np.array, name: str):
@@ -154,19 +154,22 @@ class JetClassDataModule(LightningDataModule):
             names_labels_previous = None
             filename_previous = None
 
-            if len(self.hparams.jet_types) > 1 and not self.hparams.conditioning_jet_type:
-                raise ValueError(
-                    "Multiple jet types are specified in the datamodule, but "
-                    "`conditioning_jet_type` is set to False."
-                )
+            # TODO: the error raise below should be used
+            # if len(self.hparams.jet_types) > 1 and not self.hparams.conditioning_jet_type:
+            #     raise ValueError(
+            #         "Multiple jet types are specified in the datamodule, but "
+            #         "`conditioning_jet_type` is set to False."
+            #     )
             # data loading
             for jet_type, jet_type_dict in self.hparams.jet_types.items():
                 for filename in jet_type_dict["files"]:
-                    print(f"Loading {filename}")
+                    pylogger.info(f"Loading {filename}")
                     npfile = np.load(filename, allow_pickle=True)
-                    particle_features_list.append(npfile["part_features"])
-                    jet_features_list.append(npfile["jet_features"])
-                    labels_list.append(npfile["labels"])
+                    # TODO: remove the n_jets_per_file parameter
+                    stop = jet_type_dict["n_jets_per_file"]
+                    particle_features_list.append(npfile["part_features"][:stop])
+                    jet_features_list.append(npfile["jet_features"][:stop])
+                    labels_list.append(npfile["labels"][:stop])
 
                     # Check that the labels are in the same order for all files
                     names_particle_features = npfile["names_part_features"]
@@ -217,10 +220,11 @@ class JetClassDataModule(LightningDataModule):
             jet_features = jet_features[permutation]
             labels = labels[permutation]
 
-            print("Loaded data.")
-            print(f"particle_features.shape = {particle_features.shape}")
-            print(f"jet_features.shape = {jet_features.shape}")
-            print(f"labels.shape = {labels.shape}")
+            pylogger.info("Loaded data.")
+            pylogger.info("Shapes of arrays as available in files:")
+            pylogger.info(f"particle_features.shape = {particle_features.shape}")
+            pylogger.info(f"jet_features.shape = {jet_features.shape}")
+            pylogger.info(f"labels.shape = {labels.shape}")
 
             if self.hparams.number_of_used_jets is not None:
                 if self.hparams.number_of_used_jets < len(jet_features):
@@ -342,6 +346,11 @@ class JetClassDataModule(LightningDataModule):
             self.names_jet_features = names_jet_features
             self.names_labels = names_labels
 
+            # the tensors below will be overwritten if normalization is used
+            self.tensor_conditioning_train_dl = torch.zeros(len(dataset_train))
+            self.tensor_conditioning_val_dl = torch.zeros(len(dataset_val))
+            self.tensor_conditioning_test_dl = torch.zeros(len(dataset_test))
+
             if self.hparams.normalize:
                 # calculate means and stds only based on the training data
                 self.means = np.ma.mean(dataset_train, axis=(0, 1))
@@ -364,26 +373,55 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_test_dl = torch.tensor(
                     norm_dataset_test[:, :, :3], dtype=torch.float32
                 )
+                if self.num_cond_features > 0:
+                    means_cond = torch.mean(self.tensor_conditioning_train, axis=0)
+                    stds_cond = torch.std(self.tensor_conditioning_train, axis=0)
+                    # Train
+                    self.tensor_conditioning_train_dl = normalize_tensor(
+                        self.tensor_conditioning_train,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    # Validation
+                    self.tensor_conditioning_val_dl = normalize_tensor(
+                        self.tensor_conditioning_val,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    # Test
+                    self.tensor_conditioning_test_dl = normalize_tensor(
+                        self.tensor_conditioning_test,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
 
             else:
                 self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
                 self.tensor_test_dl = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
                 self.tensor_val_dl = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
+                self.tensor_conditioning_train_dl = self.tensor_conditioning_train
+                self.tensor_conditioning_val_dl = self.tensor_conditioning_val
+                self.tensor_conditioning_test_dl = self.tensor_conditioning_test
 
             self.data_train = TensorDataset(
                 self.tensor_train_dl,
                 self.mask_train,
-                self.tensor_conditioning_train,
+                self.tensor_conditioning_train_dl,
             )
             self.data_val = TensorDataset(
                 self.tensor_val_dl,
                 self.mask_val,
-                self.tensor_conditioning_val,
+                self.tensor_conditioning_val_dl,
             )
             self.data_test = TensorDataset(
                 self.tensor_test_dl,
                 self.mask_test,
-                self.tensor_conditioning_test,
+                self.tensor_conditioning_test_dl,
             )
 
     def train_dataloader(self):
@@ -441,7 +479,12 @@ class JetClassDataModule(LightningDataModule):
             names_conditioning_data: np.array of shape (n_conditioning_features,) which
                 contains the names of the conditioning features
         """
+        categories = np.unique(jet_data[:, 0])
+        jet_data_one_hot = one_hot_encode(
+            jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
+        )
 
+        one_hot_len = len(categories)
         if (
             not self.hparams.conditioning_pt
             and not self.hparams.conditioning_eta
@@ -454,30 +497,27 @@ class JetClassDataModule(LightningDataModule):
         # select the columns which correspond to the conditioning variables that should be used
 
         keep_col = []
-        if self.hparams.conditioning_pt:
-            keep_col.append(get_feat_index(names_jet_data, "jet_pt"))
-        if self.hparams.conditioning_eta:
-            keep_col.append(get_feat_index(names_jet_data, "jet_eta"))
-        if self.hparams.conditioning_mass:
-            keep_col.append(get_feat_index(names_jet_data, "jet_sdmass"))
-        if self.hparams.conditioning_num_particles:
-            keep_col.append(get_feat_index(names_jet_data, "jet_nparticles"))
+        names_conditioning_data = []
 
+        print(jet_data.shape)
         if self.hparams.conditioning_jet_type:
-            # in this case also add the jet type to the conditioning variables
-            # and to the names array
-            return (
-                np.concatenate(
-                    (
-                        jet_data[:, keep_col],
-                        labels[:, np.newaxis],
-                    ),
-                    axis=1,
-                ),
-                list(names_jet_data[keep_col]) + ["jet_type"],
-            )
+            keep_col += list(np.arange(one_hot_len))
+            names_conditioning_data += [f"jet_type_{i:.0f}" for i in categories]
+        if self.hparams.conditioning_pt:
+            keep_col.append(get_feat_index(names_jet_data, "jet_pt") + one_hot_len - 1)
+            names_conditioning_data.append("jet_pt")
+        if self.hparams.conditioning_eta:
+            keep_col.append(get_feat_index(names_jet_data, "jet_eta") + one_hot_len - 1)
+            names_conditioning_data.append("jet_eta")
+        if self.hparams.conditioning_mass:
+            keep_col.append(get_feat_index(names_jet_data, "jet_sdmass") + one_hot_len - 1)
+            names_conditioning_data.append("jet_sdmass")
+        if self.hparams.conditioning_num_particles:
+            keep_col.append(get_feat_index(names_jet_data, "jet_nparticles") + one_hot_len - 1)
+            names_conditioning_data.append("jet_nparticles")
+        print(keep_col)
 
-        return jet_data[:, keep_col], names_jet_data[keep_col]
+        return jet_data_one_hot[:, keep_col], names_conditioning_data
 
 
 if __name__ == "__main__":
