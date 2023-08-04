@@ -16,7 +16,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "uncond"]
 
-run_note: "This is a note"
+run_note: "Crosscheck that without conditioning everything still works"
 
 seed: 12345
 
@@ -42,6 +42,7 @@ data:
   conditioning_eta: False
   conditioning_mass: False
   conditioning_num_particles: False
+  conditioning_jet_type: False
 
 callbacks:
   ema:
