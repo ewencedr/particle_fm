@@ -80,7 +80,7 @@ class JetClassDataModule(LightningDataModule):
         conditioning_eta: bool = True,
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
-        # conditioning_jet_type: bool = True,
+        conditioning_jet_type: bool = True,
         num_particles: int = 128,
         # preprocessing
         normalize: bool = True,
@@ -132,7 +132,7 @@ class JetClassDataModule(LightningDataModule):
                 self.hparams.conditioning_eta,
                 self.hparams.conditioning_mass,
                 self.hparams.conditioning_num_particles,
-                # self.hparams.conditioning_jet_type,
+                self.hparams.conditioning_jet_type,
             ]
         )
 
@@ -304,13 +304,16 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_train = torch.zeros(len(dataset_train))
                 self.tensor_conditioning_val = torch.zeros(len(dataset_val))
                 self.tensor_conditioning_test = torch.zeros(len(dataset_test))
+                self.names_conditioning = None
             else:
-                jet_features = self._handle_conditioning(jet_features, names_jet_features)
+                conditioning_features, self.names_conditioning = self._handle_conditioning(
+                    jet_features, names_jet_features, labels
+                )
                 (conditioning_train, conditioning_val, conditioning_test) = np.split(
-                    jet_features,
+                    conditioning_features,
                     [
-                        len(jet_features) - (n_samples_val + n_samples_test),
-                        len(jet_features) - n_samples_test,
+                        len(conditioning_features) - (n_samples_val + n_samples_test),
+                        len(conditioning_features) - n_samples_test,
                     ],
                 )
                 self.tensor_conditioning_train = torch.tensor(
@@ -421,12 +424,18 @@ class JetClassDataModule(LightningDataModule):
         """Things to do when loading checkpoint."""
         pass
 
-    def _handle_conditioning(self, jet_data: np.array, names_jet_data: np.array):
+    def _handle_conditioning(self, jet_data: np.array, names_jet_data: np.array, labels: np.array):
         """Select the conditioning variables.
 
-        jet_data: np.array of shape (n_jets, n_features)
-        names_jet_data: np.array of shape (n_features,) which contains the names of
-            the features
+        Args:
+            jet_data: np.array of shape (n_jets, n_features)
+            names_jet_data: np.array of shape (n_features,) which contains the names of
+                the features
+            labels: np.array of shape (n_jets,) which contains the labels / jet-types
+        Returns:
+            conditioning_data: np.array of shape (n_jets, n_conditioning_features)
+            names_conditioning_data: np.array of shape (n_conditioning_features,) which
+                contains the names of the conditioning features
         """
 
         if (
@@ -434,6 +443,7 @@ class JetClassDataModule(LightningDataModule):
             and not self.hparams.conditioning_eta
             and not self.hparams.conditioning_mass
             and not self.hparams.conditioning_num_particles
+            and not self.hparams.conditioning_jet_type
         ):
             return None
 
@@ -449,7 +459,21 @@ class JetClassDataModule(LightningDataModule):
         if self.hparams.conditioning_num_particles:
             keep_col.append(get_feat_index(names_jet_data, "jet_nparticles"))
 
-        return jet_data[:, keep_col]
+        if self.hparams.conditioning_jet_type:
+            # in this case also add the jet type to the conditioning variables
+            # and to the names array
+            return (
+                np.concatenate(
+                    (
+                        jet_data[:, keep_col],
+                        labels[:, np.newaxis],
+                    ),
+                    axis=1,
+                ),
+                list(names_jet_data[keep_col]) + ["jet_type"],
+            )
+
+        return jet_data[:, keep_col], names_jet_data[keep_col]
 
 
 if __name__ == "__main__":
