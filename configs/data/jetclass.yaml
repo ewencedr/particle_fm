@@ -8,12 +8,12 @@ jet_types:
     files:
       - /beegfs/desy/user/birkjosc/datasets/jetclass_npz/jetclass_TTBar_300_000.npz
       # - ${data.data_dir}/jetclass_TTBar_100_000.npz
-  # qcd:
-  #   latex_label: QCD
-  #   n_jets_per_file: 100_000
-  #   files:
-  #     - /beegfs/desy/user/birkjosc/datasets/jetclass_npz/jetclass_ZJetsToNuNu_100_000.npz
-  #     # - ${data_dir}/jetclass_ZJetsToNuNu_100_000.npz
+  qcd:
+    latex_label: QCD
+    n_jets_per_file: 300_000
+    files:
+      - /beegfs/desy/user/birkjosc/datasets/jetclass_npz/jetclass_ZJetsToNuNu_300_000.npz
+      # - ${data_dir}/jetclass_ZJetsToNuNu_100_000.npz
   # hbb:
   #   n_jets_per_file: 100_000
   #   latex_label: $H(\\rightarrow b\\bar{b})$

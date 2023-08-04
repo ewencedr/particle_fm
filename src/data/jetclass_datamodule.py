@@ -314,6 +314,7 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_test = torch.zeros(len(dataset_test))
                 self.names_conditioning = None
             else:
+                print("At least one conditioning feature is used.")
                 conditioning_features, self.names_conditioning = self._handle_conditioning(
                     jet_features, names_jet_features, labels
                 )
@@ -331,6 +332,7 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_test = torch.tensor(
                     conditioning_test, dtype=torch.float32
                 )
+                # nan-fine until here
 
             # invert the masks from the masked arrays (numpy ma masks are True for masked values)
             self.mask_train = torch.tensor(~dataset_train.mask[:, :, :1], dtype=torch.float32)
@@ -345,11 +347,6 @@ class JetClassDataModule(LightningDataModule):
             self.names_particle_features = names_particle_features
             self.names_jet_features = names_jet_features
             self.names_labels = names_labels
-
-            # the tensors below will be overwritten if normalization is used
-            self.tensor_conditioning_train_dl = torch.zeros(len(dataset_train))
-            self.tensor_conditioning_val_dl = torch.zeros(len(dataset_val))
-            self.tensor_conditioning_test_dl = torch.zeros(len(dataset_test))
 
             if self.hparams.normalize:
                 # calculate means and stds only based on the training data
@@ -373,40 +370,54 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_test_dl = torch.tensor(
                     norm_dataset_test[:, :, :3], dtype=torch.float32
                 )
-                if self.num_cond_features > 0:
-                    means_cond = torch.mean(self.tensor_conditioning_train, axis=0)
-                    stds_cond = torch.std(self.tensor_conditioning_train, axis=0)
-                    # Train
-                    self.tensor_conditioning_train_dl = normalize_tensor(
-                        self.tensor_conditioning_train,
-                        means_cond,
-                        stds_cond,
-                        sigma=self.hparams.normalize_sigma,
-                    )
+                # if self.num_cond_features > 0:
+                #     means_cond = torch.mean(self.tensor_conditioning_train, axis=0)
+                #     stds_cond = torch.std(self.tensor_conditioning_train, axis=0)
+                #     # Train
+                #     self.tensor_conditioning_train_dl = normalize_tensor(
+                #         self.tensor_conditioning_train,
+                #         means_cond,
+                #         stds_cond,
+                #         sigma=self.hparams.normalize_sigma,
+                #     )
 
-                    # Validation
-                    self.tensor_conditioning_val_dl = normalize_tensor(
-                        self.tensor_conditioning_val,
-                        means_cond,
-                        stds_cond,
-                        sigma=self.hparams.normalize_sigma,
-                    )
+                #     # Validation
+                #     self.tensor_conditioning_val_dl = normalize_tensor(
+                #         self.tensor_conditioning_val,
+                #         means_cond,
+                #         stds_cond,
+                #         sigma=self.hparams.normalize_sigma,
+                #     )
 
-                    # Test
-                    self.tensor_conditioning_test_dl = normalize_tensor(
-                        self.tensor_conditioning_test,
-                        means_cond,
-                        stds_cond,
-                        sigma=self.hparams.normalize_sigma,
-                    )
+                #     # Test
+                #     self.tensor_conditioning_test_dl = normalize_tensor(
+                #         self.tensor_conditioning_test,
+                #         means_cond,
+                #         stds_cond,
+                #         sigma=self.hparams.normalize_sigma,
+                #     )
 
             else:
                 self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
                 self.tensor_test_dl = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
                 self.tensor_val_dl = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
-                self.tensor_conditioning_train_dl = self.tensor_conditioning_train
-                self.tensor_conditioning_val_dl = self.tensor_conditioning_val
-                self.tensor_conditioning_test_dl = self.tensor_conditioning_test
+
+            self.tensor_conditioning_train_dl = self.tensor_conditioning_train
+            self.tensor_conditioning_val_dl = self.tensor_conditioning_val
+            self.tensor_conditioning_test_dl = self.tensor_conditioning_test
+            print("First 10 values of conditioning data:")
+            print(self.tensor_conditioning_train_dl[:10])
+
+            # check if conditioning data contains nan values
+            print("Checking conditioning data for NaNs...")
+            if (
+                torch.isnan(self.tensor_conditioning_train_dl).any()
+                or torch.isnan(self.tensor_conditioning_val_dl).any()
+                or torch.isnan(self.tensor_conditioning_test_dl).any()
+            ):
+                print("NaNs found in conditioning data!")
+            else:
+                print("GOOD NEWS: No NaNs found in conditioning data.")
 
             self.data_train = TensorDataset(
                 self.tensor_train_dl,
@@ -499,7 +510,6 @@ class JetClassDataModule(LightningDataModule):
         keep_col = []
         names_conditioning_data = []
 
-        print(jet_data.shape)
         if self.hparams.conditioning_jet_type:
             keep_col += list(np.arange(one_hot_len))
             names_conditioning_data += [f"jet_type_{i:.0f}" for i in categories]
@@ -515,7 +525,6 @@ class JetClassDataModule(LightningDataModule):
         if self.hparams.conditioning_num_particles:
             keep_col.append(get_feat_index(names_jet_data, "jet_nparticles") + one_hot_len - 1)
             names_conditioning_data.append("jet_nparticles")
-        print(keep_col)
 
         return jet_data_one_hot[:, keep_col], names_conditioning_data
 

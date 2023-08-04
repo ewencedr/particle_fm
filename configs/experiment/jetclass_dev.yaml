@@ -30,12 +30,12 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 1 # needs to be calculated when using conditioning
+  global_cond_dim: 2 # needs to be calculated when using conditioning
   local_cond_dim: 0
 
 data:
   # preprocessing
-  number_of_used_jets: 300000
+  number_of_used_jets: 30000
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   normalize: True
