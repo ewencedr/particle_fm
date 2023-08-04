@@ -80,6 +80,7 @@ class JetClassDataModule(LightningDataModule):
         conditioning_eta: bool = True,
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
+        # conditioning_jet_type: bool = True,
         num_particles: int = 128,
         # preprocessing
         normalize: bool = True,
@@ -131,6 +132,7 @@ class JetClassDataModule(LightningDataModule):
                 self.hparams.conditioning_eta,
                 self.hparams.conditioning_mass,
                 self.hparams.conditioning_num_particles,
+                # self.hparams.conditioning_jet_type,
             ]
         )
 
@@ -200,7 +202,9 @@ class JetClassDataModule(LightningDataModule):
 
             particle_features = np.concatenate(particle_features_list)
             jet_features = np.concatenate(jet_features_list)
-            labels = np.concatenate(labels_list)
+            labels_one_hot = np.concatenate(labels_list)
+
+            labels = np.argmax(labels_one_hot, axis=1)
 
             # shuffle data
             np.random.seed(42)
@@ -220,21 +224,15 @@ class JetClassDataModule(LightningDataModule):
                     jet_features = jet_features[: self.hparams.number_of_used_jets]
                     labels = labels[: self.hparams.number_of_used_jets]
 
-            # TODO: check that these are consistent over all loaded files!
-            # --> raise an error otherwise
-            names_part_features = npfile["names_part_features"]
-            names_jet_features = npfile["names_jet_features"]
-            names_labels = npfile["names_labels"]
-
             # NOTE: everything below here assumes that the particle features
             # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
 
             # check if the particle features are in the correct order
-            index_part_deta = get_feat_index(names_part_features, "part_deta")
+            index_part_deta = get_feat_index(names_particle_features, "part_deta")
             assert index_part_deta == 0, "part_deta is not the first feature"
-            index_part_dphi = get_feat_index(names_part_features, "part_dphi")
+            index_part_dphi = get_feat_index(names_particle_features, "part_dphi")
             assert index_part_dphi == 1, "part_dphi is not the second feature"
-            index_part_pt = get_feat_index(names_part_features, "part_pt")
+            index_part_pt = get_feat_index(names_particle_features, "part_pt")
             assert index_part_pt == 2, "part_pt is not the third feature"
 
             # divide particle pt by jet pt
@@ -245,7 +243,7 @@ class JetClassDataModule(LightningDataModule):
 
             # instead of using the part_deta variable, use part_eta - jet_eta
             if self.hparams.use_custom_eta_centering:
-                if "part_eta" not in names_part_features:
+                if "part_eta" not in names_particle_features:
                     raise ValueError(
                         "`use_custom_eta_centering` is True, but `part_eta` is not in "
                         "in the dataset --> check the dataset"
@@ -259,7 +257,7 @@ class JetClassDataModule(LightningDataModule):
                 jet_eta_repeat = jet_features[:, index_jet_eta][:, np.newaxis].repeat(
                     particle_features.shape[1], 1
                 )
-                index_part_eta = get_feat_index(names_part_features, "part_eta")
+                index_part_eta = get_feat_index(names_particle_features, "part_eta")
                 particle_eta_minus_jet_eta = (
                     particle_features[:, :, index_part_eta] - jet_eta_repeat
                 )
@@ -333,7 +331,7 @@ class JetClassDataModule(LightningDataModule):
             self.labels_train = torch.tensor(labels_train, dtype=torch.float32)
             self.labels_test = torch.tensor(labels_test, dtype=torch.float32)
             self.labels_val = torch.tensor(labels_val, dtype=torch.float32)
-            self.names_part_features = names_part_features
+            self.names_particle_features = names_particle_features
             self.names_jet_features = names_jet_features
             self.names_labels = names_labels
 
