@@ -479,7 +479,7 @@ class LHCOEvaluationCallback(pl.Callback):
                     {f"epoch{trainer.current_epoch}_unprocessed": wandb.Image(img_path1)}
                 )
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}_x": wandb.Image(img_path_x)})
-                self.wandb_logger.log({f"epoch{trainer.current_epoch}_x": wandb.Image(img_path_y)})
+                self.wandb_logger.log({f"epoch{trainer.current_epoch}_y": wandb.Image(img_path_y)})
 
             # Log jet generation time
             if self.log_times:
