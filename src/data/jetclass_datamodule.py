@@ -165,11 +165,9 @@ class JetClassDataModule(LightningDataModule):
                 for filename in jet_type_dict["files"]:
                     pylogger.info(f"Loading {filename}")
                     npfile = np.load(filename, allow_pickle=True)
-                    # TODO: remove the n_jets_per_file parameter
-                    stop = jet_type_dict["n_jets_per_file"]
-                    particle_features_list.append(npfile["part_features"][:stop])
-                    jet_features_list.append(npfile["jet_features"][:stop])
-                    labels_list.append(npfile["labels"][:stop])
+                    particle_features_list.append(npfile["part_features"])
+                    jet_features_list.append(npfile["jet_features"])
+                    labels_list.append(npfile["labels"])
 
                     # Check that the labels are in the same order for all files
                     names_particle_features = npfile["names_part_features"]
