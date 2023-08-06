@@ -154,12 +154,11 @@ class JetClassDataModule(LightningDataModule):
             names_labels_previous = None
             filename_previous = None
 
-            # TODO: the error raise below should be used
-            # if len(self.hparams.jet_types) > 1 and not self.hparams.conditioning_jet_type:
-            #     raise ValueError(
-            #         "Multiple jet types are specified in the datamodule, but "
-            #         "`conditioning_jet_type` is set to False."
-            #     )
+            if len(self.hparams.jet_types) > 1 and not self.hparams.conditioning_jet_type:
+                raise ValueError(
+                    "Multiple jet types are specified in the datamodule, but "
+                    "`conditioning_jet_type` is set to False."
+                )
             # data loading
             for jet_type, jet_type_dict in self.hparams.jet_types.items():
                 for filename in jet_type_dict["files"]:
