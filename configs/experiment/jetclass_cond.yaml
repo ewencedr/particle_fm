@@ -16,7 +16,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: "jet-type conditioning, using only top and qcd jets"
+run_note: "jet-type conditioning, using only top (had) and top (lep) jets"
 
 seed: 12345
 
