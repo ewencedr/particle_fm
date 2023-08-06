@@ -95,6 +95,7 @@ class JetClassDataModule(LightningDataModule):
         if jet_types is None:
             raise ValueError("`jet_types` must be specified in the datamodule.")
 
+        # TODO: this doesn't work yet...
         self.hparams["jet_types_list"] = list(jet_types.keys())
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
