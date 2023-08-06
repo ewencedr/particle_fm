@@ -286,6 +286,8 @@ class JetClassDataModule(LightningDataModule):
             # convert to masked array (more convenient for normalization later on, because
             # the mask is unaffected)
             # Note: numpy masks are True for masked values
+            # Important: use pt_rel for masking, because eta_rel and phi_rel can be zero
+            # even though it is a valid track
             particle_mask_zero_entries = (particle_features[:, :, 2] == 0)[..., np.newaxis]
             ma_particle_features = np.ma.masked_array(
                 particle_features,
@@ -293,8 +295,12 @@ class JetClassDataModule(LightningDataModule):
                     particle_mask_zero_entries, repeats=particle_features.shape[2], axis=2
                 ),
             )
-            # TODO: add check that no jets without particles are allowed
-            # --> either raise an error or remove the jet from the dataset
+            n_jets_without_particles = np.sum(np.sum(~particle_mask_zero_entries, axis=1) == 0)
+            if n_jets_without_particles > 0:
+                raise NotImplementedError(
+                    f"There are {n_jets_without_particles} jets without particles in "
+                    "the dataset. This is not allowed, since the model cannot handle this case."
+                )
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(particle_features))
