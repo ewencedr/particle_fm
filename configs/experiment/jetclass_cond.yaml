@@ -16,7 +16,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: "jet-type conditioning, using only top (had) and top (lep) jets"
+run_note: "jet-type conditioning, using all 10 jet types, but with standardization sigma=5"
 
 seed: 12345
 
@@ -27,7 +27,7 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 2 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
 
 data:
@@ -36,7 +36,7 @@ data:
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   normalize: True
-  normalize_sigma: 1
+  normalize_sigma: 5
   # conditioning
   conditioning_pt: False
   conditioning_eta: False
