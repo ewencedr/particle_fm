@@ -16,7 +16,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: "Test run with conditioning on jet type"
+run_note: "jet-type conditioning, using all 10 jet types"
 
 seed: 12345
 
@@ -27,16 +27,16 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 2 # needs to be calculated when using conditioning
+  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
 
 data:
   # preprocessing
-  number_of_used_jets: 300000
+  number_of_used_jets: 3_000_000
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   normalize: True
-  normalize_sigma: 5
+  normalize_sigma: 1
   # conditioning
   conditioning_pt: False
   conditioning_eta: False
@@ -52,7 +52,7 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
   jetclass_eval:
-    every_n_epochs: 100 # evaluate every n epochs
+    every_n_epochs: 5 # evaluate every n epochs
     additional_eval_epochs: [1, 5, 10, 30, 50, 75] # evaluate at these epochs as well
     num_jet_samples: 50_000 # jet samples to generate
   jetclass_eval_test:
