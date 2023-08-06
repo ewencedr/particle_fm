@@ -25,14 +25,59 @@ def wasserstein_distance_batched(
         float: Standard deviation of the Wasserstein distances of all batches
     """
     w1 = []
-    i = 0
-    for j in range(num_batches):
+    for _ in range(num_batches):
         rand1 = rng.choice(len(data1), size=num_eval_samples)
         rand2 = rng.choice(len(data2), size=num_eval_samples)
         rand_sample1 = data1[rand1]
         rand_sample2 = data2[rand2]
         w1.append(wasserstein_distance(rand_sample1, rand_sample2))
     return np.mean(w1), np.std(w1)
+
+
+def calculate_wasserstein_metrics_jets(
+    jet_data1: np.array,
+    jet_data2: np.array,
+    num_eval_samples: int = 50_000,
+    num_batches: int = 40,
+    **kwargs,
+):
+    """Calculate the Wasserstein distance for the jet coordinates (pt, eta, phi, mass)
+
+    Args:
+        data1 (np.array): Data1 usually the real data, can be num_batches times smaller than data2
+        data2 (np.array): Data2 usually the generated data, can be num_batches times larger than data1
+        num_eval_samples (int): Number of samples to use for each Wasserstein distance calculation
+        num_batches (int): Number of batches to split the data into
+
+    Returns:
+        float: Mean Wasserstein distance of all batches
+        float: Standard deviation of the Wasserstein distances of all batches
+    """
+
+    pt, pt_std = wasserstein_distance_batched(
+        jet_data1[:, 0], jet_data2[:, 0], num_eval_samples, num_batches
+    )
+    eta, eta_std = wasserstein_distance_batched(
+        jet_data1[:, 1], jet_data2[:, 1], num_eval_samples, num_batches
+    )
+    phi, phi_std = wasserstein_distance_batched(
+        jet_data1[:, 2], jet_data2[:, 2], num_eval_samples, num_batches
+    )
+    mass, mass_std = wasserstein_distance_batched(
+        jet_data1[:, 3], jet_data2[:, 3], num_eval_samples, num_batches
+    )
+
+    dic_jet_w1 = {
+        "w1pt_jet_mean": pt,
+        "w1pt_jet_std": pt_std,
+        "w1eta_jet_mean": eta,
+        "w1eta_jet_std": eta_std,
+        "w1phi_jet_mean": phi,
+        "w1phi_jet_std": phi_std,
+        "w1mass_jet_mean": mass,
+        "w1mass_jet_std": mass_std,
+    }
+    return dic_jet_w1
 
 
 def calculate_all_wasserstein_metrics(
