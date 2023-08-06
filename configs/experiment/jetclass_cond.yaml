@@ -16,18 +16,18 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: "jet-type conditioning, using all 10 jet types"
+run_note: "jet-type conditioning, using only top and qcd jets"
 
 seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 2000
+  max_epochs: 10_000
   gradient_clip_val: 0.5
 
 model:
   num_particles: 128
-  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 2 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
 
 data:
