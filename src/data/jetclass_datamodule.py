@@ -286,10 +286,15 @@ class JetClassDataModule(LightningDataModule):
             # convert to masked array (more convenient for normalization later on, because
             # the mask is unaffected)
             # Note: numpy masks are True for masked values
+            particle_mask_zero_entries = (particle_features[:, :, 2] == 0)[..., np.newaxis]
             ma_particle_features = np.ma.masked_array(
                 particle_features,
-                mask=np.ma.make_mask(particle_features == 0),
+                mask=np.repeat(
+                    particle_mask_zero_entries, repeats=particle_features.shape[2], axis=2
+                ),
             )
+            # TODO: add check that no jets without particles are allowed
+            # --> either raise an error or remove the jet from the dataset
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(particle_features))
