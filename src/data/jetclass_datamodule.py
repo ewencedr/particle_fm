@@ -225,19 +225,34 @@ class JetClassDataModule(LightningDataModule):
 
             pylogger.info("Loaded data.")
             pylogger.info("Shapes of arrays as available in files:")
-            pylogger.info(f"particle_features.shape = {particle_features.shape}")
+            pylogger.info(f"particle_features names = {names_particle_features}")
+            pylogger.info(f"particle_features shape = {particle_features.shape}")
+            pylogger.info(f"jet_features names = {names_jet_features}")
             pylogger.info(f"jet_features.shape = {jet_features.shape}")
+            pylogger.info(f"labels names = {names_labels}")
             pylogger.info(f"labels.shape = {labels.shape}")
+            pylogger.info("Now processing data...")
 
             if self.hparams.number_of_used_jets is not None:
                 if self.hparams.number_of_used_jets < len(jet_features):
+                    pylogger.info(
+                        f"Using only {self.hparams.number_of_used_jets} jets "
+                        f"out of {len(jet_features)}."
+                    )
                     particle_features = particle_features[: self.hparams.number_of_used_jets]
                     jet_features = jet_features[: self.hparams.number_of_used_jets]
                     labels = labels[: self.hparams.number_of_used_jets]
+                else:
+                    pylogger.warning(
+                        f"More jets requested ({self.hparams.number_of_used_jets:_}) than "
+                        f"available ({len(jet_features):_})."
+                        "--> Using all available jets."
+                    )
 
             # NOTE: everything below here assumes that the particle features
             # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
 
+            pylogger.info("Using eta_rel, phi_rel, pt_rel as particle features.")
             # check if the particle features are in the correct order
             index_part_deta = get_feat_index(names_particle_features, "part_deta")
             assert index_part_deta == 0, "part_deta is not the first feature"
@@ -254,6 +269,7 @@ class JetClassDataModule(LightningDataModule):
 
             # instead of using the part_deta variable, use part_eta - jet_eta
             if self.hparams.use_custom_eta_centering:
+                pylogger.info("Using custom eta centering -> calculating particle_eta - jet_eta")
                 if "part_eta" not in names_particle_features:
                     raise ValueError(
                         "`use_custom_eta_centering` is True, but `part_eta` is not in "
@@ -276,6 +292,7 @@ class JetClassDataModule(LightningDataModule):
                 particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
 
             if self.hparams.remove_etadiff_tails:
+                pylogger.info("Removing eta tails -> removing particles with |eta_rel| > 1")
                 # remove/zero-padd particles with |eta - jet_eta| > 1
                 mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
                 particle_features[:, :, :][mask_etadiff_larger_1] = 0
@@ -298,6 +315,7 @@ class JetClassDataModule(LightningDataModule):
                     particle_mask_zero_entries, repeats=particle_features.shape[2], axis=2
                 ),
             )
+            pylogger.info("Checking that there are no jets without any constituents.")
             n_jets_without_particles = np.sum(np.sum(~particle_mask_zero_entries, axis=1) == 0)
             if n_jets_without_particles > 0:
                 raise NotImplementedError(
@@ -395,6 +413,7 @@ class JetClassDataModule(LightningDataModule):
             )
 
             if self.hparams.normalize:
+                pylogger.info("Standardizing the particle features.")
                 # calculate means and stds only based on the training data
                 self.means = np.ma.mean(dataset_train, axis=(0, 1))
                 self.stds = np.ma.std(dataset_train, axis=(0, 1))
@@ -452,6 +471,7 @@ class JetClassDataModule(LightningDataModule):
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
             self.tensor_conditioning_test_dl = self.tensor_conditioning_test
 
+            pylogger.info("Checking for NaNs in the data.")
             # check if particle data contains nan values
             if (
                 torch.isnan(self.tensor_train_dl).any()
@@ -467,6 +487,25 @@ class JetClassDataModule(LightningDataModule):
                 or torch.isnan(self.tensor_conditioning_test_dl).any()
             ):
                 raise ValueError("NaNs found in conditioning data!")
+
+            pylogger.info("--- Done setting up the dataloader. ---")
+            pylogger.info("Particle features: eta_rel, phi_rel, pT_rel")
+            pylogger.info("Conditioning features: %s", self.names_conditioning)
+
+            pylogger.info("--- Shape of the training data: ---")
+            pylogger.info("particle features: %s", self.tensor_train_dl.shape)
+            pylogger.info("mask: %s", self.mask_train.shape)
+            pylogger.info("conditioning features: %s", self.tensor_conditioning_train_dl.shape)
+
+            pylogger.info("--- Shape of the validation data: ---")
+            pylogger.info("particle features: %s", self.tensor_val_dl.shape)
+            pylogger.info("mask: %s", self.mask_val.shape)
+            pylogger.info("conditioning features: %s", self.tensor_conditioning_val_dl.shape)
+
+            pylogger.info("--- Shape of the test data: ---")
+            pylogger.info("particle features: %s", self.tensor_test_dl.shape)
+            pylogger.info("mask: %s", self.mask_test.shape)
+            pylogger.info("conditioning features: %s", self.tensor_conditioning_test_dl.shape)
 
             self.data_train = TensorDataset(
                 self.tensor_train_dl,
