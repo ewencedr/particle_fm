@@ -16,7 +16,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: "jet-type conditioning, using all 10 jet types, but with standardization sigma=5"
+run_note: "jet-type conditioning, using all 10 jet types"
 
 seed: 12345
 
@@ -52,8 +52,8 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
   jetclass_eval:
-    every_n_epochs: 5 # evaluate every n epochs
-    additional_eval_epochs: [1, 5, 10, 30, 50, 75] # evaluate at these epochs as well
+    every_n_epochs: 50 # evaluate every n epochs
+    additional_eval_epochs: [1, 30, 75] # evaluate at these epochs as well
     num_jet_samples: 50_000 # jet samples to generate
   jetclass_eval_test:
     num_jet_samples: 200_000 # jet samples to generate
