@@ -1,6 +1,6 @@
 _target_: src.data.jetclass_datamodule.JetClassDataModule
 
-# overall parameters
+# general parameters
 batch_size: 1024
 num_workers: 32
 pin_memory: False
