@@ -16,7 +16,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "uncond"]
 
-run_note: "Crosscheck that without conditioning everything still works"
+run_note: ""
 
 seed: 12345
 

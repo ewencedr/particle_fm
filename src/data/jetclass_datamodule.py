@@ -452,19 +452,14 @@ class JetClassDataModule(LightningDataModule):
             self.tensor_conditioning_train_dl = self.tensor_conditioning_train
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
             self.tensor_conditioning_test_dl = self.tensor_conditioning_test
-            print("First 10 values of conditioning data:")
-            print(self.tensor_conditioning_train_dl[:10])
 
             # check if conditioning data contains nan values
-            print("Checking conditioning data for NaNs...")
             if (
                 torch.isnan(self.tensor_conditioning_train_dl).any()
                 or torch.isnan(self.tensor_conditioning_val_dl).any()
                 or torch.isnan(self.tensor_conditioning_test_dl).any()
             ):
-                print("NaNs found in conditioning data!")
-            else:
-                print("GOOD NEWS: No NaNs found in conditioning data.")
+                raise ValueError("NaNs found in conditioning data!")
 
             self.data_train = TensorDataset(
                 self.tensor_train_dl,
