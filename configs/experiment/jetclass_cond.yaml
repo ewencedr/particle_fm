@@ -27,7 +27,7 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 2 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
 
 data:
