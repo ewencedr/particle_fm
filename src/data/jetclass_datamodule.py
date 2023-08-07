@@ -87,6 +87,7 @@ class JetClassDataModule(LightningDataModule):
         normalize_sigma: int = 5,
         use_custom_eta_centering: bool = True,
         remove_etadiff_tails: bool = True,
+        spectator_jet_features: list = None,
         # centering: bool = False,
         # use_calculated_base_distribution: bool = True,
     ):
@@ -118,6 +119,9 @@ class JetClassDataModule(LightningDataModule):
         self.tensor_conditioning_train: Optional[torch.Tensor] = None
         self.tensor_conditioning_val: Optional[torch.Tensor] = None
         self.tensor_conditioning_test: Optional[torch.Tensor] = None
+        self.tensor_spectator_jet_train: Optional[torch.Tensor] = None
+        self.tensor_spectator_jet_val: Optional[torch.Tensor] = None
+        self.tensor_spectator_jet_test: Optional[torch.Tensor] = None
 
     def prepare_data(self):
         """Download data if needed.
@@ -318,6 +322,30 @@ class JetClassDataModule(LightningDataModule):
                     len(labels) - n_samples_test,
                 ],
             )
+
+            if self.hparams.spectator_jet_features is not None:
+                # initialize and fill array
+                spectator_jet_features = np.zeros(
+                    (len(jet_features), len(self.hparams.spectator_jet_features))
+                )
+                for i, feat in enumerate(self.hparams.spectator_jet_features):
+                    index = get_feat_index(names_jet_features, feat)
+                    spectator_jet_features[:, i] = jet_features[:, index]
+            else:
+                spectator_jet_features = np.zeros(len(jet_features))
+
+            (
+                spectator_jet_features_train,
+                spectator_jet_features_val,
+                spectator_jet_features_test,
+            ) = np.split(
+                spectator_jet_features,
+                [
+                    len(spectator_jet_features) - (n_samples_val + n_samples_test),
+                    len(spectator_jet_features) - n_samples_test,
+                ],
+            )
+
             if self.num_cond_features == 0:
                 self.tensor_conditioning_train = torch.zeros(len(dataset_train))
                 self.tensor_conditioning_val = torch.zeros(len(dataset_val))
@@ -357,6 +385,15 @@ class JetClassDataModule(LightningDataModule):
             self.names_particle_features = names_particle_features
             self.names_jet_features = names_jet_features
             self.names_labels = names_labels
+            self.tensor_spectator_train = torch.tensor(
+                spectator_jet_features_train, dtype=torch.float32
+            )
+            self.tensor_spectator_test = torch.tensor(
+                spectator_jet_features_test, dtype=torch.float32
+            )
+            self.tensor_spectator_val = torch.tensor(
+                spectator_jet_features_val, dtype=torch.float32
+            )
 
             if self.hparams.normalize:
                 # calculate means and stds only based on the training data
