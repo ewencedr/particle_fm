@@ -352,7 +352,6 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_test = torch.zeros(len(dataset_test))
                 self.names_conditioning = None
             else:
-                print("At least one conditioning feature is used.")
                 conditioning_features, self.names_conditioning = self._handle_conditioning(
                     jet_features, names_jet_features, labels
                 )
@@ -452,6 +451,14 @@ class JetClassDataModule(LightningDataModule):
             self.tensor_conditioning_train_dl = self.tensor_conditioning_train
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
             self.tensor_conditioning_test_dl = self.tensor_conditioning_test
+
+            # check if particle data contains nan values
+            if (
+                torch.isnan(self.tensor_train_dl).any()
+                or torch.isnan(self.tensor_val_dl).any()
+                or torch.isnan(self.tensor_test_dl).any()
+            ):
+                raise ValueError("NaNs found in particle data!")
 
             # check if conditioning data contains nan values
             if (
