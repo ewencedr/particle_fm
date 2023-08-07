@@ -353,7 +353,7 @@ class JetClassDataModule(LightningDataModule):
                 self.names_conditioning = None
             else:
                 conditioning_features, self.names_conditioning = self._handle_conditioning(
-                    jet_features, names_jet_features, labels
+                    jet_features, names_jet_features, labels, names_labels
                 )
                 (conditioning_train, conditioning_val, conditioning_test) = np.split(
                     conditioning_features,
@@ -526,7 +526,13 @@ class JetClassDataModule(LightningDataModule):
         """Things to do when loading checkpoint."""
         pass
 
-    def _handle_conditioning(self, jet_data: np.array, names_jet_data: np.array, labels: np.array):
+    def _handle_conditioning(
+        self,
+        jet_data: np.array,
+        names_jet_data: np.array,
+        labels: np.array,
+        names_labels: np.array,
+    ):
         """Select the conditioning variables.
 
         Args:
@@ -534,6 +540,9 @@ class JetClassDataModule(LightningDataModule):
             names_jet_data: np.array of shape (n_features,) which contains the names of
                 the features
             labels: np.array of shape (n_jets,) which contains the labels / jet-types
+            names_labels: np.array of shape (n_jet_types,) which contains the names of
+                the jet-types (e.g. if there are three jet types: ['q', 'g', 't'], then
+                a label 0 would correspond to 'q', 1 to 'g' and 2 to 't')
         Returns:
             conditioning_data: np.array of shape (n_jets, n_conditioning_features)
             names_conditioning_data: np.array of shape (n_conditioning_features,) which
@@ -561,7 +570,7 @@ class JetClassDataModule(LightningDataModule):
 
         if self.hparams.conditioning_jet_type:
             keep_col += list(np.arange(one_hot_len))
-            names_conditioning_data += [f"jet_type_{i:.0f}" for i in categories]
+            names_conditioning_data += [f"jet_type_{names_labels[int(i)]}" for i in categories]
         if self.hparams.conditioning_pt:
             keep_col.append(get_feat_index(names_jet_data, "jet_pt") + one_hot_len - 1)
             names_conditioning_data.append("jet_pt")
