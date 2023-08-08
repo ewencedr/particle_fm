@@ -3,7 +3,7 @@ from typing import List, Tuple
 import hydra
 import pyrootutils
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
 
@@ -44,7 +44,14 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
         Tuple[dict, dict]: Dict with metrics and dict with all instantiated objects.
     """
 
-    assert cfg.ckpt_path
+    assert cfg.ckpt_path is not None, "`ckpt_path` must be provided for evaluation!"
+
+    # load config from cfg_path if provided
+    if cfg.cfg_path is not None:
+        log.info(f"Loading config from cfg_path: {cfg.cfg_path}")
+        ckpt_path = cfg.ckpt_path
+        cfg = OmegaConf.load(cfg.cfg_path)
+        cfg.ckpt_path = ckpt_path
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
