@@ -18,3 +18,6 @@ tags: ["dev"]
 
 # passing checkpoint path is necessary for evaluation
 ckpt_path: ???
+
+# cfg_path: allows to load the whole config file of a run - if None/null, the config is composed from the experiment
+cfg_path: null

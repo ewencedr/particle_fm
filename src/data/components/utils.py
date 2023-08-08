@@ -312,16 +312,24 @@ def get_pt_of_selected_multiplicities(
     """Return pt of jets with selected particle multiplicities.
 
     Args:
-        particle_data (_type_): _description_
-        selected_multiplicities (list, optional): _description_. Defaults to [20, 30, 40].
-        num_jets (int, optional): _description_. Defaults to 150.
+        particle_data (np.ndarray): Particle data of shape (num_jets, num_particles, num_features)
+        selected_multiplicities (list, optional): List of selected particle multiplicities. Defaults to [20, 30, 40].
+        num_jets (int, optional): Number of jets to consider. Defaults to 150.
 
     Returns:
-        dict: _description_
+        dict: Dict containing {selected_multiplicity: pt_selected_multiplicity} pairs
+            where pt_selected_multiplicity is a masked array of shape (num_jets, num_particles).
     """
     data = {}
     for count, selected_multiplicity in enumerate(selected_multiplicities):
+        # TODO: the line below might be wrong?
+        # with that we select particles that have the selected multiplicity or more
+        # --> is this what we want?
         particle_data_temp = particle_data[:, :selected_multiplicity, :]
+        # TODO: the line below might be critical:
+        # we have to test for pt_rel non-zero to check if a particle is masked
+        # particles with eta_rel = 0 can actually have pt_rel != 0, so those would
+        # be masked even though they are valid particles
         mask = np.ma.masked_where(
             np.count_nonzero(particle_data_temp[:, :, 0], axis=1) == selected_multiplicity,
             np.count_nonzero(particle_data_temp[:, :, 0], axis=1),
