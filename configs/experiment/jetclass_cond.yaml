@@ -16,26 +16,33 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
+run_note: "jet-type conditioning, using all 10 jet types"
+
 seed: 12345
 
 trainer:
-  min_epochs: 10
-  max_epochs: 10000
+  min_epochs: 1
+  max_epochs: 2_000
   gradient_clip_val: 0.5
 
 model:
   num_particles: 128
-  global_cond_dim: 2 # needs to be calculated when using conditioning
+  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
 
 data:
-  number_of_used_jets: 200000
+  # preprocessing
+  number_of_used_jets: 3_000_000
   use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
   remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
-  conditioning_pt: True
+  normalize: True
+  normalize_sigma: 5
+  # conditioning
+  conditioning_pt: False
   conditioning_eta: False
-  conditioning_mass: True
+  conditioning_mass: False
   conditioning_num_particles: False
+  conditioning_jet_type: True
 
 callbacks:
   ema:
@@ -44,18 +51,25 @@ callbacks:
     start_step: 0
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
+  jetclass_eval:
+    every_n_epochs: 50 # evaluate every n epochs
+    additional_eval_epochs: [1, 30, 75] # evaluate at these epochs as well
+    num_jet_samples: 50_000 # jet samples to generate
+  jetclass_eval_test:
+    num_jet_samples: 200_000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"
   #  patience: 2000
   #  mode: "min"
 
-task_name: "jetclass_flow_matching"
+task_name: "jetclass_cond_jettype"
 
 logger:
   wandb:
     tags: ${tags}
-    group: "jetclass_flow_matching"
+    group: "flow_matching_jetclass"
     name: ${task_name}
   comet:
     experiment_name: ${task_name}
+    project_name: "flow-matching"

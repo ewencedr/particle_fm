@@ -155,6 +155,9 @@ class JetClassEvaluationCallback(pl.Callback):
         elif self.ema_callback is not None and self.use_ema:
             pylogger.info("Using EMA weights for evaluation.")
 
+        # TODO: maybe add here crosscheck plots (e.g. the jet mass of different
+        # jet types to ensure the labels are not messed up etc (+ other variables))
+
     def on_train_epoch_end(self, trainer, pl_module):
         if self.fix_seed:
             # fix seed for better reproducibility and comparable results
