@@ -99,7 +99,11 @@ def instantiate_callbacks(callbacks_cfg: DictConfig, ckpt_path: str = None) -> L
     for _, cb_conf in callbacks_cfg.items():
         if isinstance(cb_conf, DictConfig) and "_target_" in cb_conf:
             log.info(f"Instantiating callback <{cb_conf._target_}>")
-            if cb_conf._target_ == "src.callbacks.jetnet_final_eval.JetNetFinalEvaluationCallback":
+            if (
+                cb_conf._target_ == "src.callbacks.jetnet_final_eval.JetNetFinalEvaluationCallback"
+                or cb_conf._target_
+                == "src.callbacks.jetclass_eval_test.JetClassTestEvaluationCallback"
+            ):
                 cb_conf.ckpt_path = ckpt_path
             callbacks.append(hydra.utils.instantiate(cb_conf))
 
