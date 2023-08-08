@@ -44,6 +44,11 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
         Tuple[dict, dict]: Dict with metrics and dict with all instantiated objects.
     """
 
+    # NOTE: some config parameters that are evaluated on runtime will be displayed
+    # incorrectly (e.g. trainer.default_root_dir will contain the time of evaluation)
+    # --> this has to be considered in the evaluation scripts (e.g. specify the
+    #     output directory relative to the checkpoint path)
+
     assert cfg.ckpt_path is not None, "`ckpt_path` must be provided for evaluation!"
 
     # load config from cfg_path if provided
