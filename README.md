@@ -147,4 +147,10 @@ During training and evaluation, metrics and plots can be logged via comet and wa
 python src/eval.py experiment=experiment_name.yaml ckpt_path=checkpoint_path
 ```
 
+You can also specify the config file that was saved at the beginning of the training
+
+```bash
+python src/eval.py cfg_path=<cfg_file_path> ckpt_path=<checkpoint_path>
+```
+
 Notebooks are available to quickly train, evaluate models and create plots.
