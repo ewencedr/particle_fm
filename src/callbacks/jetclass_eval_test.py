@@ -155,6 +155,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
             torch.manual_seed(9999)
 
         # load conditioning data if provided
+        # TODO: when to use this?
         if self.cond_path is not None:
             with h5py.File(self.cond_path) as f:
                 pt_c = f["pt"][:]
@@ -230,9 +231,11 @@ class JetClassTestEvaluationCallback(pl.Callback):
         np.save(full_path, data)
 
         # Wasserstein distances
+        pylogger.info("Calculating Wasserstein distances.")
         metrics = calculate_all_wasserstein_metrics(background_data, data, **self.w_dist_config)
 
         # Prepare Data for Plotting
+        pylogger.info("Preparing data for plotting.")
         data_plotting = data[:num_plot_samples]
         plot_prep_config = {
             "calculate_efps" if key == "plot_efps" else key: value
@@ -263,7 +266,8 @@ class JetClassTestEvaluationCallback(pl.Callback):
         )
 
         # Plotting
-        plot_name = f"final_plot{self.suffix}"
+        pylogger.info("Plotting distributions.")
+        plot_name = f"final_plot_all_jet_types_{self.suffix}"
         img_path = "/".join(ckpt.split("/")[:-2]) + "/"
         plot_data(
             particle_data=np.array([data_plotting]),
@@ -283,6 +287,69 @@ class JetClassTestEvaluationCallback(pl.Callback):
             close_fig=True,
             **self.plot_config,
         )
+
+        # If there are multiple jet types, plot them separately
+        jet_types_dict = {
+            var_name: i
+            for i, var_name in enumerate(trainer.datamodule.names_conditioning)
+            if "jet_type" in var_name
+        }
+        pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
+
+        if len(jet_types_dict) > 0:
+            pylogger.info("Plotting jet types separately")
+            for jet_type, index in jet_types_dict.items():
+                pylogger.info(f"Plotting jet type {jet_type}")
+                mask_this_jet_type_sim = background_cond[:, index] == 1
+                # TODO: check if this still works once we use generated conditioning
+                mask_this_jet_type_gen = cond[:, index] == 1
+                (
+                    jet_data_this_jet_type,
+                    efps_values_this_jet_type,
+                    pt_selected_particles_this_jet_type,
+                    pt_selected_multiplicities_this_jet_type,
+                ) = prepare_data_for_plotting(
+                    np.array([data_plotting[mask_this_jet_type_gen]]), **plot_prep_config
+                )
+
+                (
+                    jet_data_this_jet_type_sim,
+                    efps_this_jet_type_sim,
+                    pt_selected_particles_this_jet_type_sim,
+                    pt_selected_multiplicities_this_jet_type_sim,
+                ) = prepare_data_for_plotting(
+                    [background_data[mask_this_jet_type_sim]],
+                    **plot_prep_config,
+                )
+                (
+                    jet_data_this_jet_type_sim,
+                    efps_this_jet_type_sim,
+                    pt_selected_particles_this_jet_type_sim,
+                ) = (
+                    jet_data_this_jet_type_sim[0],
+                    efps_this_jet_type_sim[0],
+                    pt_selected_particles_this_jet_type_sim[0],
+                )
+
+                plot_name = f"final_plot_{jet_type}_{self.suffix}"
+                plot_data(
+                    particle_data=np.array([data_plotting[mask_this_jet_type_gen]]),
+                    sim_data=background_data[mask_this_jet_type_sim],
+                    jet_data_sim=jet_data_this_jet_type_sim,
+                    jet_data=jet_data_this_jet_type,
+                    efps_sim=efps_this_jet_type_sim,
+                    efps_values=efps_values_this_jet_type,
+                    num_samples=-1,
+                    pt_selected_particles=pt_selected_particles_this_jet_type,
+                    pt_selected_multiplicities=pt_selected_multiplicities_this_jet_type,
+                    pt_selected_particles_sim=pt_selected_particles_this_jet_type_sim,
+                    pt_selected_multiplicities_sim=pt_selected_multiplicities_this_jet_type_sim,
+                    save_fig=True,
+                    save_folder=img_path,
+                    save_name=plot_name,
+                    close_fig=True,
+                    **self.plot_config,
+                )
 
         if self.evaluate_substructure:
             substructure_path = "/".join(ckpt.split("/")[:-2]) + "/"
