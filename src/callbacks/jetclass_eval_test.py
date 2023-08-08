@@ -185,58 +185,56 @@ class JetClassTestEvaluationCallback(pl.Callback):
 
         # Get background data for plotting and calculating Wasserstein distances
         if self.dataset == "test":
-            background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
-            background_mask = np.array(trainer.datamodule.mask_test)[: self.num_jet_samples]
-            background_cond = np.array(trainer.datamodule.tensor_conditioning_test)[
+            data_sim = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
+            mask_sim = np.array(trainer.datamodule.mask_test)[: self.num_jet_samples]
+            cond_sim = np.array(trainer.datamodule.tensor_conditioning_test)[
                 : self.num_jet_samples
             ]
         elif self.dataset == "val":
-            background_data = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]
-            background_mask = np.array(trainer.datamodule.mask_val)[: self.num_jet_samples]
-            background_cond = np.array(trainer.datamodule.tensor_conditioning_val)[
-                : self.num_jet_samples
-            ]
+            data_sim = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]
+            mask_sim = np.array(trainer.datamodule.mask_val)[: self.num_jet_samples]
+            cond_sim = np.array(trainer.datamodule.tensor_conditioning_val)[: self.num_jet_samples]
         if self.cond_path is not None:
-            mask = mask_c[: self.num_jet_samples]
-            cond = cond_c[: self.num_jet_samples]
+            mask_gen = mask_c[: self.num_jet_samples]
+            cond_gen = cond_c[: self.num_jet_samples]
         else:
-            mask = background_mask
-            cond = background_cond
+            mask_gen = mask_sim
+            cond_gen = cond_sim
 
         # maximum number of samples to plot is the number of samples in the dataset
-        num_plot_samples = len(background_data)
+        num_plot_samples = len(data_sim)
 
         if self.datasets_multiplier > 1:
-            mask = np.repeat(mask, self.datasets_multiplier, axis=0)
-            cond = np.repeat(cond, self.datasets_multiplier, axis=0)
+            mask_gen = np.repeat(mask_gen, self.datasets_multiplier, axis=0)
+            cond_gen = np.repeat(cond_gen, self.datasets_multiplier, axis=0)
 
         # Generate data
-        data, generation_time = generate_data(
+        data_gen, generation_time = generate_data(
             model=model,
-            num_jet_samples=len(mask),
-            cond=torch.tensor(cond),
+            num_jet_samples=len(mask_gen),
+            cond=torch.tensor(cond_gen),
             variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
-            mask=torch.tensor(mask),
+            mask=torch.tensor(mask_gen),
             normalized_data=trainer.datamodule.hparams.normalize,
             means=trainer.datamodule.means,
             stds=trainer.datamodule.stds,
             **self.generation_config,
         )
-        pylogger.info(f"Generated {len(data)} samples in {generation_time:.0f} seconds.")
+        pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
 
         # save generated data
         path = "/".join(ckpt.split("/")[:-2]) + "/"
         file_name = f"final_generated_data{self.suffix}.npy"
         full_path = path + file_name
-        np.save(full_path, data)
+        np.save(full_path, data_gen)
 
         # Wasserstein distances
         pylogger.info("Calculating Wasserstein distances.")
-        metrics = calculate_all_wasserstein_metrics(background_data, data, **self.w_dist_config)
+        metrics = calculate_all_wasserstein_metrics(data_sim, data_gen, **self.w_dist_config)
 
         # Prepare Data for Plotting
         pylogger.info("Preparing data for plotting.")
-        data_plotting = data[:num_plot_samples]
+        data_gen_plotting = data_gen[:num_plot_samples]
         plot_prep_config = {
             "calculate_efps" if key == "plot_efps" else key: value
             for key, value in self.plot_config.items()
@@ -244,11 +242,11 @@ class JetClassTestEvaluationCallback(pl.Callback):
         }
 
         (
-            jet_data,
-            efps_values,
-            pt_selected_particles,
-            pt_selected_multiplicities,
-        ) = prepare_data_for_plotting(np.array([data_plotting]), **plot_prep_config)
+            jet_data_gen,
+            efps_values_gen,
+            pt_selected_particles_gen,
+            pt_selected_multiplicities_gen,
+        ) = prepare_data_for_plotting(np.array([data_gen_plotting]), **plot_prep_config)
 
         (
             jet_data_sim,
@@ -256,7 +254,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
             pt_selected_particles_sim,
             pt_selected_multiplicities_sim,
         ) = prepare_data_for_plotting(
-            [background_data],
+            [data_sim],
             **plot_prep_config,
         )
         jet_data_sim, efps_sim, pt_selected_particles_sim = (
@@ -270,15 +268,15 @@ class JetClassTestEvaluationCallback(pl.Callback):
         plot_name = f"final_plot_all_jet_types_{self.suffix}"
         img_path = "/".join(ckpt.split("/")[:-2]) + "/"
         plot_data(
-            particle_data=np.array([data_plotting]),
-            sim_data=background_data,
+            particle_data=np.array([data_gen_plotting]),
+            sim_data=data_sim,
             jet_data_sim=jet_data_sim,
-            jet_data=jet_data,
+            jet_data=jet_data_gen,
             efps_sim=efps_sim,
-            efps_values=efps_values,
+            efps_values=efps_values_gen,
             num_samples=num_plot_samples,
-            pt_selected_particles=pt_selected_particles,
-            pt_selected_multiplicities=pt_selected_multiplicities,
+            pt_selected_particles=pt_selected_particles_gen,
+            pt_selected_multiplicities=pt_selected_multiplicities_gen,
             pt_selected_particles_sim=pt_selected_particles_sim,
             pt_selected_multiplicities_sim=pt_selected_multiplicities_sim,
             save_fig=True,
@@ -300,16 +298,16 @@ class JetClassTestEvaluationCallback(pl.Callback):
             pylogger.info("Plotting jet types separately")
             for jet_type, index in jet_types_dict.items():
                 pylogger.info(f"Plotting jet type {jet_type}")
-                mask_this_jet_type_sim = background_cond[:, index] == 1
+                mask_this_jet_type_sim = cond_sim[:, index] == 1
                 # TODO: check if this still works once we use generated conditioning
-                mask_this_jet_type_gen = cond[:, index] == 1
+                mask_this_jet_type_gen = cond_gen[:, index] == 1
                 (
                     jet_data_this_jet_type,
                     efps_values_this_jet_type,
                     pt_selected_particles_this_jet_type,
                     pt_selected_multiplicities_this_jet_type,
                 ) = prepare_data_for_plotting(
-                    np.array([data_plotting[mask_this_jet_type_gen]]), **plot_prep_config
+                    np.array([data_gen_plotting[mask_this_jet_type_gen]]), **plot_prep_config
                 )
 
                 (
@@ -318,7 +316,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                     pt_selected_particles_this_jet_type_sim,
                     pt_selected_multiplicities_this_jet_type_sim,
                 ) = prepare_data_for_plotting(
-                    [background_data[mask_this_jet_type_sim]],
+                    [data_sim[mask_this_jet_type_sim]],
                     **plot_prep_config,
                 )
                 (
@@ -333,8 +331,8 @@ class JetClassTestEvaluationCallback(pl.Callback):
 
                 plot_name = f"final_plot_{jet_type}_{self.suffix}"
                 plot_data(
-                    particle_data=np.array([data_plotting[mask_this_jet_type_gen]]),
-                    sim_data=background_data[mask_this_jet_type_sim],
+                    particle_data=np.array([data_gen_plotting[mask_this_jet_type_gen]]),
+                    sim_data=data_sim[mask_this_jet_type_sim],
                     jet_data_sim=jet_data_this_jet_type_sim,
                     jet_data=jet_data_this_jet_type,
                     efps_sim=efps_this_jet_type_sim,
@@ -357,7 +355,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
             substructure_full_path = substructure_path + substructure_file_name
 
             # calculate substructure for generated data
-            dump_hlvs(data, substructure_full_path, plot=False)
+            dump_hlvs(data_gen, substructure_full_path, plot=False)
 
             substructure_path_jetclass = "/".join(ckpt.split("/")[:-2]) + "/"
             substructure_file_name_jetclass = f"substructure_jetclass{self.suffix}"
@@ -366,7 +364,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
             )
 
             # calculate substructure for reference data
-            dump_hlvs(background_data, substructure_full_path_jetclass, plot=False)
+            dump_hlvs(data_sim, substructure_full_path_jetclass, plot=False)
 
             # load substructure for model generated data
             keys = []
