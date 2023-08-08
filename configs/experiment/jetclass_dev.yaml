@@ -59,7 +59,7 @@ callbacks:
     additional_eval_epochs: [] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
   jetclass_eval_test:
-    num_jet_samples: 100 # jet samples to generate
+    num_jet_samples: 1_000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"
