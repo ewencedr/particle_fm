@@ -16,7 +16,10 @@ spectator_jet_features:
 
 
 # files and jet types to use
-data_dir: /beegfs/desy/user/birkjosc/datasets/jetclass_npz
+data_dir: /beegfs/desy/user/birkjosc/datasets/jetclass_npz_dev
+train_file: ${data.data_dir}/train_100M/merged_standardized.h5
+val_file: ${data.data_dir}/val_5M/merged_standardized.h5
+test_file: ${data.data_dir}/test_20M/merged_standardized.h5
 
 jet_types:
   ttbar:

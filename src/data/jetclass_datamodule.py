@@ -1,6 +1,8 @@
 """PyTorch Lightning DataModule for JetClass dataset."""
+import os
 from typing import Any, Dict, Optional
 
+import h5py
 import numpy as np
 import torch
 from pytorch_lightning import LightningDataModule
@@ -66,6 +68,7 @@ class JetClassDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str,
+        filename_dict: dict,
         jet_types: dict = None,
         number_of_used_jets: int = None,
         val_fraction: float = 0.15,
@@ -92,9 +95,6 @@ class JetClassDataModule(LightningDataModule):
         # use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
-
-        if jet_types is None:
-            raise ValueError("`jet_types` must be specified in the datamodule.")
 
         # TODO: this doesn't work yet...
         self.hparams["jet_types_list"] = list(jet_types.keys())
@@ -149,70 +149,34 @@ class JetClassDataModule(LightningDataModule):
         careful not to execute things like random split twice!
         """
 
-        # load and split datasets only if not loaded already
+        if (
+            "train" not in self.hparams.filename_dict
+            or "val" not in self.hparams.filename_dict
+            or "test" not in self.hparams.filename_dict
+        ):
+            raise ValueError("The filename_dict must contain the keys 'train', 'val' and 'test'.")
+
         if not self.data_train and not self.data_val and not self.data_test:
-            particle_features_list = []
-            jet_features_list = []
-            labels_list = []
+            arrays_dict = {}
+            names_dict = {}
 
-            names_particle_features_previous = None
-            names_jet_features_previous = None
-            names_labels_previous = None
-            filename_previous = None
+            for split, filename in self.hparams.filename_dict.items():
+                if not os.path.isfile(filename):
+                    raise FileNotFoundError(f"File {filename} does not exist.")
 
-            if len(self.hparams.jet_types) > 1 and not self.hparams.conditioning_jet_type:
-                raise ValueError(
-                    "Multiple jet types are specified in the datamodule, but "
-                    "`conditioning_jet_type` is set to False."
-                )
-            # data loading
-            for jet_type, jet_type_dict in self.hparams.jet_types.items():
-                for filename in jet_type_dict["files"]:
-                    pylogger.info(f"Loading {filename}")
-                    npfile = np.load(filename, allow_pickle=True)
-                    particle_features_list.append(npfile["part_features"])
-                    jet_features_list.append(npfile["jet_features"])
-                    labels_list.append(npfile["labels"])
+                with h5py.File(filename, "r") as f:
+                    arrays_dict[split] = {key: np.array(f[key]) for key in f.keys()}
+                    names_dict[split] = {
+                        key: f[key].attrs[f"names_{key}"] for key in f.keys() if "mask" not in key
+                    }
 
-                    # Check that the labels are in the same order for all files
-                    names_particle_features = npfile["names_part_features"]
-                    names_jet_features = npfile["names_jet_features"]
-                    names_labels = npfile["names_labels"]
-
-                    if (
-                        names_particle_features_previous is None
-                        and names_jet_features_previous is None
-                        and names_labels_previous is None
-                    ):
-                        # first file
-                        pass
-                    else:
-                        if not np.all(names_particle_features == names_particle_features_previous):
-                            raise ValueError(
-                                "Names of particle features are not the same for all files."
-                                f"\n{filename_previous}: {names_particle_features_previous}"
-                                f"\n{filename}: {names_particle_features}"
-                            )
-                        if not np.all(names_jet_features == names_jet_features_previous):
-                            raise ValueError(
-                                "Names of jet features are not the same for all files."
-                                f"\n{filename_previous}: {names_jet_features_previous}"
-                                f"\n{filename}: {names_jet_features}"
-                            )
-                        if not np.all(names_labels == names_labels_previous):
-                            raise ValueError(
-                                "Names of labels are not the same for all files."
-                                f"\n{filename_previous}: {names_labels_previous}"
-                                f"\n{filename}: {names_labels}"
-                            )
-                    names_particle_features_previous = names_particle_features
-                    names_jet_features_previous = names_jet_features
-                    names_labels_previous = names_labels
-                    filename_previous = filename
-
-            particle_features = np.concatenate(particle_features_list)
-            jet_features = np.concatenate(jet_features_list)
-            labels_one_hot = np.concatenate(labels_list)
+            particle_features = arrays_dict["train"]["part_features"]
+            particles_mask = arrays_dict["train"]["part_mask"]
+            jet_features = arrays_dict["train"]["jet_features"]
+            labels_one_hot = arrays_dict["train"]["labels"]
+            names_particle_features = names_dict["train"]["part_features"]
+            names_jet_features = names_dict["train"]["jet_features"]
+            names_labels = names_dict["train"]["labels"]
 
             labels = np.argmax(labels_one_hot, axis=1)
 
@@ -220,6 +184,7 @@ class JetClassDataModule(LightningDataModule):
             np.random.seed(42)
             permutation = np.random.permutation(len(labels))
             particle_features = particle_features[permutation]
+            particles_mask = particles_mask[permutation]
             jet_features = jet_features[permutation]
             labels = labels[permutation]
 
@@ -240,6 +205,7 @@ class JetClassDataModule(LightningDataModule):
                         f"out of {len(jet_features)}."
                     )
                     particle_features = particle_features[: self.hparams.number_of_used_jets]
+                    particles_mask = particles_mask[: self.hparams.number_of_used_jets]
                     jet_features = jet_features[: self.hparams.number_of_used_jets]
                     labels = labels[: self.hparams.number_of_used_jets]
                 else:
@@ -288,7 +254,7 @@ class JetClassDataModule(LightningDataModule):
                 particle_eta_minus_jet_eta = (
                     particle_features[:, :, index_part_eta] - jet_eta_repeat
                 )
-                mask = (particle_features[:, :, 0] != 0).astype(int)
+                mask = (particles_mask[:, :] != 0).astype(int)
                 particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
 
             if self.hparams.remove_etadiff_tails:
@@ -308,7 +274,7 @@ class JetClassDataModule(LightningDataModule):
             # Note: numpy masks are True for masked values
             # Important: use pt_rel for masking, because eta_rel and phi_rel can be zero
             # even though it is a valid track
-            particle_mask_zero_entries = (particle_features[:, :, 2] == 0)[..., np.newaxis]
+            particle_mask_zero_entries = (particles_mask == 0)[..., np.newaxis]
             ma_particle_features = np.ma.masked_array(
                 particle_features,
                 mask=np.repeat(
