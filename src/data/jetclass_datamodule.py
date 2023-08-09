@@ -378,34 +378,15 @@ class JetClassDataModule(LightningDataModule):
                 spectator_jet_features_val, dtype=torch.float32
             )
 
-            if self.hparams.normalize:
-                pylogger.info("Standardizing the particle features.")
-                # calculate means and stds only based on the training data
-                self.means = np.ma.mean(dataset_train, axis=(0, 1))
-                self.stds = np.ma.std(dataset_train, axis=(0, 1))
-                norm_kwargs = {
-                    "mean": self.means,
-                    "std": self.stds,
-                    "sigma": self.hparams.normalize_sigma,
-                }
+            self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
+            self.tensor_test_dl = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
+            self.tensor_val_dl = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
 
-                # normalize the data
-                norm_dataset_train = normalize_tensor(np.ma.copy(dataset_train), **norm_kwargs)
-                norm_dataset_val = normalize_tensor(np.ma.copy(dataset_val), **norm_kwargs)
-                norm_dataset_test = normalize_tensor(np.ma.copy(dataset_test), **norm_kwargs)
-
-                self.tensor_train_dl = torch.tensor(
-                    norm_dataset_train[:, :, :3], dtype=torch.float32
-                )
-                self.tensor_val_dl = torch.tensor(norm_dataset_val[:, :, :3], dtype=torch.float32)
-                self.tensor_test_dl = torch.tensor(
-                    norm_dataset_test[:, :, :3], dtype=torch.float32
-                )
-
-            else:
-                self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
-                self.tensor_test_dl = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
-                self.tensor_val_dl = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
+            if self.hparams.normalize_sigma:
+                sigma = self.hparams.normalize_sigma
+                self.tensor_train_dl = self.tensor_train_dl * sigma
+                self.tensor_test_dl = self.tensor_test_dl * sigma
+                self.tensor_val_dl = self.tensor_val_dl * sigma
 
             self.tensor_conditioning_train_dl = self.tensor_conditioning_train
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
