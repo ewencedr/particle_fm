@@ -215,47 +215,17 @@ class JetClassDataModule(LightningDataModule):
                         "--> Using all available jets."
                     )
 
-            # NOTE: everything below here assumes that the particle features
-            # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
-
             pylogger.info("Using eta_rel, phi_rel, pt_rel as particle features.")
             # check if the particle features are in the correct order
-            index_part_deta = get_feat_index(names_particle_features, "part_deta")
-            assert index_part_deta == 0, "part_deta is not the first feature"
+            index_part_etarel = get_feat_index(names_particle_features, "part_etarel")
             index_part_dphi = get_feat_index(names_particle_features, "part_dphi")
-            assert index_part_dphi == 1, "part_dphi is not the second feature"
-            index_part_pt = get_feat_index(names_particle_features, "part_pt")
-            assert index_part_pt == 2, "part_pt is not the third feature"
+            index_part_ptrel = get_feat_index(names_particle_features, "part_ptrel")
 
-            # divide particle pt by jet pt
-            index_jet_pt = get_feat_index(names_jet_features, "jet_pt")
-            particle_features[..., index_part_pt] /= np.expand_dims(
-                jet_features[:, index_jet_pt], axis=1
-            )
-
-            # instead of using the part_deta variable, use part_eta - jet_eta
-            if self.hparams.use_custom_eta_centering:
-                pylogger.info("Using custom eta centering -> calculating particle_eta - jet_eta")
-                if "part_eta" not in names_particle_features:
-                    raise ValueError(
-                        "`use_custom_eta_centering` is True, but `part_eta` is not in "
-                        "in the dataset --> check the dataset"
-                    )
-                if "jet_eta" not in names_jet_features:
-                    raise ValueError(
-                        "`use_custom_eta_centering` is True, but `jet_eta` is not in "
-                        "in the dataset --> check the dataset"
-                    )
-                index_jet_eta = get_feat_index(names_jet_features, "jet_eta")
-                jet_eta_repeat = jet_features[:, index_jet_eta][:, np.newaxis].repeat(
-                    particle_features.shape[1], 1
-                )
-                index_part_eta = get_feat_index(names_particle_features, "part_eta")
-                particle_eta_minus_jet_eta = (
-                    particle_features[:, :, index_part_eta] - jet_eta_repeat
-                )
-                mask = (particles_mask[:, :] != 0).astype(int)
-                particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
+            particle_features = particle_features[
+                :, :, [index_part_etarel, index_part_dphi, index_part_ptrel]
+            ]
+            # NOTE: everything below here assumes that the particle features
+            # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
 
             if self.hparams.remove_etadiff_tails:
                 pylogger.info("Removing eta tails -> removing particles with |eta_rel| > 1")
@@ -265,9 +235,6 @@ class JetClassDataModule(LightningDataModule):
                 assert (
                     np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0
                 ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
-
-            # from here on only use the first three features (eta_rel, phi_rel, pt_rel)
-            particle_features = particle_features[:, :, :3]
 
             # convert to masked array (more convenient for normalization later on, because
             # the mask is unaffected)
