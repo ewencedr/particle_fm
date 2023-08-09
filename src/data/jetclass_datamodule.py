@@ -193,6 +193,7 @@ class JetClassDataModule(LightningDataModule):
             # NOTE: everything below here assumes that the particle features
             # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
             indices_etaphiptrel = [index_part_etarel, index_part_dphi, index_part_ptrel]
+            names_particle_features = names_particle_features[indices_etaphiptrel]
 
             np.random.seed(332211)
             permutation_train = np.random.permutation(len(arrays_dict["train"]["jet_features"]))
@@ -276,14 +277,11 @@ class JetClassDataModule(LightningDataModule):
                 conditioning_test, _ = self._handle_conditioning(
                     jet_features_test, names_jet_features, names_labels
                 )
-                self.tensor_conditioning_train = torch.tensor(
-                    conditioning_train, dtype=torch.float32
-                )  # noqa: E501
+                # fmt: off
+                self.tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)  # noqa: E501
                 self.tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
-                self.tensor_conditioning_test = torch.tensor(
-                    conditioning_test, dtype=torch.float32
-                )  # noqa: E501
-                # nan-fine until here
+                self.tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)  # noqa: E501
+                # fmt: on
 
             # invert the masks from the masked arrays (numpy ma masks are True for masked values)
             self.mask_train = torch.tensor(mask_train, dtype=torch.float32)
