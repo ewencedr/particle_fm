@@ -202,6 +202,8 @@ class JetClassDataModule(LightningDataModule):
             mask_train = arrays_dict["train"]["part_mask"][..., np.newaxis][permutation_train]
             jet_features_train = arrays_dict["train"]["jet_features"][permutation_train]
             labels_train = arrays_dict["train"]["labels"][permutation_train]
+            part_stds_train = arrays_dict["train"]["part_stds"][indices_etaphiptrel]
+            part_means_train = arrays_dict["train"]["part_means"][indices_etaphiptrel]
 
             np.random.seed(332211)
             permutation_val = np.random.permutation(len(arrays_dict["val"]["jet_features"]))
@@ -287,9 +289,9 @@ class JetClassDataModule(LightningDataModule):
             self.mask_train = torch.tensor(mask_train, dtype=torch.float32)
             self.mask_test = torch.tensor(mask_test, dtype=torch.float32)
             self.mask_val = torch.tensor(mask_val, dtype=torch.float32)
-            self.tensor_train = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
-            self.tensor_test = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
-            self.tensor_val = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
+            self.tensor_train = torch.tensor(dataset_train, dtype=torch.float32)
+            self.tensor_test = torch.tensor(dataset_test, dtype=torch.float32)
+            self.tensor_val = torch.tensor(dataset_val, dtype=torch.float32)
             self.labels_train = torch.tensor(labels_train, dtype=torch.float32)
             self.labels_test = torch.tensor(labels_test, dtype=torch.float32)
             self.labels_val = torch.tensor(labels_val, dtype=torch.float32)
@@ -297,15 +299,25 @@ class JetClassDataModule(LightningDataModule):
             self.names_jet_features = names_jet_features
             self.names_labels = names_labels
 
-            self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
-            self.tensor_test_dl = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
-            self.tensor_val_dl = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
-
-            if self.hparams.normalize_sigma:
+            sigma = 1
+            if isinstance(self.hparams.normalize_sigma, (int, float)):
+                pylogger.info("Scaling data with sigma = %s", self.hparams.normalize_sigma)
                 sigma = self.hparams.normalize_sigma
-                self.tensor_train_dl = self.tensor_train_dl * sigma
-                self.tensor_test_dl = self.tensor_test_dl * sigma
-                self.tensor_val_dl = self.tensor_val_dl * sigma
+            self.tensor_train_dl = self.tensor_train * sigma
+            self.tensor_test_dl = self.tensor_test * sigma
+            self.tensor_val_dl = self.tensor_val * sigma
+
+            # reverse standardization for those tensors
+            for i in range(len(indices_etaphiptrel)):
+                self.tensor_train[:, :, i] = (
+                    self.tensor_train[:, :, i] * part_stds_train[i]
+                ) + part_means_train[i]
+                self.tensor_test[:, :, i] = (
+                    self.tensor_test[:, :, i] * part_stds_train[i]
+                ) + part_means_train[i]
+                self.tensor_val[:, :, i] = (
+                    self.tensor_val[:, :, i] * part_stds_train[i]
+                ) + part_means_train[i]
 
             self.tensor_conditioning_train_dl = self.tensor_conditioning_train
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
