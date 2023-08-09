@@ -401,32 +401,6 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_test_dl = torch.tensor(
                     norm_dataset_test[:, :, :3], dtype=torch.float32
                 )
-                # if self.num_cond_features > 0:
-                #     means_cond = torch.mean(self.tensor_conditioning_train, axis=0)
-                #     stds_cond = torch.std(self.tensor_conditioning_train, axis=0)
-                #     # Train
-                #     self.tensor_conditioning_train_dl = normalize_tensor(
-                #         self.tensor_conditioning_train,
-                #         means_cond,
-                #         stds_cond,
-                #         sigma=self.hparams.normalize_sigma,
-                #     )
-
-                #     # Validation
-                #     self.tensor_conditioning_val_dl = normalize_tensor(
-                #         self.tensor_conditioning_val,
-                #         means_cond,
-                #         stds_cond,
-                #         sigma=self.hparams.normalize_sigma,
-                #     )
-
-                #     # Test
-                #     self.tensor_conditioning_test_dl = normalize_tensor(
-                #         self.tensor_conditioning_test,
-                #         means_cond,
-                #         stds_cond,
-                #         sigma=self.hparams.normalize_sigma,
-                #     )
 
             else:
                 self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
