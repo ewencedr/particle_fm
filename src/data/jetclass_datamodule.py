@@ -227,14 +227,14 @@ class JetClassDataModule(LightningDataModule):
             # NOTE: everything below here assumes that the particle features
             # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
 
-            if self.hparams.remove_etadiff_tails:
-                pylogger.info("Removing eta tails -> removing particles with |eta_rel| > 1")
-                # remove/zero-padd particles with |eta - jet_eta| > 1
-                mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
-                particle_features[:, :, :][mask_etadiff_larger_1] = 0
-                assert (
-                    np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0
-                ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
+            # if self.hparams.remove_etadiff_tails:
+            #     pylogger.info("Removing eta tails -> removing particles with |eta_rel| > 1")
+            #     # remove/zero-padd particles with |eta - jet_eta| > 1
+            #     mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
+            #     particle_features[:, :, :][mask_etadiff_larger_1] = 0
+            #     assert (
+            #         np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0
+            #     ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
 
             # convert to masked array (more convenient for normalization later on, because
             # the mask is unaffected)
