@@ -276,9 +276,9 @@ class JetClassDataModule(LightningDataModule):
             # reverse standardization for those tensors
             # The "standard tensors" (i.e. self.tensor_train, ...) are not standardized
             # (only the ones with the "_dl" suffix are standardized)
-            self.tensor_train = tensor_train
-            self.tensor_test = tensor_test
-            self.tensor_val = tensor_val
+            self.tensor_train = torch.clone(tensor_train)
+            self.tensor_test = torch.clone(tensor_test)
+            self.tensor_val = torch.clone(tensor_val)
 
             # revert standardization for those tensors
             for i in range(len(indices_etaphiptrel)):
