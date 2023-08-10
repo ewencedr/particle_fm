@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from src.utils.pylogger import get_pylogger
 
-from .components import normalize_tensor, one_hot_encode
+from .components import one_hot_encode
 
 pylogger = get_pylogger("JetClassDataModule")
 
