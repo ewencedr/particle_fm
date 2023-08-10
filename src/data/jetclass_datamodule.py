@@ -69,7 +69,7 @@ class JetClassDataModule(LightningDataModule):
         self,
         data_dir: str,
         filename_dict: dict,
-        # jet_types: dict = None,
+        used_jet_types: list = None,
         number_of_used_jets: int = None,
         val_fraction: float = 0.15,
         test_fraction: float = 0.15,
@@ -211,6 +211,44 @@ class JetClassDataModule(LightningDataModule):
             mask_test = arrays_dict["test"]["part_mask"][..., np.newaxis][permutation_test]
             jet_features_test = arrays_dict["test"]["jet_features"][permutation_test]
             labels_test = arrays_dict["test"]["labels"][permutation_test]
+
+            # Select only the jet types that are used
+            jet_types_mapping = {label.split("_")[-1]: i for i, label in enumerate(names_labels)}
+
+            if self.hparams.used_jet_types is None:
+                self.hparams.used_jet_types = list(jet_types_mapping.keys())
+            else:
+                # check if all used jet types are in the mapping
+                for jet_type in self.hparams.used_jet_types:
+                    if jet_type not in jet_types_mapping.keys():
+                        raise ValueError(
+                            f"Jet type {jet_type} not in jet_types_mapping."
+                            f"Please choose from {list(jet_types_mapping.keys())}."
+                        )
+            pylogger.info(f"Using jet types: {self.hparams.used_jet_types}")
+            # select only the jets of the used jet types
+            # fmt: off
+            index_jet_type = get_feat_index(names_jet_features, "jet_type")
+            used_jet_types_values = [jet_types_mapping[jet_type] for jet_type in self.hparams.used_jet_types]
+            jet_types_mask_train = np.isin(jet_features_train[:, index_jet_type], used_jet_types_values)  # noqa: E501
+            jet_types_mask_val = np.isin(jet_features_val[:, index_jet_type], used_jet_types_values)  # noqa: E501
+            jet_types_mask_test = np.isin(jet_features_test[:, index_jet_type], used_jet_types_values)  # noqa: E501
+            # fmt: on
+
+            dataset_train = dataset_train[jet_types_mask_train]
+            mask_train = mask_train[jet_types_mask_train]
+            jet_features_train = jet_features_train[jet_types_mask_train]
+            labels_train = labels_train[jet_types_mask_train]
+
+            dataset_val = dataset_val[jet_types_mask_val]
+            mask_val = mask_val[jet_types_mask_val]
+            jet_features_val = jet_features_val[jet_types_mask_val]
+            labels_val = labels_val[jet_types_mask_val]
+
+            dataset_test = dataset_test[jet_types_mask_test]
+            mask_test = mask_test[jet_types_mask_test]
+            jet_features_test = jet_features_test[jet_types_mask_test]
+            labels_test = labels_test[jet_types_mask_test]
 
             if self.hparams.number_of_used_jets is not None:
                 dataset_train = dataset_train[: self.hparams.number_of_used_jets]
