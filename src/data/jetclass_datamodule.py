@@ -69,7 +69,7 @@ class JetClassDataModule(LightningDataModule):
         self,
         data_dir: str,
         filename_dict: dict,
-        jet_types: dict = None,
+        # jet_types: dict = None,
         number_of_used_jets: int = None,
         val_fraction: float = 0.15,
         test_fraction: float = 0.15,
@@ -97,7 +97,7 @@ class JetClassDataModule(LightningDataModule):
         super().__init__()
 
         # TODO: this doesn't work yet...
-        self.hparams["jet_types_list"] = list(jet_types.keys())
+        # self.hparams["jet_types_list"] = list(jet_types.keys())
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
@@ -169,8 +169,6 @@ class JetClassDataModule(LightningDataModule):
                     names_dict[split] = {
                         key: f[key].attrs[f"names_{key}"] for key in f.keys() if "mask" not in key
                     }
-
-            pylogger.info("Using eta_rel, phi_rel, pt_rel as particle features.")
 
             names_particle_features = names_dict["train"]["part_features"]
             names_jet_features = names_dict["train"]["jet_features"]
@@ -297,6 +295,8 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_train_dl = tensor_train * sigma
                 self.tensor_test_dl = tensor_test * sigma
                 self.tensor_val_dl = tensor_val * sigma
+                self.means = part_means_train
+                self.stds = part_stds_train
 
             # TODO: add here the corresponding part in case we standardize the
             # conditioning data
@@ -354,7 +354,7 @@ class JetClassDataModule(LightningDataModule):
                 )
 
             pylogger.info("--- Done setting up the dataloader. ---")
-            pylogger.info("Particle features: eta_rel, phi_rel, pT_rel")
+            pylogger.info("Particle features: %s", self.names_particle_features)
             pylogger.info("Conditioning features: %s", self.names_conditioning)
 
             pylogger.info("--- Shape of the training data: ---")
