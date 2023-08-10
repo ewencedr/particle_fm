@@ -265,7 +265,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
 
         # Plotting
         pylogger.info("Plotting distributions.")
-        plot_name = f"final_plot_all_jet_types_{self.suffix}"
+        plot_name = f"final_plot_all_jet_types{self.suffix}"
         img_path = "/".join(ckpt.split("/")[:-2]) + "/"
         plot_data(
             particle_data=np.array([data_gen_plotting]),
@@ -329,7 +329,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                     pt_selected_particles_this_jet_type_sim[0],
                 )
 
-                plot_name = f"final_plot_{jet_type}_{self.suffix}"
+                plot_name = f"final_plot_{jet_type}{self.suffix}"
                 plot_data(
                     particle_data=np.array([data_gen_plotting[mask_this_jet_type_gen]]),
                     sim_data=data_sim[mask_this_jet_type_sim],
