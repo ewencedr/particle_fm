@@ -196,18 +196,20 @@ class JetClassEvaluationCallback(pl.Callback):
         if log:
             pylogger.info(f"Evaluating model after epoch {trainer.current_epoch}.")
             # Get background data for plotting and calculating Wasserstein distances
+            # fmt: off
             if self.data_type == "test":
-                background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
+                background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples, :, :3]  # noqa: E501
                 background_mask = np.array(trainer.datamodule.mask_test)[: self.num_jet_samples]
                 background_cond = np.array(trainer.datamodule.tensor_conditioning_test)[
                     : self.num_jet_samples
                 ]
             elif self.data_type == "val":
-                background_data = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]
+                background_data = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples, :, :3]  # noqa: E501
                 background_mask = np.array(trainer.datamodule.mask_val)[: self.num_jet_samples]
                 background_cond = np.array(trainer.datamodule.tensor_conditioning_val)[
                     : self.num_jet_samples
                 ]
+            # fmt: on
 
             mask = background_mask
             cond = background_cond

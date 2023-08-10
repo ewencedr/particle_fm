@@ -185,13 +185,13 @@ class JetClassTestEvaluationCallback(pl.Callback):
 
         # Get background data for plotting and calculating Wasserstein distances
         if self.dataset == "test":
-            data_sim = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
+            data_sim = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples, :, :3]
             mask_sim = np.array(trainer.datamodule.mask_test)[: self.num_jet_samples]
             cond_sim = np.array(trainer.datamodule.tensor_conditioning_test)[
                 : self.num_jet_samples
             ]
         elif self.dataset == "val":
-            data_sim = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]
+            data_sim = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples, :, :3]
             mask_sim = np.array(trainer.datamodule.mask_val)[: self.num_jet_samples]
             cond_sim = np.array(trainer.datamodule.tensor_conditioning_val)[: self.num_jet_samples]
         if self.cond_path is not None:

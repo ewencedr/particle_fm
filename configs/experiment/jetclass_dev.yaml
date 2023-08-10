@@ -30,20 +30,22 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 2 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
+  features: 4
 
 data:
   # preprocessing
   number_of_used_jets: 30_000
   normalize: True
-  normalize_sigma: 1
+  normalize_sigma: 5
   # conditioning
   conditioning_pt: False
   conditioning_eta: False
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
+  additional_part_features: ["part_energy"] # null means no additional part features
 
 callbacks:
   ema:
