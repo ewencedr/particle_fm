@@ -88,9 +88,9 @@ class JetClassDataModule(LightningDataModule):
         # preprocessing
         normalize: bool = True,
         normalize_sigma: int = 5,
-        use_custom_eta_centering: bool = True,
-        remove_etadiff_tails: bool = True,
-        spectator_jet_features: list = None,
+        # use_custom_eta_centering: bool = True,
+        # remove_etadiff_tails: bool = True,
+        # spectator_jet_features: list = None,
         # centering: bool = False,
         # use_calculated_base_distribution: bool = True,
     ):
@@ -224,31 +224,6 @@ class JetClassDataModule(LightningDataModule):
             jet_features_test = arrays_dict["test"]["jet_features"][permutation_test]
             labels_test = arrays_dict["test"]["labels"][permutation_test]
 
-            # TODO: remove the etadiff tails
-            # make new mask np.logical_or(mask_old, mask_etadiff_larger_1)
-
-            # if self.hparams.remove_etadiff_tails:
-            #     pylogger.info("Removing eta tails -> removing particles with |eta_rel| > 1")
-            #     # remove/zero-padd particles with |eta - jet_eta| > 1
-            #     mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
-            #     particle_features[:, :, :][mask_etadiff_larger_1] = 0
-            #     assert (
-            #         np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0
-            #     ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
-
-            # convert to masked array (more convenient for normalization later on, because
-            # the mask is unaffected)
-            # Note: numpy masks are True for masked values
-            # Important: use pt_rel for masking, because eta_rel and phi_rel can be zero
-            # even though it is a valid track
-            # particle_mask_zero_entries = (particles_mask == 0)[..., np.newaxis]
-            # ma_particle_features = np.ma.masked_array(
-            #     particle_features,
-            #     mask=np.repeat(
-            #         particle_mask_zero_entries, repeats=particle_features.shape[2], axis=2
-            #     ),
-            # )
-
             if self.hparams.number_of_used_jets is not None:
                 dataset_train = dataset_train[: self.hparams.number_of_used_jets]
                 dataset_val = dataset_val[: self.hparams.number_of_used_jets]
@@ -288,9 +263,9 @@ class JetClassDataModule(LightningDataModule):
             self.mask_train = torch.tensor(mask_train, dtype=torch.float32)
             self.mask_test = torch.tensor(mask_test, dtype=torch.float32)
             self.mask_val = torch.tensor(mask_val, dtype=torch.float32)
-            self.tensor_train = torch.tensor(dataset_train, dtype=torch.float32)
-            self.tensor_test = torch.tensor(dataset_test, dtype=torch.float32)
-            self.tensor_val = torch.tensor(dataset_val, dtype=torch.float32)
+            tensor_train = torch.tensor(dataset_train, dtype=torch.float32)
+            tensor_test = torch.tensor(dataset_test, dtype=torch.float32)
+            tensor_val = torch.tensor(dataset_val, dtype=torch.float32)
             self.labels_train = torch.tensor(labels_train, dtype=torch.float32)
             self.labels_test = torch.tensor(labels_test, dtype=torch.float32)
             self.labels_val = torch.tensor(labels_val, dtype=torch.float32)
@@ -298,15 +273,14 @@ class JetClassDataModule(LightningDataModule):
             self.names_jet_features = names_jet_features
             self.names_labels = names_labels
 
-            sigma = 1
-            if isinstance(self.hparams.normalize_sigma, (int, float)):
-                pylogger.info("Scaling data with sigma = %s", self.hparams.normalize_sigma)
-                sigma = self.hparams.normalize_sigma
-            self.tensor_train_dl = self.tensor_train * sigma
-            self.tensor_test_dl = self.tensor_test * sigma
-            self.tensor_val_dl = self.tensor_val * sigma
-
             # reverse standardization for those tensors
+            # The "standard tensors" (i.e. self.tensor_train, ...) are not standardized
+            # (only the ones with the "_dl" suffix are standardized)
+            self.tensor_train = tensor_train
+            self.tensor_test = tensor_test
+            self.tensor_val = tensor_val
+
+            # revert standardization for those tensors
             for i in range(len(indices_etaphiptrel)):
                 self.tensor_train[:, :, i] = (
                     (self.tensor_train[:, :, i] * part_stds_train[i]) + part_means_train[i]
@@ -317,6 +291,22 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_val[:, :, i] = (
                     (self.tensor_val[:, :, i] * part_stds_train[i]) + part_means_train[i]
                 ) * mask_val[..., 0]
+
+            # if no standardization is used, just use the non-standardized tensors
+            # from above
+            if not self.hparams.normalize:
+                self.tensor_train_dl = self.tensor_train
+                self.tensor_test_dl = self.tensor_test
+                self.tensor_val_dl = self.tensor_val
+            else:
+                sigma = 1
+                if isinstance(self.hparams.normalize_sigma, (int, float)):
+                    pylogger.info("Scaling data with sigma = %s", self.hparams.normalize_sigma)
+                    sigma = self.hparams.normalize_sigma
+
+                self.tensor_train_dl = tensor_train * sigma
+                self.tensor_test_dl = tensor_test * sigma
+                self.tensor_val_dl = tensor_val * sigma
 
             self.tensor_conditioning_train_dl = self.tensor_conditioning_train
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
