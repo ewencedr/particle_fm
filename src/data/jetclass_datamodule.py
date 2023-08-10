@@ -225,6 +225,7 @@ class JetClassDataModule(LightningDataModule):
             labels_test = arrays_dict["test"]["labels"][permutation_test]
 
             # TODO: remove the etadiff tails
+            # make new mask np.logical_or(mask_old, mask_etadiff_larger_1)
 
             # if self.hparams.remove_etadiff_tails:
             #     pylogger.info("Removing eta tails -> removing particles with |eta_rel| > 1")
@@ -308,14 +309,14 @@ class JetClassDataModule(LightningDataModule):
             # reverse standardization for those tensors
             for i in range(len(indices_etaphiptrel)):
                 self.tensor_train[:, :, i] = (
-                    self.tensor_train[:, :, i] * part_stds_train[i]
-                ) + part_means_train[i]
+                    (self.tensor_train[:, :, i] * part_stds_train[i]) + part_means_train[i]
+                ) * mask_train[..., 0]
                 self.tensor_test[:, :, i] = (
-                    self.tensor_test[:, :, i] * part_stds_train[i]
-                ) + part_means_train[i]
+                    (self.tensor_test[:, :, i] * part_stds_train[i]) + part_means_train[i]
+                ) * mask_test[..., 0]
                 self.tensor_val[:, :, i] = (
-                    self.tensor_val[:, :, i] * part_stds_train[i]
-                ) + part_means_train[i]
+                    (self.tensor_val[:, :, i] * part_stds_train[i]) + part_means_train[i]
+                ) * mask_val[..., 0]
 
             self.tensor_conditioning_train_dl = self.tensor_conditioning_train
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
