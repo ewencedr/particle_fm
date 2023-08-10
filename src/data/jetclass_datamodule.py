@@ -170,16 +170,6 @@ class JetClassDataModule(LightningDataModule):
                         key: f[key].attrs[f"names_{key}"] for key in f.keys() if "mask" not in key
                     }
 
-            # pylogger.info("Loaded data.")
-            # pylogger.info("Shapes of arrays as available in files:")
-            # pylogger.info(f"particle_features names = {names_particle_features}")
-            # pylogger.info(f"particle_features shape = {particle_features.shape}")
-            # pylogger.info(f"jet_features names = {names_jet_features}")
-            # pylogger.info(f"jet_features.shape = {jet_features.shape}")
-            # pylogger.info(f"labels names = {names_labels}")
-            # pylogger.info(f"labels.shape = {labels.shape}")
-            # pylogger.info("Now processing data...")
-
             pylogger.info("Using eta_rel, phi_rel, pt_rel as particle features.")
 
             names_particle_features = names_dict["train"]["part_features"]
