@@ -300,7 +300,7 @@ class JetClassEvaluationCallback(pl.Callback):
             )
 
             # Plotting
-            plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
+            plot_name = f"{self.model_name}_epoch{trainer.current_epoch}"
             _ = plot_data(
                 particle_data=np.array([data]),
                 sim_data=background_data,

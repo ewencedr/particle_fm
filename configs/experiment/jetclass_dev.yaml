@@ -36,8 +36,6 @@ model:
 data:
   # preprocessing
   number_of_used_jets: 30_000
-  use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
-  remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
   normalize: True
   normalize_sigma: 1
   # conditioning
@@ -59,7 +57,7 @@ callbacks:
     additional_eval_epochs: [] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
   jetclass_eval_test:
-    num_jet_samples: 100 # jet samples to generate
+    num_jet_samples: 1_000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"

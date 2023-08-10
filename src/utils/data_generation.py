@@ -64,7 +64,7 @@ def generate_data(
             f" {num_jet_samples})"
         )
     if verbose:
-        print(f"Generating data. Device: {torch.device(device)}")
+        print(f"Generating data ({num_jet_samples} samples). Device: {torch.device(device)}")
     particle_data_sampled = torch.Tensor()
     start_time = 0
     for i in tqdm(range(num_jet_samples // batch_size), disable=not verbose):
