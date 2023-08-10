@@ -298,12 +298,31 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_test_dl = tensor_test * sigma
                 self.tensor_val_dl = tensor_val * sigma
 
+            # TODO: add here the corresponding part in case we standardize the
+            # conditioning data
             self.tensor_conditioning_train_dl = self.tensor_conditioning_train
             self.tensor_conditioning_val_dl = self.tensor_conditioning_val
             self.tensor_conditioning_test_dl = self.tensor_conditioning_test
 
+            self.data_train = TensorDataset(
+                self.tensor_train_dl,
+                self.mask_train,
+                self.tensor_conditioning_train_dl,
+            )
+            self.data_val = TensorDataset(
+                self.tensor_val_dl,
+                self.mask_val,
+                self.tensor_conditioning_val_dl,
+            )
+            self.data_test = TensorDataset(
+                self.tensor_test_dl,
+                self.mask_test,
+                self.tensor_conditioning_test_dl,
+            )
+
+            # ---------------------------------------------------------------
+            # Perform some checks on the data
             pylogger.info("Checking for NaNs in the data.")
-            # check if particle data contains nan values
             if (
                 torch.isnan(self.tensor_train_dl).any()
                 or torch.isnan(self.tensor_val_dl).any()
@@ -352,22 +371,6 @@ class JetClassDataModule(LightningDataModule):
             pylogger.info("particle features: %s", self.tensor_test_dl.shape)
             pylogger.info("mask: %s", self.mask_test.shape)
             pylogger.info("conditioning features: %s", self.tensor_conditioning_test_dl.shape)
-
-            self.data_train = TensorDataset(
-                self.tensor_train_dl,
-                self.mask_train,
-                self.tensor_conditioning_train_dl,
-            )
-            self.data_val = TensorDataset(
-                self.tensor_val_dl,
-                self.mask_val,
-                self.tensor_conditioning_val_dl,
-            )
-            self.data_test = TensorDataset(
-                self.tensor_test_dl,
-                self.mask_test,
-                self.tensor_conditioning_test_dl,
-            )
 
     def train_dataloader(self):
         return DataLoader(
