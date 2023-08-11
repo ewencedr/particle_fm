@@ -220,9 +220,9 @@ class JetClassTestEvaluationCallback(pl.Callback):
 
         ckpt_path = Path(ckpt)
         output_dir = (
-            ckpt_path.parent
+            ckpt_path.parent  # this should then be the "evaluated_ckpts" folder
             if f"evaluated_ckpts/epoch_{ckpt_epoch}" in str(ckpt_path)
-            else ckpt_path.parent / "evaluated_ckpts" / f"epoch_{ckpt_epoch}"
+            else ckpt_path.parent.parent / "evaluated_ckpts" / f"epoch_{ckpt_epoch}"
         )
         os.makedirs(output_dir, exist_ok=True)
         if not (output_dir / f"epoch_{ckpt_epoch}.ckpt").exists():
@@ -497,6 +497,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                 save_name=file_name_substructure,
                 close_fig=True,
                 simulation_name="JetClass",
+                model_name="Generated",
             )
             plot_full_substructure(
                 data_substructure=data_substructure,
@@ -507,6 +508,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                 save_name=file_name_full_substructure,
                 close_fig=True,
                 simulation_name="JetClass",
+                model_name="Generated",
             )
 
             # log substructure images
