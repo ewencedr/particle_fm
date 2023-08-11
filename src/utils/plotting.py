@@ -1495,7 +1495,10 @@ def plot_particle_features(
     mask_sim: np.array,
     mask_gen: np.array,
     feature_names: list,
+    legend_label_sim: str = "Sim. data",
+    legend_label_gen: str = "Gen. data",
     plot_path: str = None,
+    also_png: bool = False,
 ):
     """Plot the particle features.
 
@@ -1505,8 +1508,11 @@ def plot_particle_features(
         mask_sim (np.array): Mask for simulated particle data of shape (n_jets, n_particles, 1)
         mask_gen (np.array): Mask for generated particle data of shape (n_jets, n_particles, 1)
         feature_names (list): List of feature names (as in the file, e.g. `part_etarel`)
+        legend_label_sim (str, optional): Label for the simulated data. Defaults to "Sim. data".
+        legend_label_gen (str, optional): Label for the generated data. Defaults to "Gen. data".
         plot_path (str, optional): Path to save the plot. Defaults to None. Which means
             the plot is not saved.
+        also_png (bool, optional): If True, also save the plot as png. Defaults to False.
     """
     # plot the generated features and compare sim. data to gen. data
     plot_cols = 3
@@ -1519,10 +1525,10 @@ def plot_particle_features(
         values_gen = data_gen[:, :, i][mask_sim[:, :, 0] != 0].flatten()
         _, bin_edges = np.histogram(np.concatenate([values_sim, values_gen]), bins=100)
         hist_kwargs["bins"] = bin_edges
-        ax[i].hist(values_sim, **hist_kwargs, label="Sim. data", alpha=0.5)
+        ax[i].hist(values_sim, label=legend_label_sim, alpha=0.5, **hist_kwargs)
         ax[i].hist(
             values_gen,
-            label="Gen. data",
+            label=legend_label_gen,
             histtype="step",
             **hist_kwargs,
         )
@@ -1533,3 +1539,5 @@ def plot_particle_features(
     fig.tight_layout()
     if plot_path is not None:
         fig.savefig(plot_path)
+        if also_png and plot_path.endswith(".pdf"):
+            fig.savefig(plot_path.replace(".pdf", ".png"))
