@@ -167,6 +167,7 @@ class JetClassDataModule(LightningDataModule):
             names_dict = {}
 
             for split, filename in self.hparams.filename_dict.items():
+                pylogger.info(f"Loading {split} data from {filename}")
                 if not os.path.isfile(filename):
                     raise FileNotFoundError(f"File {filename} does not exist.")
 
