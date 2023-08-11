@@ -37,23 +37,34 @@ logging.info("test")
 
 apply_mpl_styles()
 
+# TODO:
+# - make ckpt_path a command_line argument
+# improve the looping over the jet types (takes way too long at the moment)
+
 # specify here the path to the run directory of the model you want to evaluate
-run_dir = "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-26-03"
+ckpt = "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-26-03/evaluated_ckpts/epoch_273/epoch_273.ckpt"
+EVALUATE_SUBSTRUCTURE = True
+N_GENERATED_SAMPLES = 100_000
+
+ckpt_path = Path(ckpt)
+run_dir = (
+    ckpt_path.parent.parent.parent
+    if "evaluated_ckpts" in str(ckpt_path)
+    else ckpt_path.parent.parent
+)
 cfg_backup_file = f"{run_dir}/config.yaml"
-evaluate_substructure = True
 
 # load everything from run directory (safer in terms of reproducing results)
 cfg = OmegaConf.load(cfg_backup_file)
 print(type(cfg))
 print(OmegaConf.to_yaml(cfg))
+print(100 * "-")
 
 datamodule = hydra.utils.instantiate(cfg.data)
 datamodule.setup()
 
 # load the model from the checkpoint
 model = hydra.utils.instantiate(cfg.model)
-ckpt = f"{run_dir}/checkpoints/last-EMA.ckpt"
-ckpt = f"{run_dir}/evaluated_ckpts/epoch_273/epoch_273.ckpt"
 model = model.load_from_checkpoint(ckpt)
 
 # ------------------------------------------------
@@ -61,10 +72,9 @@ data_sim = np.array(datamodule.tensor_test)
 mask_sim = np.array(datamodule.mask_test)
 cond_sim = np.array(datamodule.tensor_conditioning_test)
 
-n_generated_samples = 100_000
-data_sim = data_sim[:n_generated_samples]
-mask_sim = mask_sim[:n_generated_samples]
-cond_sim = cond_sim[:n_generated_samples]
+data_sim = data_sim[:N_GENERATED_SAMPLES]
+mask_sim = mask_sim[:N_GENERATED_SAMPLES]
+cond_sim = cond_sim[:N_GENERATED_SAMPLES]
 
 means = np.array(datamodule.means)
 stds = np.array(datamodule.stds)
@@ -293,7 +303,7 @@ if len(jet_types_dict) > 0:
             # **self.plot_config,
         )
 
-if evaluate_substructure:
+if EVALUATE_SUBSTRUCTURE:
     pylogger.info("Calculating substructure.")
     substructure_path = output_dir
     substr_filename_gen = "substructure_generated"
