@@ -1,10 +1,7 @@
+import logging
 import os
 import shutil
 import sys
-
-sys.path.append("../")
-
-import logging
 from copy import deepcopy
 from pathlib import Path
 
@@ -30,8 +27,12 @@ from src.utils.data_generation import generate_data
 from src.utils.plotting import (
     apply_mpl_styles,
     create_and_plot_data,
+    plot_data,
+    plot_full_substructure,
     plot_particle_features,
     plot_single_jets,
+    plot_substructure,
+    prepare_data_for_plotting,
 )
 
 # set up logging for jupyter notebook
@@ -51,7 +52,6 @@ print(type(cfg))
 print(OmegaConf.to_yaml(cfg))
 
 datamodule = hydra.utils.instantiate(cfg.data)
-datamodule.hparams.number_of_used_jets = 100_000
 datamodule.setup()
 
 # load the model from the checkpoint
@@ -65,7 +65,7 @@ data_sim = np.array(datamodule.tensor_test)
 mask_sim = np.array(datamodule.mask_test)
 cond_sim = np.array(datamodule.tensor_conditioning_test)
 
-n_generated_samples = 1000
+n_generated_samples = 100_000
 data_sim = data_sim[:n_generated_samples]
 mask_sim = mask_sim[:n_generated_samples]
 cond_sim = cond_sim[:n_generated_samples]
@@ -94,7 +94,7 @@ if not (output_dir / f"epoch_{ckpt_epoch}.ckpt").exists():
     pylogger.info(f"Copy checkpoint file to {output_dir}")
     shutil.copyfile(ckpt, output_dir / f"epoch_{ckpt_epoch}.ckpt")
 
-data_output_path = output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(mask_gen)}.npz"
+data_output_path = output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}.npz"
 if data_output_path.exists():
     pylogger.info(
         f"Output file {data_output_path} already exists. "
@@ -102,6 +102,11 @@ if data_output_path.exists():
     )
     npfile = np.load(data_output_path, allow_pickle=True)
     data_gen = npfile["data_gen"]
+    mask_gen = npfile["mask_gen"]
+    cond_gen = npfile["cond_gen"]
+    data_sim = npfile["data_sim"]
+    mask_sim = npfile["mask_sim"]
+    cond_sim = npfile["cond_sim"]
 else:
     # Generate data
     data_gen, generation_time = generate_data(
@@ -165,3 +170,120 @@ for jet_type, jet_type_idx in jet_types_dict.items():
 # remove the additional particle features for compatibility with the rest of the code
 data_sim = data_sim[:, :, :3]
 data_gen = data_gen[:, :, :3]
+
+# Wasserstein distances
+
+pylogger.info("Calculating Wasserstein distances.")
+metrics = calculate_all_wasserstein_metrics(
+    data_sim, data_gen
+)  # TODO: should we add a config?, **self.w_dist_config)
+
+# Prepare Data for Plotting
+pylogger.info("Preparing data for plotting.")
+data_gen_plotting = data_gen
+# plot_prep_config = {
+#     "calculate_efps" if key == "plot_efps" else key: value
+#     for key, value in self.plot_config.items()
+#     if key in ["plot_efps", "selected_particles", "selected_multiplicities"]
+# }
+plot_prep_config = {"calculate_efps": True}
+
+(
+    jet_data_gen,
+    efps_values_gen,
+    pt_selected_particles_gen,
+    pt_selected_multiplicities_gen,
+) = prepare_data_for_plotting(np.array([data_gen_plotting]), **plot_prep_config)
+
+(
+    jet_data_sim,
+    efps_sim,
+    pt_selected_particles_sim,
+    pt_selected_multiplicities_sim,
+) = prepare_data_for_plotting(
+    [data_sim],
+    **plot_prep_config,
+)
+jet_data_sim, efps_sim, pt_selected_particles_sim = (
+    jet_data_sim[0],
+    efps_sim[0],
+    pt_selected_particles_sim[0],
+)
+
+# Plotting
+pylogger.info("Plotting distributions.")
+plot_name = f"epoch_{ckpt_epoch}_overview_all_jet_types"
+img_path = output_dir
+plot_data(
+    particle_data=np.array([data_gen_plotting]),
+    sim_data=data_sim,
+    jet_data_sim=jet_data_sim,
+    jet_data=jet_data_gen,
+    efps_sim=efps_sim,
+    efps_values=efps_values_gen,
+    # num_samples=num_plot_samples,
+    pt_selected_particles=pt_selected_particles_gen,
+    pt_selected_multiplicities=pt_selected_multiplicities_gen,
+    pt_selected_particles_sim=pt_selected_particles_sim,
+    pt_selected_multiplicities_sim=pt_selected_multiplicities_sim,
+    save_fig=True,
+    save_folder=img_path,
+    save_name=plot_name,
+    close_fig=True,
+    # **self.plot_config,
+)
+
+if len(jet_types_dict) > 0:
+    pylogger.info("Plotting jet types separately")
+    for jet_type, index in jet_types_dict.items():
+        pylogger.info(f"Plotting jet type {jet_type}")
+        mask_this_jet_type_sim = cond_sim[:, index] == 1
+        # TODO: check if this still works once we use generated conditioning
+        mask_this_jet_type_gen = cond_gen[:, index] == 1
+        (
+            jet_data_this_jet_type,
+            efps_values_this_jet_type,
+            pt_selected_particles_this_jet_type,
+            pt_selected_multiplicities_this_jet_type,
+        ) = prepare_data_for_plotting(
+            np.array([data_gen_plotting[mask_this_jet_type_gen]]), **plot_prep_config
+        )
+
+        (
+            jet_data_this_jet_type_sim,
+            efps_this_jet_type_sim,
+            pt_selected_particles_this_jet_type_sim,
+            pt_selected_multiplicities_this_jet_type_sim,
+        ) = prepare_data_for_plotting(
+            [data_sim[mask_this_jet_type_sim]],
+            **plot_prep_config,
+        )
+        (
+            jet_data_this_jet_type_sim,
+            efps_this_jet_type_sim,
+            pt_selected_particles_this_jet_type_sim,
+        ) = (
+            jet_data_this_jet_type_sim[0],
+            efps_this_jet_type_sim[0],
+            pt_selected_particles_this_jet_type_sim[0],
+        )
+
+        plot_name = f"epoch_{ckpt_epoch}_overview_{jet_type}"
+        plot_data(
+            particle_data=np.array([data_gen_plotting[mask_this_jet_type_gen]]),
+            sim_data=data_sim[mask_this_jet_type_sim],
+            jet_data_sim=jet_data_this_jet_type_sim,
+            jet_data=jet_data_this_jet_type,
+            efps_sim=efps_this_jet_type_sim,
+            efps_values=efps_values_this_jet_type,
+            num_samples=-1,
+            pt_selected_particles=pt_selected_particles_this_jet_type,
+            pt_selected_multiplicities=pt_selected_multiplicities_this_jet_type,
+            pt_selected_particles_sim=pt_selected_particles_this_jet_type_sim,
+            pt_selected_multiplicities_sim=pt_selected_multiplicities_this_jet_type_sim,
+            save_fig=True,
+            save_folder=img_path,
+            save_name=plot_name,
+            close_fig=True,
+            # **self.plot_config,
+        )
