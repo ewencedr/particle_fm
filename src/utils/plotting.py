@@ -1515,8 +1515,9 @@ def plot_particle_features(
         also_png (bool, optional): If True, also save the plot as png. Defaults to False.
     """
     # plot the generated features and compare sim. data to gen. data
+    nvars = data_sim.shape[-1]
     plot_cols = 3
-    plot_rows = data_sim.shape[-1] // plot_cols + 1
+    plot_rows = nvars // 3 + 1 * int(bool(nvars % 3))
     fig, ax = plt.subplots(plot_rows, plot_cols, figsize=(11, 2.8 * plot_rows))
     ax = ax.flatten()
     hist_kwargs = {}
