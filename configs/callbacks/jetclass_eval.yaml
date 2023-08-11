@@ -4,8 +4,8 @@ jetclass_eval:
   every_n_epochs: 100 # evaluate every n epochs
   additional_eval_epochs: [1, 20, 50, 80] # evaluate at these epochs as well
   num_jet_samples: 50_000 # jet samples to generate for evaluation
-  image_path: ${paths.log_dir}callback_logs/
-  model_name: "model-test"
+  # image_path: ${paths.log_dir}callback_logs/  # if not set, will default to trainer.default_root_dir/plots
+  model_name: "epic_fm_jetclass"
   use_ema: True
   log_times: True
   log_epoch_zero: False

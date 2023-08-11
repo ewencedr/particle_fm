@@ -1,4 +1,5 @@
 """Callback for evaluating the model on the JetClass dataset."""
+import os
 import warnings
 from typing import Callable, Mapping, Optional
 
@@ -62,7 +63,7 @@ class JetClassEvaluationCallback(pl.Callback):
         every_n_epochs: int | Callable = 10,
         additional_eval_epochs: list[int] = None,
         num_jet_samples: int = -1,
-        image_path: str = "./logs/callback_images/",
+        image_path: str = None,
         model_name: str = "model",
         log_times: bool = True,
         log_epoch_zero: bool = False,
@@ -117,6 +118,12 @@ class JetClassEvaluationCallback(pl.Callback):
         self.log("w1m_mean", 0.005)
         self.log("w1p_mean", 0.005)
 
+        if self.image_path is None:
+            self.image_path = f"{trainer.default_root_dir}/plots/"
+            os.makedirs(self.image_path, exist_ok=True)
+
+        pylogger.info("Logging plots during training to %s", self.image_path)
+
         # set number of jet samples if negative
         if self.num_jet_samples < 0:
             self.datasets_multiplier = abs(self.num_jet_samples)
@@ -154,6 +161,9 @@ class JetClassEvaluationCallback(pl.Callback):
             )
         elif self.ema_callback is not None and self.use_ema:
             pylogger.info("Using EMA weights for evaluation.")
+
+        # TODO: maybe add here crosscheck plots (e.g. the jet mass of different
+        # jet types to ensure the labels are not messed up etc (+ other variables))
 
     def on_train_epoch_end(self, trainer, pl_module):
         if self.fix_seed:
@@ -290,7 +300,7 @@ class JetClassEvaluationCallback(pl.Callback):
             )
 
             # Plotting
-            plot_name = f"{self.model_name}--epoch{trainer.current_epoch}"
+            plot_name = f"{self.model_name}_epoch{trainer.current_epoch}"
             _ = plot_data(
                 particle_data=np.array([data]),
                 sim_data=background_data,

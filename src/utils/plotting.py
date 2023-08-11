@@ -939,6 +939,7 @@ def plot_data(
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
+        plt.savefig(f"{save_folder}{save_name}.pdf", bbox_inches="tight")
     if close_fig:
         plt.close(fig)
     return fig
@@ -1135,6 +1136,7 @@ def plot_loss_curves(
     # ax.set_yscale("log")
     ax.legend(loc="best")
     plt.savefig(f"{save_path}/plots/loss_plots_{name}.png")
+    plt.savefig(f"{save_path}/plots/loss_plots_{name}.pdf")
     plt.show()
     plt.clf()
 
@@ -1191,6 +1193,7 @@ def do_timing_plots(
     ax.legend(loc="best")
     # plt.title(f"Time to generate {particles_to_generate} jets")
     plt.savefig(f"{save_path}/plots/{name}.png")
+    plt.savefig(f"{save_path}/plots/{name}.pdf")
     return np.array(times)
 
 
@@ -1204,8 +1207,10 @@ def prepare_data_for_plotting(
     particles and the pt of selected multiplicities.
 
     Args:
-        data (np.ndarray): data in the shape (n_jets, n_particles, n_features) with
-            features (pt, eta, phi)
+        data (list of np.ndarray): list of data where data is in the shape
+            (n_jets, n_particles, n_features) with features (pt, eta, phi)
+            --> this allows to process data in batches. Will be concatenated
+            in the output
         calculate_efps (bool, optional): If efps should be calculated. Defaults to False.
         selected_particles (list[int], optional): Selected particles. Defaults to [1,3,10].
         selected_multiplicities (list[int], optional): Selected multiplicities.
@@ -1228,6 +1233,7 @@ def prepare_data_for_plotting(
         if calculate_efps:
             efps_temp = efps(data_temp)
         pt_selected_particles_temp = get_pt_of_selected_particles(data_temp, selected_particles)
+        # TODO: should probably set the number of jets in the function call below?
         pt_selected_multiplicities_temp = get_pt_of_selected_multiplicities(
             data_temp, selected_multiplicities
         )
@@ -1425,6 +1431,7 @@ def plot_substructure(
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
+        plt.savefig(f"{save_folder}{save_name}.pdf", bbox_inches="tight")
     if close_fig:
         plt.close(fig)
     return fig
@@ -1461,6 +1468,7 @@ def plot_full_substructure(
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
+        plt.savefig(f"{save_folder}{save_name}.pdf", bbox_inches="tight")
     if close_fig:
         plt.close(fig)
     return fig

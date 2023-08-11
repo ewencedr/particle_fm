@@ -1,6 +1,8 @@
 """PyTorch Lightning DataModule for JetClass dataset."""
+import os
 from typing import Any, Dict, Optional
 
+import h5py
 import numpy as np
 import torch
 from pytorch_lightning import LightningDataModule
@@ -8,9 +10,9 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from src.utils.pylogger import get_pylogger
 
-from .components import normalize_tensor
+from .components import one_hot_encode
 
-log = get_pylogger("JetClassDataModule")
+pylogger = get_pylogger("JetClassDataModule")
 
 
 def get_feat_index(names_array: np.array, name: str):
@@ -65,8 +67,9 @@ class JetClassDataModule(LightningDataModule):
 
     def __init__(
         self,
-        data_dir: str = "data/",
-        data_filename: str = "jetclass.npz",
+        data_dir: str,
+        filename_dict: dict,
+        used_jet_types: list = None,
         number_of_used_jets: int = None,
         val_fraction: float = 0.15,
         test_fraction: float = 0.15,
@@ -80,17 +83,21 @@ class JetClassDataModule(LightningDataModule):
         conditioning_eta: bool = True,
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
+        conditioning_jet_type: bool = True,
         num_particles: int = 128,
         # preprocessing
         normalize: bool = True,
         normalize_sigma: int = 5,
-        use_custom_eta_centering: bool = True,
-        remove_etadiff_tails: bool = True,
+        # use_custom_eta_centering: bool = True,
+        # remove_etadiff_tails: bool = True,
+        # spectator_jet_features: list = None,
         # centering: bool = False,
         # use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
 
+        # TODO: this doesn't work yet...
+        # self.hparams["jet_types_list"] = list(jet_types.keys())
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
@@ -112,6 +119,9 @@ class JetClassDataModule(LightningDataModule):
         self.tensor_conditioning_train: Optional[torch.Tensor] = None
         self.tensor_conditioning_val: Optional[torch.Tensor] = None
         self.tensor_conditioning_test: Optional[torch.Tensor] = None
+        self.tensor_spectator_jet_train: Optional[torch.Tensor] = None
+        self.tensor_spectator_jet_val: Optional[torch.Tensor] = None
+        self.tensor_spectator_jet_test: Optional[torch.Tensor] = None
 
     def prepare_data(self):
         """Download data if needed.
@@ -128,6 +138,7 @@ class JetClassDataModule(LightningDataModule):
                 self.hparams.conditioning_eta,
                 self.hparams.conditioning_mass,
                 self.hparams.conditioning_num_particles,
+                self.hparams.conditioning_jet_type,
             ]
         )
 
@@ -138,165 +149,266 @@ class JetClassDataModule(LightningDataModule):
         careful not to execute things like random split twice!
         """
 
-        # load and split datasets only if not loaded already
+        if (
+            "train" not in self.hparams.filename_dict
+            or "val" not in self.hparams.filename_dict
+            or "test" not in self.hparams.filename_dict
+        ):
+            raise ValueError("The filename_dict must contain the keys 'train', 'val' and 'test'.")
+
         if not self.data_train and not self.data_val and not self.data_test:
-            # data loading
-            path = f"{self.hparams.data_dir}/{self.hparams.data_filename}"
-            npfile = np.load(path, allow_pickle=True)
+            arrays_dict = {}
+            names_dict = {}
 
-            particle_features = npfile["part_features"]
-            jet_features = npfile["jet_features"]
-            if self.hparams.number_of_used_jets is not None:
-                if self.hparams.number_of_used_jets < len(jet_features):
-                    particle_features = particle_features[: self.hparams.number_of_used_jets]
-                    jet_features = jet_features[: self.hparams.number_of_used_jets]
+            for split, filename in self.hparams.filename_dict.items():
+                if not os.path.isfile(filename):
+                    raise FileNotFoundError(f"File {filename} does not exist.")
 
-            names_part_features = npfile["names_part_features"]
-            names_jet_features = npfile["names_jet_features"]
-            # TODO: anything to do with labels?
-            # labels = npfile["labels"]
+                with h5py.File(filename, "r") as f:
+                    arrays_dict[split] = {key: np.array(f[key]) for key in f.keys()}
+                    names_dict[split] = {
+                        key: f[key].attrs[f"names_{key}"] for key in f.keys() if "mask" not in key
+                    }
+
+            names_particle_features = names_dict["train"]["part_features"]
+            names_jet_features = names_dict["train"]["jet_features"]
+            names_labels = names_dict["train"]["labels"]
+            # check if the particle features are in the correct order
+            index_part_etarel = get_feat_index(names_particle_features, "part_etarel")
+            index_part_dphi = get_feat_index(names_particle_features, "part_dphi")
+            index_part_ptrel = get_feat_index(names_particle_features, "part_ptrel")
 
             # NOTE: everything below here assumes that the particle features
             # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
+            indices_etaphiptrel = [index_part_etarel, index_part_dphi, index_part_ptrel]
+            names_particle_features = names_particle_features[indices_etaphiptrel]
 
-            # check if the particle features are in the correct order
-            index_part_deta = get_feat_index(names_part_features, "part_deta")
-            assert index_part_deta == 0, "part_deta is not the first feature"
-            index_part_dphi = get_feat_index(names_part_features, "part_dphi")
-            assert index_part_dphi == 1, "part_dphi is not the second feature"
-            index_part_pt = get_feat_index(names_part_features, "part_pt")
-            assert index_part_pt == 2, "part_pt is not the third feature"
+            np.random.seed(332211)
+            permutation_train = np.random.permutation(len(arrays_dict["train"]["jet_features"]))
+            dataset_train = arrays_dict["train"]["part_features"][:, :, indices_etaphiptrel][
+                permutation_train
+            ]
+            mask_train = arrays_dict["train"]["part_mask"][..., np.newaxis][permutation_train]
+            jet_features_train = arrays_dict["train"]["jet_features"][permutation_train]
+            labels_train = arrays_dict["train"]["labels"][permutation_train]
+            part_stds_train = arrays_dict["train"]["part_stds"][indices_etaphiptrel]
+            part_means_train = arrays_dict["train"]["part_means"][indices_etaphiptrel]
 
-            # divide particle pt by jet pt
-            index_jet_pt = get_feat_index(names_jet_features, "jet_pt")
-            particle_features[..., index_part_pt] /= np.expand_dims(
-                jet_features[:, index_jet_pt], axis=1
-            )
+            np.random.seed(332211)
+            permutation_val = np.random.permutation(len(arrays_dict["val"]["jet_features"]))
+            dataset_val = arrays_dict["val"]["part_features"][:, :, indices_etaphiptrel][
+                permutation_val
+            ]
+            mask_val = arrays_dict["val"]["part_mask"][..., np.newaxis][permutation_val]
+            jet_features_val = arrays_dict["val"]["jet_features"][permutation_val]
+            labels_val = arrays_dict["val"]["labels"][permutation_val]
 
-            # instead of using the part_deta variable, use part_eta - jet_eta
-            if self.hparams.use_custom_eta_centering:
-                if "part_eta" not in names_part_features:
-                    raise ValueError(
-                        "`use_custom_eta_centering` is True, but `part_eta` is not in "
-                        "in the dataset --> check the dataset"
-                    )
-                if "jet_eta" not in names_jet_features:
-                    raise ValueError(
-                        "`use_custom_eta_centering` is True, but `jet_eta` is not in "
-                        "in the dataset --> check the dataset"
-                    )
-                index_jet_eta = get_feat_index(names_jet_features, "jet_eta")
-                jet_eta_repeat = jet_features[:, index_jet_eta][:, np.newaxis].repeat(
-                    particle_features.shape[1], 1
-                )
-                index_part_eta = get_feat_index(names_part_features, "part_eta")
-                particle_eta_minus_jet_eta = (
-                    particle_features[:, :, index_part_eta] - jet_eta_repeat
-                )
-                mask = (particle_features[:, :, 0] != 0).astype(int)
-                particle_features[:, :, 0] = particle_eta_minus_jet_eta * mask
+            np.random.seed(332211)
+            permutation_test = np.random.permutation(len(arrays_dict["test"]["jet_features"]))
+            dataset_test = arrays_dict["test"]["part_features"][:, :, indices_etaphiptrel][
+                permutation_test
+            ]
+            mask_test = arrays_dict["test"]["part_mask"][..., np.newaxis][permutation_test]
+            jet_features_test = arrays_dict["test"]["jet_features"][permutation_test]
+            labels_test = arrays_dict["test"]["labels"][permutation_test]
 
-            if self.hparams.remove_etadiff_tails:
-                # remove/zero-padd particles with |eta - jet_eta| > 1
-                mask_etadiff_larger_1 = np.abs(particle_features[:, :, 0]) > 1
-                particle_features[:, :, :][mask_etadiff_larger_1] = 0
-                assert (
-                    np.sum(np.abs(particle_features[mask_etadiff_larger_1]).flatten()) == 0
-                ), "There are still particles with |eta - jet_eta| > 1 that are not zero-padded."
+            # Select only the jet types that are used
+            jet_types_mapping = {label.split("_")[-1]: i for i, label in enumerate(names_labels)}
 
-            # from here on only use the first three features (eta_rel, phi_rel, pt_rel)
-            particle_features = particle_features[:, :, :3]
+            if self.hparams.used_jet_types is None:
+                self.hparams.used_jet_types = list(jet_types_mapping.keys())
+            else:
+                # check if all used jet types are in the mapping
+                for jet_type in self.hparams.used_jet_types:
+                    if jet_type not in jet_types_mapping.keys():
+                        raise ValueError(
+                            f"Jet type {jet_type} not in jet_types_mapping."
+                            f"Please choose from {list(jet_types_mapping.keys())}."
+                        )
+            pylogger.info(f"Using jet types: {self.hparams.used_jet_types}")
+            # select only the jets of the used jet types
+            # fmt: off
+            index_jet_type = get_feat_index(names_jet_features, "jet_type")
+            used_jet_types_values = [jet_types_mapping[jet_type] for jet_type in self.hparams.used_jet_types]
+            jet_types_mask_train = np.isin(jet_features_train[:, index_jet_type], used_jet_types_values)  # noqa: E501
+            jet_types_mask_val = np.isin(jet_features_val[:, index_jet_type], used_jet_types_values)  # noqa: E501
+            jet_types_mask_test = np.isin(jet_features_test[:, index_jet_type], used_jet_types_values)  # noqa: E501
+            # fmt: on
 
-            # convert to masked array (more convenient for normalization later on, because
-            # the mask is unaffected)
-            # Note: numpy masks are True for masked values
-            ma_particle_features = np.ma.masked_array(
-                particle_features,
-                mask=np.ma.make_mask(particle_features == 0),
-            )
+            dataset_train = dataset_train[jet_types_mask_train]
+            mask_train = mask_train[jet_types_mask_train]
+            jet_features_train = jet_features_train[jet_types_mask_train]
+            labels_train = labels_train[jet_types_mask_train]
 
-            # data splitting
-            n_samples_val = int(self.hparams.val_fraction * len(particle_features))
-            n_samples_test = int(self.hparams.test_fraction * len(particle_features))
-            dataset_train, dataset_val, dataset_test = np.split(
-                ma_particle_features,
-                [
-                    len(ma_particle_features) - (n_samples_val + n_samples_test),
-                    len(ma_particle_features) - n_samples_test,
-                ],
-            )
+            dataset_val = dataset_val[jet_types_mask_val]
+            mask_val = mask_val[jet_types_mask_val]
+            jet_features_val = jet_features_val[jet_types_mask_val]
+            labels_val = labels_val[jet_types_mask_val]
+
+            dataset_test = dataset_test[jet_types_mask_test]
+            mask_test = mask_test[jet_types_mask_test]
+            jet_features_test = jet_features_test[jet_types_mask_test]
+            labels_test = labels_test[jet_types_mask_test]
+
+            if self.hparams.number_of_used_jets is not None:
+                dataset_train = dataset_train[: self.hparams.number_of_used_jets]
+                dataset_val = dataset_val[: self.hparams.number_of_used_jets]
+                dataset_test = dataset_test[: self.hparams.number_of_used_jets]
+                mask_train = mask_train[: self.hparams.number_of_used_jets]
+                mask_val = mask_val[: self.hparams.number_of_used_jets]
+                mask_test = mask_test[: self.hparams.number_of_used_jets]
+                jet_features_train = jet_features_train[: self.hparams.number_of_used_jets]
+                jet_features_val = jet_features_val[: self.hparams.number_of_used_jets]
+                jet_features_test = jet_features_test[: self.hparams.number_of_used_jets]
+                labels_train = labels_train[: self.hparams.number_of_used_jets]
+                labels_val = labels_val[: self.hparams.number_of_used_jets]
+                labels_test = labels_test[: self.hparams.number_of_used_jets]
+
             if self.num_cond_features == 0:
                 self.tensor_conditioning_train = torch.zeros(len(dataset_train))
                 self.tensor_conditioning_val = torch.zeros(len(dataset_val))
                 self.tensor_conditioning_test = torch.zeros(len(dataset_test))
+                self.names_conditioning = None
             else:
-                jet_features = self._handle_conditioning(jet_features, names_jet_features)
-                (conditioning_train, conditioning_val, conditioning_test) = np.split(
-                    jet_features,
-                    [
-                        len(jet_features) - (n_samples_val + n_samples_test),
-                        len(jet_features) - n_samples_test,
-                    ],
+                conditioning_train, self.names_conditioning = self._handle_conditioning(
+                    jet_features_train, names_jet_features, names_labels
                 )
-                self.tensor_conditioning_train = torch.tensor(
-                    conditioning_train, dtype=torch.float32
+                conditioning_val, _ = self._handle_conditioning(
+                    jet_features_val, names_jet_features, names_labels
                 )
+                conditioning_test, _ = self._handle_conditioning(
+                    jet_features_test, names_jet_features, names_labels
+                )
+                # fmt: off
+                self.tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)  # noqa: E501
                 self.tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
-                self.tensor_conditioning_test = torch.tensor(
-                    conditioning_test, dtype=torch.float32
-                )
+                self.tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)  # noqa: E501
+                # fmt: on
 
             # invert the masks from the masked arrays (numpy ma masks are True for masked values)
-            self.mask_train = torch.tensor(~dataset_train.mask[:, :, :1], dtype=torch.float32)
-            self.mask_test = torch.tensor(~dataset_test.mask[:, :, :1], dtype=torch.float32)
-            self.mask_val = torch.tensor(~dataset_val.mask[:, :, :1], dtype=torch.float32)
-            self.tensor_train = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
-            self.tensor_test = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
-            self.tensor_val = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
+            self.mask_train = torch.tensor(mask_train, dtype=torch.float32)
+            self.mask_test = torch.tensor(mask_test, dtype=torch.float32)
+            self.mask_val = torch.tensor(mask_val, dtype=torch.float32)
+            tensor_train = torch.tensor(dataset_train, dtype=torch.float32)
+            tensor_test = torch.tensor(dataset_test, dtype=torch.float32)
+            tensor_val = torch.tensor(dataset_val, dtype=torch.float32)
+            self.labels_train = torch.tensor(labels_train, dtype=torch.float32)
+            self.labels_test = torch.tensor(labels_test, dtype=torch.float32)
+            self.labels_val = torch.tensor(labels_val, dtype=torch.float32)
+            self.names_particle_features = names_particle_features
+            self.names_jet_features = names_jet_features
+            self.names_labels = names_labels
 
-            if self.hparams.normalize:
-                # calculate means and stds only based on the training data
-                self.means = np.ma.mean(dataset_train, axis=(0, 1))
-                self.stds = np.ma.std(dataset_train, axis=(0, 1))
-                norm_kwargs = {
-                    "mean": self.means,
-                    "std": self.stds,
-                    "sigma": self.hparams.normalize_sigma,
-                }
+            # reverse standardization for those tensors
+            # The "standard tensors" (i.e. self.tensor_train, ...) are not standardized
+            # (only the ones with the "_dl" suffix are standardized)
+            self.tensor_train = torch.clone(tensor_train)
+            self.tensor_test = torch.clone(tensor_test)
+            self.tensor_val = torch.clone(tensor_val)
 
-                # normalize the data
-                norm_dataset_train = normalize_tensor(np.ma.copy(dataset_train), **norm_kwargs)
-                norm_dataset_val = normalize_tensor(np.ma.copy(dataset_val), **norm_kwargs)
-                norm_dataset_test = normalize_tensor(np.ma.copy(dataset_test), **norm_kwargs)
+            # revert standardization for those tensors
+            for i in range(len(indices_etaphiptrel)):
+                self.tensor_train[:, :, i] = (
+                    (self.tensor_train[:, :, i] * part_stds_train[i]) + part_means_train[i]
+                ) * mask_train[..., 0]
+                self.tensor_test[:, :, i] = (
+                    (self.tensor_test[:, :, i] * part_stds_train[i]) + part_means_train[i]
+                ) * mask_test[..., 0]
+                self.tensor_val[:, :, i] = (
+                    (self.tensor_val[:, :, i] * part_stds_train[i]) + part_means_train[i]
+                ) * mask_val[..., 0]
 
-                self.tensor_train_dl = torch.tensor(
-                    norm_dataset_train[:, :, :3], dtype=torch.float32
-                )
-                self.tensor_val_dl = torch.tensor(norm_dataset_val[:, :, :3], dtype=torch.float32)
-                self.tensor_test_dl = torch.tensor(
-                    norm_dataset_test[:, :, :3], dtype=torch.float32
-                )
-
+            # if no standardization is used, just use the non-standardized tensors
+            # from above
+            if not self.hparams.normalize:
+                self.tensor_train_dl = self.tensor_train
+                self.tensor_test_dl = self.tensor_test
+                self.tensor_val_dl = self.tensor_val
             else:
-                self.tensor_train_dl = torch.tensor(dataset_train[:, :, :3], dtype=torch.float32)
-                self.tensor_test_dl = torch.tensor(dataset_test[:, :, :3], dtype=torch.float32)
-                self.tensor_val_dl = torch.tensor(dataset_val[:, :, :3], dtype=torch.float32)
+                sigma = 1
+                if isinstance(self.hparams.normalize_sigma, (int, float)):
+                    pylogger.info("Scaling data with sigma = %s", self.hparams.normalize_sigma)
+                    sigma = self.hparams.normalize_sigma
+
+                self.tensor_train_dl = tensor_train * sigma
+                self.tensor_test_dl = tensor_test * sigma
+                self.tensor_val_dl = tensor_val * sigma
+                self.means = part_means_train
+                self.stds = part_stds_train
+
+            # TODO: add here the corresponding part in case we standardize the
+            # conditioning data
+            self.tensor_conditioning_train_dl = self.tensor_conditioning_train
+            self.tensor_conditioning_val_dl = self.tensor_conditioning_val
+            self.tensor_conditioning_test_dl = self.tensor_conditioning_test
 
             self.data_train = TensorDataset(
                 self.tensor_train_dl,
                 self.mask_train,
-                self.tensor_conditioning_train,
+                self.tensor_conditioning_train_dl,
             )
             self.data_val = TensorDataset(
                 self.tensor_val_dl,
                 self.mask_val,
-                self.tensor_conditioning_val,
+                self.tensor_conditioning_val_dl,
             )
             self.data_test = TensorDataset(
                 self.tensor_test_dl,
                 self.mask_test,
-                self.tensor_conditioning_test,
+                self.tensor_conditioning_test_dl,
             )
+
+            # ---------------------------------------------------------------
+            # Perform some checks on the data
+            pylogger.info("Checking for NaNs in the data.")
+            if (
+                torch.isnan(self.tensor_train_dl).any()
+                or torch.isnan(self.tensor_val_dl).any()
+                or torch.isnan(self.tensor_test_dl).any()
+            ):
+                raise ValueError("NaNs found in particle data!")
+
+            # check if conditioning data contains nan values
+            if (
+                torch.isnan(self.tensor_conditioning_train_dl).any()
+                or torch.isnan(self.tensor_conditioning_val_dl).any()
+                or torch.isnan(self.tensor_conditioning_test_dl).any()
+            ):
+                raise ValueError("NaNs found in conditioning data!")
+
+            pylogger.info("Checking that there are no jets without any constituents.")
+            n_jets_no_particles_train = np.sum(np.sum(mask_train, axis=1) == 0)
+            n_jets_no_particles_val = np.sum(np.sum(mask_val, axis=1) == 0)
+            n_jets_no_particles_test = np.sum(np.sum(mask_test, axis=1) == 0)
+
+            if (
+                n_jets_no_particles_train > 0
+                or n_jets_no_particles_val > 0
+                or n_jets_no_particles_test > 0
+            ):
+                raise NotImplementedError(
+                    "There are jets without particles in the dataset. This"
+                    "is not allowed, since the model cannot handle this case."
+                )
+
+            pylogger.info("--- Done setting up the dataloader. ---")
+            pylogger.info("Particle features: %s", self.names_particle_features)
+            pylogger.info("Conditioning features: %s", self.names_conditioning)
+
+            pylogger.info("--- Shape of the training data: ---")
+            pylogger.info("particle features: %s", self.tensor_train_dl.shape)
+            pylogger.info("mask: %s", self.mask_train.shape)
+            pylogger.info("conditioning features: %s", self.tensor_conditioning_train_dl.shape)
+
+            pylogger.info("--- Shape of the validation data: ---")
+            pylogger.info("particle features: %s", self.tensor_val_dl.shape)
+            pylogger.info("mask: %s", self.mask_val.shape)
+            pylogger.info("conditioning features: %s", self.tensor_conditioning_val_dl.shape)
+
+            pylogger.info("--- Shape of the test data: ---")
+            pylogger.info("particle features: %s", self.tensor_test_dl.shape)
+            pylogger.info("mask: %s", self.mask_test.shape)
+            pylogger.info("conditioning features: %s", self.tensor_conditioning_test_dl.shape)
 
     def train_dataloader(self):
         return DataLoader(
@@ -340,35 +452,64 @@ class JetClassDataModule(LightningDataModule):
         """Things to do when loading checkpoint."""
         pass
 
-    def _handle_conditioning(self, jet_data: np.array, names_jet_data: np.array):
+    def _handle_conditioning(
+        self,
+        jet_data: np.array,
+        names_jet_data: np.array,
+        names_labels: np.array,
+    ):
         """Select the conditioning variables.
 
-        jet_data: np.array of shape (n_jets, n_features)
-        names_jet_data: np.array of shape (n_features,) which contains the names of
-            the features
+        Args:
+            jet_data: np.array of shape (n_jets, n_features) the first jet features
+                is expected to be the jet-type
+            names_jet_data: np.array of shape (n_features,) which contains the names of
+                the features
+            names_labels: np.array of shape (n_jet_types,) which contains the names of
+                the jet-types (e.g. if there are three jet types: ['q', 'g', 't'], then
+                a label 0 would correspond to 'q', 1 to 'g' and 2 to 't')
+        Returns:
+            conditioning_data: np.array of shape (n_jets, n_conditioning_features)
+            names_conditioning_data: np.array of shape (n_conditioning_features,) which
+                contains the names of the conditioning features
         """
+        categories = np.unique(jet_data[:, 0])
+        jet_data_one_hot = one_hot_encode(
+            jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
+        )
 
+        one_hot_len = len(categories)
         if (
             not self.hparams.conditioning_pt
             and not self.hparams.conditioning_eta
             and not self.hparams.conditioning_mass
             and not self.hparams.conditioning_num_particles
+            and not self.hparams.conditioning_jet_type
         ):
             return None
 
         # select the columns which correspond to the conditioning variables that should be used
 
         keep_col = []
-        if self.hparams.conditioning_pt:
-            keep_col.append(get_feat_index(names_jet_data, "jet_pt"))
-        if self.hparams.conditioning_eta:
-            keep_col.append(get_feat_index(names_jet_data, "jet_eta"))
-        if self.hparams.conditioning_mass:
-            keep_col.append(get_feat_index(names_jet_data, "jet_sdmass"))
-        if self.hparams.conditioning_num_particles:
-            keep_col.append(get_feat_index(names_jet_data, "jet_nparticles"))
+        names_conditioning_data = []
 
-        return jet_data[:, keep_col]
+        if self.hparams.conditioning_jet_type:
+            keep_col += list(np.arange(one_hot_len))
+            names_conditioning_data += [f"jet_type_{names_labels[int(i)]}" for i in categories]
+        if self.hparams.conditioning_pt:
+            keep_col.append(get_feat_index(names_jet_data, "jet_pt") + one_hot_len - 1)
+            names_conditioning_data.append("jet_pt")
+        if self.hparams.conditioning_eta:
+            keep_col.append(get_feat_index(names_jet_data, "jet_eta") + one_hot_len - 1)
+            names_conditioning_data.append("jet_eta")
+        if self.hparams.conditioning_mass:
+            keep_col.append(get_feat_index(names_jet_data, "jet_sdmass") + one_hot_len - 1)
+            names_conditioning_data.append("jet_sdmass")
+        if self.hparams.conditioning_num_particles:
+            keep_col.append(get_feat_index(names_jet_data, "jet_nparticles") + one_hot_len - 1)
+            names_conditioning_data.append("jet_nparticles")
+
+        return jet_data_one_hot[:, keep_col], names_conditioning_data
 
 
 if __name__ == "__main__":

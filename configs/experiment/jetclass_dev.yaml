@@ -7,7 +7,7 @@
 # python train.py experiment=jetclass
 
 defaults:
-  - override /data: jetclass.yaml
+  - override /data: jetclass_dev.yaml
   - override /model: flow_matching.yaml
   - override /callbacks: jetclass.yaml
   - override /trainer: gpu.yaml
@@ -17,8 +17,9 @@ defaults:
 
 
 
-tags: ["flow_matching", "JetClass", "uncond", "dev", "debug"]
-run_note: "This is a note"
+tags: ["flow_matching", "JetClass", "dev", "debug"]
+
+run_note: "Test run with conditioning on jet type"
 
 seed: 12345
 
@@ -29,17 +30,20 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 0 # needs to be calculated when using conditioning
+  global_cond_dim: 2 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
 
 data:
-  number_of_used_jets: 200
-  use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
-  remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
+  # preprocessing
+  number_of_used_jets: 30_000
+  normalize: True
+  normalize_sigma: 1
+  # conditioning
   conditioning_pt: False
   conditioning_eta: False
   conditioning_mass: False
   conditioning_num_particles: False
+  conditioning_jet_type: True
 
 callbacks:
   ema:
@@ -53,7 +57,7 @@ callbacks:
     additional_eval_epochs: [] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
   jetclass_eval_test:
-    num_jet_samples: 6000 # jet samples to generate
+    num_jet_samples: 1_000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"

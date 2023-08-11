@@ -4,7 +4,7 @@ import hydra
 import pyrootutils
 import pytorch_lightning as pl
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
 
@@ -49,6 +49,11 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
         pl.seed_everything(cfg.seed, workers=True)
+
+    # save config for reproducibility and debugging
+    cfg_backup_file = f'{cfg.trainer.get("default_root_dir")}/config.yaml'
+    with open(cfg_backup_file, "w") as f:
+        OmegaConf.save(cfg, f)
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
