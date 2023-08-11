@@ -1495,12 +1495,23 @@ def plot_particle_features(
     mask_sim: np.array,
     mask_gen: np.array,
     feature_names: list,
-    plot_path: str,
+    plot_path: str = None,
 ):
+    """Plot the particle features.
+
+    Args:
+        data_sim (np.array): Simulated particle data of shape (n_jets, n_particles, n_features)
+        data_gen (np.array): Generated particle data of shape (n_jets, n_particles, n_features)
+        mask_sim (np.array): Mask for simulated particle data of shape (n_jets, n_particles, 1)
+        mask_gen (np.array): Mask for generated particle data of shape (n_jets, n_particles, 1)
+        feature_names (list): List of feature names (as in the file, e.g. `part_etarel`)
+        plot_path (str, optional): Path to save the plot. Defaults to None. Which means
+            the plot is not saved.
+    """
     # plot the generated features and compare sim. data to gen. data
     plot_cols = 3
     plot_rows = data_sim.shape[-1] // plot_cols + 1
-    fig, ax = plt.subplots(plot_rows, plot_cols, figsize=(11, 2.7 * plot_rows))
+    fig, ax = plt.subplots(plot_rows, plot_cols, figsize=(11, 2.8 * plot_rows))
     ax = ax.flatten()
     hist_kwargs = {}
     for i in range(data_sim.shape[-1]):
@@ -1520,4 +1531,5 @@ def plot_particle_features(
         ax[i].set_xlabel(JETCLASS_FEATURE_LABELS.get(feature_name, feature_name))
     ax[2].legend(frameon=False)
     fig.tight_layout()
-    fig.savefig(plot_path)
+    if plot_path is not None:
+        fig.savefig(plot_path)
