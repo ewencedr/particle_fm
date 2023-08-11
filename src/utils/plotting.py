@@ -1426,23 +1426,23 @@ def plot_substructure(
     )
     ax1.hist(tau21, bins=hist_tau21_jetnet[1], label=model_name, histtype="step")
     ax1.set_title(r"$\tau_{21}$")
-    ax1.legend(loc="best")
+    ax1.legend(loc="best", frameon=False)
 
     hist_tau32_jetnet = ax2.hist(
         tau32_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
     ax2.hist(tau32, bins=hist_tau32_jetnet[1], label=f"{model_name}", histtype="step")
     ax2.set_title(r"$\tau_{32}$")
-    ax2.legend(loc="best")
+    ax2.legend(loc="best", frameon=False)
 
     hist_d2_jetnet = ax3.hist(
         d2_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
     ax3.hist(d2, bins=hist_d2_jetnet[1], label=f"{model_name}", histtype="step")
     ax3.set_title(r"$d_2$")
-    ax3.legend(loc="best")
+    ax3.legend(loc="best", frameon=False)
 
-    plt.legend(loc="best")
+    plt.legend(loc="best", frameon=False)
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
@@ -1477,9 +1477,9 @@ def plot_full_substructure(
         )
         ax.hist(data_substructure[i], bins=hist_jetnet[1], label=f"{model_name}", histtype="step")
         ax.set_title(keys[i])
-        ax.legend(loc="best")
+        ax.legend(loc="best", frameon=False)
 
-    plt.legend(loc="best")
+    plt.legend(loc="best", frameon=False)
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
