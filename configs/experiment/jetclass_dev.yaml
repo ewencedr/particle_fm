@@ -45,7 +45,12 @@ data:
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
-  additional_part_features: ["part_energy"] # null means no additional part features
+  additional_part_features:
+    - part_energy
+    # - part_d0val
+    # - part_d0err
+    # - part_dzval
+    # - part_dzerr
 
 callbacks:
   ema:
@@ -56,7 +61,7 @@ callbacks:
     evaluate_ema_weights_instead: True
   jetclass_eval:
     every_n_epochs: 5 # evaluate every n epochs
-    additional_eval_epochs: [] # evaluate at these epochs as well
+    additional_eval_epochs: [1, 2] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
   jetclass_eval_test:
     num_jet_samples: 1_000 # jet samples to generate
