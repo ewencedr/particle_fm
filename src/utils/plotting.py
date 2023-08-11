@@ -38,6 +38,21 @@ def apply_mpl_styles() -> None:
     mpl.rcParams["patch.linewidth"] = 1.25
 
 
+JETCLASS_FEATURE_LABELS = {
+    "part_pt": "Particle $p_\\mathrm{T}$",
+    "part_eta": "Particle $\\eta$",
+    "part_phi": "Particle $\\phi$",
+    "part_mass": "Particle $m$",
+    "part_etarel": "Particle $\\eta^\\mathrm{rel}$",
+    "part_dphi": "Particle $\\phi^\\mathrm{rel}$",
+    "part_ptrel": "Particle $p_\\mathrm{T}^\\mathrm{rel}$",
+    "part_d0val": "Particle $d_0$",
+    "part_dzval": "Particle $d_z$",
+    "part_d0err": "Particle $\\sigma_{d_0}$",
+    "part_dzerr": "Particle $\\sigma_{d_z}$",
+}
+
+
 def plot_single_jets(
     data: np.ndarray,
     color: str = "#E2001A",
@@ -1472,3 +1487,37 @@ def plot_full_substructure(
     if close_fig:
         plt.close(fig)
     return fig
+
+
+def plot_particle_features(
+    data_sim: np.array,
+    data_gen: np.array,
+    mask_sim: np.array,
+    mask_gen: np.array,
+    feature_names: list,
+    plot_path: str,
+):
+    # plot the generated features and compare sim. data to gen. data
+    plot_cols = 3
+    plot_rows = data_sim.shape[-1] // plot_cols + 1
+    fig, ax = plt.subplots(plot_rows, plot_cols, figsize=(11, 2.7 * plot_rows))
+    ax = ax.flatten()
+    hist_kwargs = {}
+    for i in range(data_sim.shape[-1]):
+        values_sim = data_sim[:, :, i][mask_sim[:, :, 0] != 0].flatten()
+        values_gen = data_gen[:, :, i][mask_sim[:, :, 0] != 0].flatten()
+        _, bin_edges = np.histogram(np.concatenate([values_sim, values_gen]), bins=100)
+        hist_kwargs["bins"] = bin_edges
+        ax[i].hist(values_sim, **hist_kwargs, label="Sim. data", alpha=0.5)
+        ax[i].hist(
+            values_gen,
+            label="Gen. data",
+            histtype="step",
+            **hist_kwargs,
+        )
+        ax[i].set_yscale("log")
+        feature_name = feature_names[i]
+        ax[i].set_xlabel(JETCLASS_FEATURE_LABELS.get(feature_name, feature_name))
+    ax[2].legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(plot_path)
