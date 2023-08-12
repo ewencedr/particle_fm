@@ -58,11 +58,12 @@ def generate_data(
     """
     if variable_set_sizes and mask is None:
         raise ValueError("Please use mask when using variable_set_sizes=True")
-    if len(mask) != num_jet_samples:
-        raise ValueError(
-            f"Mask should have the same length as num_jet_samples ({len(mask)} !="
-            f" {num_jet_samples})"
-        )
+    if mask is not None:
+        if len(mask) != num_jet_samples:
+            raise ValueError(
+                f"Mask should have the same length as num_jet_samples ({len(mask)} !="
+                f" {num_jet_samples})"
+            )
     if verbose:
         print(f"Generating data ({num_jet_samples} samples). Device: {torch.device(device)}")
     particle_data_sampled = torch.Tensor()
