@@ -1,0 +1,24 @@
+# Generate data, calculate plots and metrics and log them to the logger
+lhco_jet_features_eval:
+  _target_: src.callbacks.lhco.lhco_jet_features_eval.LHCOJetFeaturesEvaluationCallback
+  every_n_epochs: 200 # evaluate every n epochs
+  num_jet_samples: -1 # jet samples to generate
+  image_path: ${paths.log_dir}callback_logs/
+  model_name: "lhco_jet_feauture"
+  use_ema: True
+  log_times: True
+  log_epoch_zero: True
+  data_type: "val"
+  w_dist_config:
+    num_eval_samples: 50_000
+    num_batches: 40
+    calculate_efps: False
+  generation_config:
+    batch_size: 2048
+    ode_solver: "midpoint"
+    ode_steps: 100
+    verbose: True
+  plot_config:
+    plot_efps: False
+    plottype: ""
+    plot_jet_features: True

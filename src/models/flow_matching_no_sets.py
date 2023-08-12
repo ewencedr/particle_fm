@@ -14,20 +14,23 @@ class ode_wrapper(torch.nn.Module):
 
     Args:
         model (torch.nn.Module): Model to wrap.
+        mask (torch.Tensor, optional): Mask. Defaults to None.
         cond (torch.Tensor, optional): Condition. Defaults to None.
     """
 
     def __init__(
         self,
         model: nn.Module,
+        mask: torch.Tensor = None,
         cond: torch.Tensor = None,
     ):
         super().__init__()
         self.model = model
+        self.mask = mask
         self.cond = cond
 
     def forward(self, t, x):
-        return self.model(t, x, cond=self.cond)
+        return self.model(t, x, mask=self.mask, cond=self.cond)
 
 
 class CNF(nn.Module):
@@ -66,17 +69,22 @@ class CNF(nn.Module):
         self,
         z: torch.Tensor,
         cond: torch.Tensor,
+        mask: torch.Tensor = None,
         ode_solver: str = "midpoint",
         ode_steps: int = 100,
     ) -> torch.Tensor:
         wrapped_cnf = ode_wrapper(
             model=self,
+            mask=mask,
             cond=cond,
         )
-        node = NeuralODE(wrapped_cnf(z), solver="midpoint", sensitivity="adjoint")
-        t_span = torch.linspace(1.0, 0.0, 50)
-        traj = node.trajectory(z, t_span)
-        return traj[-1]
+        if ode_solver == "midpoint":
+            node = NeuralODE(wrapped_cnf, solver="midpoint", sensitivity="adjoint")
+            t_span = torch.linspace(1.0, 0.0, ode_steps)
+            traj = node.trajectory(z, t_span)
+            return traj[-1]
+        else:
+            raise NotImplementedError(f"Solver {ode_solver} not implemented")
 
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
         i = torch.eye(x.shape[-1]).to(x)
@@ -122,16 +130,17 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         self,
         x: torch.Tensor,
         cond: torch.Tensor = None,
+        mask: torch.Tensor = None,
         reverse: bool = False,
         ode_solver: str = "midpoint",
         ode_steps: int = 100,
     ):
         if reverse:
             for f in reversed(self.flows):
-                x = f.decode(x, cond, ode_solver=ode_solver, ode_steps=ode_steps)
+                x = f.decode(x, cond, mask, ode_solver=ode_solver, ode_steps=ode_steps)
         else:
             for f in self.flows:
-                x = f.encode(x, ode_solver=ode_solver, ode_steps=ode_steps)
+                x = f.encode(x, mask, ode_solver=ode_solver, ode_steps=ode_steps)
         return x
 
     def on_train_start(self):
@@ -195,6 +204,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
     def sample(
         self,
         n_samples: int,
+        mask: torch.Tensor = None,
         cond: torch.Tensor = None,
         ode_solver: str = "midpoint",
         ode_steps: int = 100,
@@ -212,11 +222,9 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         z = torch.randn(n_samples, self.hparams.features).to(self.device)
         if cond is not None:
             cond = cond.to(self.device)
-            if self.hparams.use_normaliser:
-                cond = self.ctxt_normaliser(cond)
 
         samples = self.forward(
-            z, cond=cond, reverse=True, ode_solver=ode_solver, ode_steps=ode_steps
+            z, cond=cond, mask=mask, reverse=True, ode_solver=ode_solver, ode_steps=ode_steps
         )
 
         return samples
