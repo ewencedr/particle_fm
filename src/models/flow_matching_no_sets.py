@@ -114,6 +114,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         features: int = 8,
         n_transforms: int = 1,
         sigma: float = 1e-4,
+        activation: str = "Tanh",
     ):
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -121,7 +122,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         self.save_hyperparameters(logger=False)
         flows = nn.ModuleList()
         for _ in range(n_transforms):
-            flows.append(CNF(features, 3, hidden_features=[64, 64]))
+            flows.append(CNF(features, 3, hidden_features=[64, 64], activation=activation))
         self.flows = flows
 
         self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma)

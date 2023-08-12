@@ -41,7 +41,7 @@ callbacks:
     evaluate_ema_weights_instead: True
 
   lhco_jet_features_eval:
-    every_n_epochs: 100
+    every_n_epochs: 50
 
   #early_stopping:
   #  monitor: "val/loss"

@@ -7,6 +7,7 @@ class MLP(nn.Sequential):
         in_features: int,
         out_features: int,
         hidden_features: list[int] = [64, 64],
+        activation: str = "ELU",
     ):
         layers = []
 
@@ -14,6 +15,6 @@ class MLP(nn.Sequential):
             [in_features] + hidden_features,
             hidden_features + [out_features],
         ):
-            layers.extend([nn.Linear(a, b), nn.ELU()])
+            layers.extend([nn.Linear(a, b), getattr(nn, activation)()])
 
         super().__init__(*layers[:-1])
