@@ -43,7 +43,13 @@ class CNF(nn.Module):
 
         self.register_buffer("freqs", torch.arange(1, freqs + 1) * torch.pi)
 
-    def forward(self, t: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        t: torch.Tensor,
+        x: torch.Tensor,
+        mask: torch.Tensor = None,
+        cond: torch.Tensor = None,
+    ) -> torch.Tensor:
         t = self.freqs * t[..., None]
         t = torch.cat((t.cos(), t.sin()), dim=-1)
         t = t.expand(*x.shape[:-1], -1)
