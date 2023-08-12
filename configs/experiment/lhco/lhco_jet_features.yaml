@@ -6,7 +6,7 @@
 defaults:
   - override /data: lhco_jet_feature.yaml
   - override /model: flow_matching_no_sets.yaml
-  - override /callbacks: lhco_jet_feature.yaml
+  - override /callbacks: /lhco/lhco_jet_feature.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
