@@ -102,6 +102,9 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         sigma: float = 1e-4,
     ):
         super().__init__()
+        # this line allows to access init params with 'self.hparams' attribute
+        # also ensures init params will be stored in ckpt
+        self.save_hyperparameters(logger=False)
         flows = nn.ModuleList()
         for _ in range(n_transforms):
             flows.append(CNF(features, 3, hidden_features=[64, 64]))
