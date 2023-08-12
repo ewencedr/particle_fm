@@ -98,10 +98,15 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler = None,
         features: int = 8,
+        n_transforms: int = 1,
         sigma: float = 1e-4,
     ):
         super().__init__()
-        self.flow = CNF(features, 3, hidden_features=[64, 64])
+        flows = nn.ModuleList()
+        for _ in range(n_transforms):
+            flows.append(CNF(features, 3, hidden_features=[64, 64]))
+        self.flows = flows
+
         self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma)
 
     def forward(
