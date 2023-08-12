@@ -95,6 +95,8 @@ class CNF(nn.Module):
 class FLowMatchingNoSetsLitModule(pl.LightningModule):
     def __init__(
         self,
+        optimizer: torch.optim.Optimizer,
+        scheduler: torch.optim.lr_scheduler = None,
         features: int = 8,
         sigma: float = 1e-4,
     ):
