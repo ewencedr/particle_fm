@@ -3,25 +3,18 @@ from typing import Any, Dict, Optional
 import energyflow as ef
 import h5py
 import numpy as np
-import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from src.utils.pylogger import get_pylogger
 
-from .components import (
-    center_jets,
-    get_base_distribution,
-    mask_data,
-    normalize_tensor,
-    one_hot_encode,
-)
+from .components import normalize_tensor
 
 log = get_pylogger("JetNetDataModule")
 
 
-# TODO conditioning
+# TODO Standardization
 class LHCOJetFeatureDataModule(LightningDataModule):
     """LightningDataModule for JetFeatures of LHCO dataset. If no conditioning is used, the
     conditioning tensor will be a tensor of zeros.
@@ -83,10 +76,6 @@ class LHCOJetFeatureDataModule(LightningDataModule):
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
 
-        self.means: Optional[torch.Tensor] = None
-        self.stds: Optional[torch.Tensor] = None
-        self.cond_means: Optional[torch.Tensor] = None
-        self.cond_stds: Optional[torch.Tensor] = None
         self.tensor_test: Optional[torch.Tensor] = None
         self.mask_test: Optional[torch.Tensor] = None
         self.tensor_val: Optional[torch.Tensor] = None
