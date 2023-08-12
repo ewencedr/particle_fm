@@ -17,7 +17,7 @@ lhco_jet_features_eval:
     batch_size: 2048
     ode_solver: "midpoint"
     ode_steps: 100
-    verbose: True
+    verbose: False
   plot_config:
     plot_efps: False
     plottype: ""
