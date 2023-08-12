@@ -219,8 +219,6 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
 
             # Compare generated data to background data
 
-            plot_train_data = trainer.datamodule.tensor_train[:num_plot_samples]
-
             label_map = {
                 "0": r"${p_T}_1$",
                 "1": r"$\eta_1$",
@@ -233,11 +231,11 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             }
             fig, axs = plt.subplots(2, 4, figsize=(15, 10))
             for index, ax in enumerate(axs.reshape(-1)):
-                x_min, x_max = min(np.min(plot_train_data[:, index]), np.min(data[:, index])), max(
-                    np.max(plot_train_data[:, index]), np.max(data[:, index])
+                x_min, x_max = min(np.min(background_data[:, index]), np.min(data[:, index])), max(
+                    np.max(background_data[:, index]), np.max(data[:, index])
                 )
                 hist1 = ax.hist(
-                    plot_train_data[:, index], bins=100, label="train data", range=[x_min, x_max]
+                    background_data[:, index], bins=100, label="train data", range=[x_min, x_max]
                 )
                 next(ax._get_lines.prop_cycler)
                 ax.hist(data[:, index], bins=hist1[1], label="generated", histtype="step")
