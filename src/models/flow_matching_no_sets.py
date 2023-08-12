@@ -92,8 +92,12 @@ class CNF(nn.Module):
         return Normal(0.0, z.new_tensor(1.0)).log_prob(z).sum(dim=-1) + ladj * 1e2
 
 
-class FLowMatchingNoSetsModule(pl.LightningModule):
-    def __init__(self, features: int = 8, sigma: float = 1e-4):
+class FLowMatchingNoSetsLitModule(pl.LightningModule):
+    def __init__(
+        self,
+        features: int = 8,
+        sigma: float = 1e-4,
+    ):
         super().__init__()
         self.flow = CNF(4, 3, hidden_units=[64, 64])
         self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma)
