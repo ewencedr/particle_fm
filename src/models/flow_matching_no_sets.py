@@ -101,7 +101,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         sigma: float = 1e-4,
     ):
         super().__init__()
-        self.flow = CNF(4, 3, hidden_units=[64, 64])
+        self.flow = CNF(features, 3, hidden_features=[64, 64])
         self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma)
 
     def forward(
