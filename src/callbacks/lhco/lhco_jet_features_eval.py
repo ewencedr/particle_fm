@@ -233,8 +233,12 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             }
             fig, axs = plt.subplots(2, 4, figsize=(15, 10))
             for index, ax in enumerate(axs.reshape(-1)):
-                hist1 = ax.hist(plot_train_data[:, index], bins=100, label="train data")
-
+                x_min, x_max = min(np.min(plot_train_data[:, index]), np.min(data[:, index])), max(
+                    np.max(plot_train_data[:, index]), np.max(data[:, index])
+                )
+                hist1 = ax.hist(
+                    plot_train_data[:, index], bins=100, label="train data", range=[x_min, x_max]
+                )
                 next(ax._get_lines.prop_cycler)
                 ax.hist(data[:, index], bins=hist1[1], label="generated", histtype="step")
                 ax.set_xlabel(f"{label_map[str(index)]}")
