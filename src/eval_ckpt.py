@@ -288,6 +288,17 @@ if EVALUATE_SUBSTRUCTURE:
         tau21 = np.array(f["tau21"])
         tau32 = np.array(f["tau32"])
         d2 = np.array(f["d2"])
+        tau21_isnan = np.isnan(tau21)
+        tau32_isnan = np.isnan(tau32)
+        d2_isnan = np.isnan(d2)
+        if np.sum(tau21_isnan) > 0 or np.sum(tau32_isnan) > 0 or np.sum(d2_isnan) > 0:
+            pylogger.warning(f"Found {np.sum(tau21_isnan)} nan values in tau21")
+            pylogger.warning(f"Found {np.sum(tau32_isnan)} nan values in tau32")
+            pylogger.warning(f"Found {np.sum(d2_isnan)} nan values in d2")
+            pylogger.warning("Setting nan values to zero.")
+        tau21[tau21_isnan] = 0
+        tau32[tau32_isnan] = 0
+        d2[d2_isnan] = 0
         for key in f.keys():
             keys.append(key)
             data_substructure.append(np.array(f[key]))
@@ -300,6 +311,21 @@ if EVALUATE_SUBSTRUCTURE:
         tau21_jetclass = np.array(f["tau21"])
         tau32_jetclass = np.array(f["tau32"])
         d2_jetclass = np.array(f["d2"])
+        tau21_jetclass_isnan = np.isnan(tau21_jetclass)
+        tau32_jetclass_isnan = np.isnan(tau32_jetclass)
+        d2_jetclass_isnan = np.isnan(d2_jetclass)
+        if (
+            np.sum(tau21_jetclass_isnan) > 0
+            or np.sum(tau32_jetclass_isnan) > 0
+            or np.sum(d2_jetclass_isnan) > 0
+        ):
+            pylogger.warning(f"Found {np.sum(tau21_jetclass_isnan)} nan values in tau21")
+            pylogger.warning(f"Found {np.sum(tau32_jetclass_isnan)} nan values in tau32")
+            pylogger.warning(f"Found {np.sum(d2_jetclass_isnan)} nan values in d2")
+            pylogger.warning("Setting nan values to zero.")
+        tau21_jetclass[tau21_jetclass_isnan] = 0
+        tau32_jetclass[tau32_jetclass_isnan] = 0
+        d2_jetclass[d2_jetclass_isnan] = 0
         for key in f.keys():
             data_substructure_jetclass.append(np.array(f[key]))
     data_substructure_jetclass = np.array(data_substructure_jetclass)
