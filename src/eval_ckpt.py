@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 import torch
 import yaml
+import argparse
 
 # set env variable DATA_DIR again because of hydra
 from omegaconf import OmegaConf
@@ -39,18 +40,19 @@ logging.info("test")
 
 apply_mpl_styles()
 
-# TODO:
-# - make ckpt_path a command_line argument
-# improve the looping over the jet types (takes way too long at the moment)
+parser = argparse.ArgumentParser()
+parser.add_argument("--ckpt", type=str, default=None)
+parser.add_argument("--n_samples", type=int, default=100_000)
 
-# specify here the path to the run directory of the model you want to evaluate
-ckpt = (
-    #  "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/"
-    "/Users/joschka/beegfs_stuff/"
-    "2023-08-10_16-26-03/evaluated_ckpts/epoch_273/epoch_273.ckpt"  # TODO: dev remove
-)
+# TODO:
+args = parser.parse_args()
+ckpt = args.ckpt
+n_samples = args.n_samples
+
+pylogger.info(f"ckpt: {ckpt}")
+pylogger.info(f"n_samples: {n_samples}")
+
 EVALUATE_SUBSTRUCTURE = True
-N_GENERATED_SAMPLES = 1_000  # TODO: dev
 
 ckpt_path = Path(ckpt)
 run_dir = (
@@ -79,9 +81,9 @@ data_sim = np.array(datamodule.tensor_test)
 mask_sim = np.array(datamodule.mask_test)
 cond_sim = np.array(datamodule.tensor_conditioning_test)
 
-data_sim = data_sim[:N_GENERATED_SAMPLES]
-mask_sim = mask_sim[:N_GENERATED_SAMPLES]
-cond_sim = cond_sim[:N_GENERATED_SAMPLES]
+data_sim = data_sim[:n_samples]
+mask_sim = mask_sim[:n_samples]
+cond_sim = cond_sim[:n_samples]
 
 means = np.array(datamodule.means)
 stds = np.array(datamodule.stds)
