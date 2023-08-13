@@ -6,7 +6,7 @@ from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
 from .components.losses import FlowMatchingLoss
-from .components.mlp import MLP
+from .components.mlp import MLP, small_cond_MLP_model
 
 
 class ode_wrapper(torch.nn.Module):
@@ -38,11 +38,13 @@ class CNF(nn.Module):
         self,
         features: int,
         freqs: int = 3,
-        **kwargs,
+        activation: str = "Tanh",
     ):
         super().__init__()
 
-        self.net = MLP(2 * freqs + features, features, **kwargs)
+        self.net = small_cond_MLP_model(
+            features, features, dim_t=2 * freqs, dim_cond=1, activation=activation
+        )
 
         self.register_buffer("freqs", torch.arange(1, freqs + 1) * torch.pi)
 
@@ -57,7 +59,7 @@ class CNF(nn.Module):
         t = torch.cat((t.cos(), t.sin()), dim=-1)
         t = t.expand(*x.shape[:-1], -1)
 
-        return self.net(torch.cat((t, x), dim=-1))
+        return self.net(t, x, cond=cond)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         node = NeuralODE(x, solver="midpoint", sensitivity="adjoint")
@@ -115,6 +117,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         n_transforms: int = 1,
         sigma: float = 1e-4,
         activation: str = "ELU",
+        freqs: int = 3,
     ):
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -122,7 +125,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         self.save_hyperparameters(logger=False)
         flows = nn.ModuleList()
         for _ in range(n_transforms):
-            flows.append(CNF(features, 3, hidden_features=[256, 256, 256], activation=activation))
+            flows.append(CNF(features, freqs=freqs, activation=activation))
         self.flows = flows
 
         self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma)
