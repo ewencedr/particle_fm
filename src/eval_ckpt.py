@@ -44,9 +44,9 @@ apply_mpl_styles()
 
 # specify here the path to the run directory of the model you want to evaluate
 ckpt = (
-    #  "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs"
-    "/Users/joschka/beegfs_stuff/2023-08-10_16-26-03/"
-    "/evaluated_ckpts/epoch_273/epoch_273.ckpt"  # TODO: dev remove
+     "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/"
+    # "/Users/joschka/beegfs_stuff/"  # TODO: dev remove
+    "2023-08-10_16-26-03/evaluated_ckpts/epoch_273/epoch_273.ckpt"
 )
 EVALUATE_SUBSTRUCTURE = True
 N_GENERATED_SAMPLES = 1_000  # TODO: dev
@@ -71,7 +71,7 @@ datamodule.setup()
 # load the model from the checkpoint
 model = hydra.utils.instantiate(cfg.model)
 model = model.load_from_checkpoint(ckpt)
-model.to("cpu")  # TODO: dev
+# model.to("cpu")  # TODO: dev
 
 # ------------------------------------------------
 data_sim = np.array(datamodule.tensor_test)
@@ -108,23 +108,14 @@ if not (output_dir / f"epoch_{ckpt_epoch}.ckpt").exists():
     pylogger.info(f"Copy checkpoint file to {output_dir}")
     shutil.copyfile(ckpt, output_dir / f"epoch_{ckpt_epoch}.ckpt")
 
-data_output_path = output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}.npz"
-# data_output_path = output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{1000}.npz"
-if data_output_path.exists():
-    pylogger.info(
-        f"Output file {data_output_path} already exists. "
-        "Will use existing file instead of generating again."
-    )
-    npfile = np.load(data_output_path, allow_pickle=True)
-    data_gen = npfile["data_gen"]
-    mask_gen = npfile["mask_gen"]
-    cond_gen = npfile["cond_gen"]
-    data_sim = npfile["data_sim"]
-    mask_sim = npfile["mask_sim"]
-    cond_sim = npfile["cond_sim"]
+h5data_output_path = output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}.h5"
+
+if h5data_output_path.exists():
+    pylogger.info(f"h5 output file {h5data_output_path} already exists.")
+    pylogger.info("--> Using existing file.")
 else:
-    # Generate data
-    pylogger.info(f"Output file {data_output_path} doesn't exist. --> Generating data.")
+    pylogger.info(f"Output file {h5data_output_path} doesn't exist.")
+    pylogger.info("--> Generating data.")
     data_gen, generation_time = generate_data(
         model=model,
         num_jet_samples=len(mask_gen),
@@ -134,53 +125,18 @@ else:
         normalized_data=datamodule.hparams.normalize,
         means=datamodule.means,
         stds=datamodule.stds,
-        device="cpu",  # TODO: dev
+        # device="cpu",  # TODO: dev
     )
     pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
 
-    pylogger.info(f"Saving generated data to {data_output_path}")
-    np.savez_compressed(
-        data_output_path.resolve(),
-        data_gen=data_gen,
-        mask_gen=mask_gen,
-        cond_gen=cond_gen,
-        data_sim=data_sim,
-        mask_sim=mask_sim,
-        cond_sim=cond_sim,
-        names_particles_features=datamodule.names_particle_features,
-        names_conditioning=datamodule.names_conditioning,
-    )
-
-# Wasserstein distances
-
-pylogger.info("Calculating Wasserstein distances.")
-# metrics = calculate_all_wasserstein_metrics(
-#     data_sim, data_gen
-# )  # TODO: should we add a config?, **self.w_dist_config)
-metrics = {}
-
-# Prepare Data for Plotting
-pylogger.info("Preparing data for plotting.")
-data_gen_plotting = data_gen
-# plot_prep_config = {
-#     "calculate_efps" if key == "plot_efps" else key: value
-#     for key, value in self.plot_config.items()
-#     if key in ["plot_efps", "selected_particles", "selected_multiplicities"]
-# }
-plot_prep_config = {"calculate_efps": True}
-
-h5data_output_path = output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}.h5"
-
-if h5data_output_path.exists():
-    pylogger.info(f"h5 output file {h5data_output_path} already exists --> using this one.")
-else:
     pylogger.info("Calculating jet features")
+    plot_prep_config = {"calculate_efps": True}
     (
         jet_data_gen,
         efps_values_gen,
         pt_selected_particles_gen,
         _,
-    ) = prepare_data_for_plotting([data_gen_plotting[:, :, :3]], **plot_prep_config)
+    ) = prepare_data_for_plotting([data_gen[:, :, :3]], **plot_prep_config)
     (
         jet_data_sim,
         efps_values_sim,
@@ -248,6 +204,12 @@ with h5py.File(h5data_output_path) as h5file:
     efp_values_sim = h5file["efp_values_sim"][:]
     pt_selected_particles_gen = h5file["pt_selected_particles_gen"][:]
     pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
+
+pylogger.info("Calculating Wasserstein distances.")
+metrics = calculate_all_wasserstein_metrics(
+    data_sim, data_gen
+)  # TODO: should we add a config?, **self.w_dist_config)
+# metrics = {}
 
 pylogger.info("Plotting particle features")
 plot_particle_features(
@@ -360,6 +322,7 @@ if EVALUATE_SUBSTRUCTURE:
     # plot substructure
     file_name_substructure = "substructure_3plots"
     file_name_full_substructure = "substructure_full"
+    img_path = str(output_dir)
     plot_substructure(
         tau21=tau21,
         tau32=tau32,
