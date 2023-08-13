@@ -228,7 +228,7 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             self.tensor_conditioning_train = tensor_conditioning_train
             self.tensor_conditioning_val = tensor_conditioning_val
             self.tensor_conditioning_test = tensor_conditioning_test
-            self.conditioning_full = torch.tensor(conditioning_full)
+            self.conditioning_full = torch.tensor(conditioning_full, dtype=torch.float)
 
     def train_dataloader(self):
         return DataLoader(
