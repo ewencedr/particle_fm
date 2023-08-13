@@ -38,10 +38,16 @@ class FlowMatchingLoss(nn.Module):
     def forward(
         self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None
     ) -> torch.Tensor:
-        t = torch.rand_like(torch.ones(x.shape[0]))
-        t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
-        t = t.type_as(x)
+        if mask is None:
+            mask = torch.ones_like(x)
 
+        if len(x.shape) == 3:
+            # for set data
+            t = torch.rand_like(torch.ones(x.shape[0]))
+            t = t.unsqueeze(-1).repeat_interleave(x.shape[1], dim=1).unsqueeze(-1)
+        else:
+            t = torch.rand_like(x[..., 0]).unsqueeze(-1)
+        t = t.type_as(x)
         logger_loss.debug(f"t: {t.shape}")
 
         z = torch.randn_like(x)

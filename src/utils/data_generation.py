@@ -58,15 +58,17 @@ def generate_data(
     """
     if variable_set_sizes and mask is None:
         raise ValueError("Please use mask when using variable_set_sizes=True")
-    if len(mask) != num_jet_samples:
-        raise ValueError(
-            f"Mask should have the same length as num_jet_samples ({len(mask)} !="
-            f" {num_jet_samples})"
-        )
+    if mask is not None:
+        if len(mask) != num_jet_samples:
+            raise ValueError(
+                f"Mask should have the same length as num_jet_samples ({len(mask)} !="
+                f" {num_jet_samples})"
+            )
     if verbose:
         print(f"Generating data ({num_jet_samples} samples). Device: {torch.device(device)}")
     particle_data_sampled = torch.Tensor()
     start_time = 0
+
     for i in tqdm(range(num_jet_samples // batch_size), disable=not verbose):
         if cond is not None:
             cond_batch = cond[i * batch_size : (i + 1) * batch_size]
@@ -87,9 +89,9 @@ def generate_data(
             jet_samples_batch = (
                 model.to(torch.device(device))
                 .sample(
-                    batch_size,
-                    cond_batch,
-                    mask_batch,
+                    n_samples=batch_size,
+                    cond=cond_batch,
+                    mask=mask_batch,
                     ode_solver=ode_solver,
                     ode_steps=ode_steps,
                 )
@@ -124,9 +126,9 @@ def generate_data(
             jet_samples_batch = (
                 model.to(torch.device(device))
                 .sample(
-                    remaining_samples,
-                    cond_batch,
-                    mask_batch,
+                    n_samples=remaining_samples,
+                    cond=cond_batch,
+                    mask=mask_batch,
                     ode_solver=ode_solver,
                     ode_steps=ode_steps,
                 )
