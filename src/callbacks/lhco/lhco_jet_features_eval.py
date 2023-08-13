@@ -272,7 +272,11 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
                     np.max(background_data[:, index]), np.max(data[:, index])
                 )
                 hist1 = ax.hist(
-                    background_data[:, index], bins=100, label="train data", range=[x_min, x_max]
+                    background_data[:, index],
+                    bins=100,
+                    label="train data",
+                    range=[x_min, x_max],
+                    alpha=0.5,
                 )
                 ax.hist(data[:, index], bins=hist1[1], label="generated", histtype="step")
                 ax.set_xlabel(f"{label_map[str(index)]}")
