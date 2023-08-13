@@ -26,6 +26,7 @@ from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,
     plot_data,
     plot_full_substructure,
     plot_particle_features,
+    plot_jet_features,
     plot_substructure,
     prepare_data_for_plotting,
 )
@@ -42,9 +43,13 @@ apply_mpl_styles()
 # improve the looping over the jet types (takes way too long at the moment)
 
 # specify here the path to the run directory of the model you want to evaluate
-ckpt = "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-26-03/evaluated_ckpts/epoch_273/epoch_273.ckpt"
+ckpt = (
+    #  "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs"
+    "/Users/joschka/beegfs_stuff/2023-08-10_16-26-03/"
+    "/evaluated_ckpts/epoch_273/epoch_273.ckpt"  # TODO: dev remove
+)
 EVALUATE_SUBSTRUCTURE = True
-N_GENERATED_SAMPLES = 100_000
+N_GENERATED_SAMPLES = 1_000  # TODO: dev
 
 ckpt_path = Path(ckpt)
 run_dir = (
@@ -66,6 +71,7 @@ datamodule.setup()
 # load the model from the checkpoint
 model = hydra.utils.instantiate(cfg.model)
 model = model.load_from_checkpoint(ckpt)
+model.to("cpu")  # TODO: dev
 
 # ------------------------------------------------
 data_sim = np.array(datamodule.tensor_test)
@@ -118,6 +124,7 @@ if data_output_path.exists():
     cond_sim = npfile["cond_sim"]
 else:
     # Generate data
+    pylogger.info(f"Output file {data_output_path} doesn't exist. --> Generating data.")
     data_gen, generation_time = generate_data(
         model=model,
         num_jet_samples=len(mask_gen),
@@ -127,6 +134,7 @@ else:
         normalized_data=datamodule.hparams.normalize,
         means=datamodule.means,
         stds=datamodule.stds,
+        device="cpu",  # TODO: dev
     )
     pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
 
@@ -198,110 +206,73 @@ data_gen_plotting = data_gen
 # }
 plot_prep_config = {"calculate_efps": True}
 
-(
-    jet_data_gen,
-    efps_values_gen,
-    pt_selected_particles_gen,
-    pt_selected_multiplicities_gen,
-) = prepare_data_for_plotting(np.array([data_gen_plotting]), **plot_prep_config)
+h5data_output_path = output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}.h5"
 
-(
-    jet_data_sim,
-    efps_sim,
-    pt_selected_particles_sim,
-    pt_selected_multiplicities_sim,
-) = prepare_data_for_plotting(
-    [data_sim],
-    **plot_prep_config,
-)
-jet_data_sim, efps_sim, pt_selected_particles_sim = (
-    jet_data_sim[0],
-    efps_sim[0],
-    pt_selected_particles_sim[0],
-)
+if h5data_output_path.exists():
+    pylogger.info(f"h5 output file {h5data_output_path} already exists --> using this one.")
+else:
+    pylogger.info("Calculating jet features")
+    (
+        jet_data_gen,
+        efps_values_gen,
+        pt_selected_particles_gen,
+        _,
+    ) = prepare_data_for_plotting([data_gen_plotting], **plot_prep_config)
+    (
+        jet_data_sim,
+        efps_values_sim,
+        pt_selected_particles_sim,
+        _,
+    ) = prepare_data_for_plotting([data_sim], **plot_prep_config)
+    # prepare_data_for_plotting returns lists of arrays of the following shape:
+    # jet_data: (n_datasets, n_jets, n_jet_features)
+    # efps_values: (n_datasets, n_jets, n_efp_features)
+    # pt_selected_particles: (n_datasets, n_selected_particles, n_jets) --> swap axes here!
+    print(f"Saving data to {h5data_output_path}")
 
-# Plotting
-pylogger.info("Plotting distributions.")
-plot_name = f"epoch_{ckpt_epoch}_overview_all_jet_types"
-img_path = str(output_dir) + "/"
-pylogger.warning(f"Saving plots to {img_path}")
-plot_data(
-    particle_data=np.array([data_gen_plotting]),
-    sim_data=data_sim,
+    # Save all the data to an HDF file
+    with h5py.File(h5data_output_path, mode="w") as h5file:
+        h5file.create_dataset("jet_data_gen", data=jet_data_gen[0])
+        h5file.create_dataset("jet_data_sim", data=jet_data_sim[0])
+        h5file.create_dataset("efp_values_gen", data=efps_values_gen[0])
+        h5file.create_dataset("efp_values_sim", data=efps_values_sim[0])
+        h5file.create_dataset(
+            "pt_selected_particles_gen", data=np.swapaxes(pt_selected_particles_gen, 1, 2)[0]
+        )
+        h5file.create_dataset(
+            "pt_selected_particles_sim", data=np.swapaxes(pt_selected_particles_sim, 1, 2)[0]
+        )
+
+# read the file
+with h5py.File(h5data_output_path) as h5file:
+    jet_data_gen = h5file["jet_data_gen"][:]
+    jet_data_sim = h5file["jet_data_sim"][:]
+    efp_values_gen = h5file["efp_values_gen"][:]
+    efp_values_sim = h5file["efp_values_sim"][:]
+    pt_selected_particles_gen = h5file["pt_selected_particles_gen"][:]
+    pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
+
+plot_jet_features(
+    jet_data_gen=jet_data_gen,
     jet_data_sim=jet_data_sim,
-    jet_data=jet_data_gen,
-    efps_sim=efps_sim,
-    efps_values=efps_values_gen,
-    # num_samples=num_plot_samples,
-    pt_selected_particles=pt_selected_particles_gen,
-    pt_selected_multiplicities=pt_selected_multiplicities_gen,
-    pt_selected_particles_sim=pt_selected_particles_sim,
-    pt_selected_multiplicities_sim=pt_selected_multiplicities_sim,
-    save_fig=True,
-    save_folder=img_path,
-    save_name=plot_name,
-    close_fig=True,
-    # **self.plot_config,
+    jet_feature_names=["jet_pt", "jet_y", "jet_phi", "jet_mrel"],
+    legend_label_sim="JetClass",
+    legend_label_gen="Generated",
+    plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
 )
 
-if len(jet_types_dict) > 0:
-    pylogger.info("Plotting jet types separately")
-    for jet_type, index in jet_types_dict.items():
-        pylogger.info(f"Plotting jet type {jet_type}")
-        mask_this_jet_type_sim = cond_sim[:, index] == 1
-        # TODO: check if this still works once we use generated conditioning
-        mask_this_jet_type_gen = cond_gen[:, index] == 1
-
-        # TODO: the calculation below slows things down a lot
-        # --> can this be done using the calculated values from above and
-        # just apply the mask to the calculated values?
-        (
-            jet_data_this_jet_type,
-            efps_values_this_jet_type,
-            pt_selected_particles_this_jet_type,
-            pt_selected_multiplicities_this_jet_type,
-        ) = prepare_data_for_plotting(
-            np.array([data_gen_plotting[mask_this_jet_type_gen]]), **plot_prep_config
-        )
-
-        (
-            jet_data_this_jet_type_sim,
-            efps_this_jet_type_sim,
-            pt_selected_particles_this_jet_type_sim,
-            pt_selected_multiplicities_this_jet_type_sim,
-        ) = prepare_data_for_plotting(
-            [data_sim[mask_this_jet_type_sim]],
-            **plot_prep_config,
-        )
-        (
-            jet_data_this_jet_type_sim,
-            efps_this_jet_type_sim,
-            pt_selected_particles_this_jet_type_sim,
-        ) = (
-            jet_data_this_jet_type_sim[0],
-            efps_this_jet_type_sim[0],
-            pt_selected_particles_this_jet_type_sim[0],
-        )
-
-        plot_name = f"epoch_{ckpt_epoch}_overview_{jet_type}"
-        plot_data(
-            particle_data=np.array([data_gen_plotting[mask_this_jet_type_gen]]),
-            sim_data=data_sim[mask_this_jet_type_sim],
-            jet_data_sim=jet_data_this_jet_type_sim,
-            jet_data=jet_data_this_jet_type,
-            efps_sim=efps_this_jet_type_sim,
-            efps_values=efps_values_this_jet_type,
-            num_samples=-1,
-            pt_selected_particles=pt_selected_particles_this_jet_type,
-            pt_selected_multiplicities=pt_selected_multiplicities_this_jet_type,
-            pt_selected_particles_sim=pt_selected_particles_this_jet_type_sim,
-            pt_selected_multiplicities_sim=pt_selected_multiplicities_this_jet_type_sim,
-            save_fig=True,
-            save_folder=img_path,
-            save_name=plot_name,
-            close_fig=True,
-            # **self.plot_config,
-        )
+for jet_type, jet_type_idx in jet_types_dict.items():
+    pylogger.info(f"Plotting jet features of jet type {jet_type}")
+    jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+    jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+    plot_jet_features(
+        jet_data_gen=jet_data_gen[jet_type_mask_gen],
+        jet_data_sim=jet_data_sim[jet_type_mask_sim],
+        jet_feature_names=["jet_pt", "jet_y", "jet_phi", "jet_mrel"],
+        legend_label_sim="JetClass",
+        legend_label_gen="Generated",
+        plot_path=output_dir / f"epoch_{ckpt_epoch}_jet_features_{jet_type}.pdf",
+    )
 
 if EVALUATE_SUBSTRUCTURE:
     pylogger.info("Calculating substructure.")
