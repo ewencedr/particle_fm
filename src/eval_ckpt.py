@@ -44,9 +44,9 @@ apply_mpl_styles()
 
 # specify here the path to the run directory of the model you want to evaluate
 ckpt = (
-     "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/"
-    # "/Users/joschka/beegfs_stuff/"  # TODO: dev remove
-    "2023-08-10_16-26-03/evaluated_ckpts/epoch_273/epoch_273.ckpt"
+    #  "/beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/"
+    "/Users/joschka/beegfs_stuff/"
+    "2023-08-10_16-26-03/evaluated_ckpts/epoch_273/epoch_273.ckpt"  # TODO: dev remove
 )
 EVALUATE_SUBSTRUCTURE = True
 N_GENERATED_SAMPLES = 1_000  # TODO: dev
@@ -264,19 +264,22 @@ for jet_type, jet_type_idx in jet_types_dict.items():
     )
 
 if EVALUATE_SUBSTRUCTURE:
-    pylogger.info("Calculating substructure.")
     substructure_path = output_dir
-    substr_filename_gen = "substructure_generated"
+    substr_filename_gen = f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}"
     substructure_full_path = substructure_path / substr_filename_gen
-
-    # calculate substructure for generated data
-    dump_hlvs(data_gen, str(substructure_full_path), plot=False)
-
-    substr_filename_jetclass = "substructure_jetclass"
+    substr_filename_jetclass = (
+        f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}"
+    )
     substructure_full_path_jetclass = substructure_path / substr_filename_jetclass
 
+    # calculate substructure for generated data
+    if not os.path.isfile(str(substructure_full_path) + ".h5"):
+        pylogger.info("Calculating substructure.")
+        dump_hlvs(data_gen, str(substructure_full_path), plot=False)
     # calculate substructure for reference data
-    dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
+    if not os.path.isfile(str(substructure_full_path_jetclass) + ".h5"):
+        pylogger.info("Calculating substructure.")
+        dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
 
     # load substructure for model generated data
     keys = []
@@ -322,7 +325,7 @@ if EVALUATE_SUBSTRUCTURE:
     # plot substructure
     file_name_substructure = "substructure_3plots"
     file_name_full_substructure = "substructure_full"
-    img_path = str(output_dir)
+    img_path = str(output_dir) + "/"
     plot_substructure(
         tau21=tau21,
         tau32=tau32,
@@ -349,11 +352,7 @@ if EVALUATE_SUBSTRUCTURE:
         model_name="Generated",
     )
 
-    # log substructure images
-    img_path_substructure = f"{img_path}{file_name_substructure}.png"
-    img_path_substructure_full = f"{img_path}{file_name_full_substructure}.png"
-
-yaml_path = output_dir / "final_eval_metrics.yml"
+yaml_path = output_dir / "eval_metrics.yml"
 pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
 
 # transform numpy.float64 for better readability in yaml file
