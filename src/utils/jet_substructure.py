@@ -444,6 +444,8 @@ def dump_hlvs(
 
     # The substructure functions need data to be in [pt, eta, phi, m]
     jets = np.concatenate(
+        # TODO: CHECKTHIS: is there an index error here? eta should be index 0 and phi index 1?
+        # so it should be jets[..., [2, 0, 1]]
         [jets[..., [2, 1, 0]], np.zeros(shape=(*jets.shape[:-1], 1))],
         axis=-1,
     )

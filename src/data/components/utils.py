@@ -292,12 +292,16 @@ def get_pt_of_selected_particles(particle_data, selected_particles=[1, 3, 10]):
     """Return pt of selected particles.
 
     Args:
-        particle_data (_type_): _description_
+        particle_data (np.array): Particle data of shape (n_jets, n_particles, n_features)
+            The particle features are assumed to be in the order (eta_rel, phi_rel, pt_rel)
         selected_particles (list, optional): _description_. Defaults to [1, 3, 10].
 
     Returns:
-        _type_: _description_
+        np.array: Array of shape (n_selected_indices, n_jets) where array[i, :] represents
+            the pT values of the selected_particles[i]'th particle (after sorting by
+            pT)
     """
+    # sort along pt_rel (third feature) and invert the ordering (largest to smallest)
     particle_data_sorted = np.sort(particle_data[:, :, 2])[:, ::-1]
     pt_selected_particles = []
     for selected_particle in selected_particles:
@@ -313,7 +317,8 @@ def get_pt_of_selected_multiplicities(
 
     Args:
         particle_data (np.ndarray): Particle data of shape (num_jets, num_particles, num_features)
-        selected_multiplicities (list, optional): List of selected particle multiplicities. Defaults to [20, 30, 40].
+        selected_multiplicities (list, optional): List of selected particle
+            multiplicities. Defaults to [20, 30, 40].
         num_jets (int, optional): Number of jets to consider. Defaults to 150.
 
     Returns:
