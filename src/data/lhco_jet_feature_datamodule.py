@@ -63,6 +63,8 @@ class LHCOJetFeatureDataModule(LightningDataModule):
         drop_last: bool = False,
         verbose: bool = True,
         # data
+        normalize: bool = True,
+        normalize_sigma: int = 5,
         window_left: float = 0.33e8,
         window_right: float = 0.37e8,
     ):
@@ -76,6 +78,10 @@ class LHCOJetFeatureDataModule(LightningDataModule):
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
 
+        self.means: Optional[torch.Tensor] = None
+        self.stds: Optional[torch.Tensor] = None
+        self.cond_means: Optional[torch.Tensor] = None
+        self.cond_stds: Optional[torch.Tensor] = None
         self.tensor_test: Optional[torch.Tensor] = None
         self.mask_test: Optional[torch.Tensor] = None
         self.tensor_val: Optional[torch.Tensor] = None
@@ -116,7 +122,7 @@ class LHCOJetFeatureDataModule(LightningDataModule):
 
             # cut window
             args_to_remove = (mjj >= self.hparams.window_left) & (mjj <= self.hparams.window_right)
-            conditioning = mjj[~args_to_remove]
+            conditioning = mjj[~args_to_remove].reshape(-1, 1)
 
             jet_data_cut = jet_data[~args_to_remove]
 
@@ -142,17 +148,71 @@ class LHCOJetFeatureDataModule(LightningDataModule):
                 ],
             )
 
-            tensor_train = torch.tensor(dataset_train, dtype=torch.float)
-            tensor_val = torch.tensor(dataset_val, dtype=torch.float)
-            tensor_test = torch.tensor(dataset_test, dtype=torch.float)
-
             tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float)
             tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float)
             tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float)
+            if self.hparams.normalize:
+                means = np.mean(dataset_train, axis=0)
+                stds = np.std(dataset_train, axis=0)
+                means_cond = torch.mean(tensor_conditioning_train, axis=0)
+                stds_cond = torch.std(tensor_conditioning_train, axis=0)
 
-            self.data_train = TensorDataset(tensor_train, tensor_conditioning_train)
-            self.data_val = TensorDataset(tensor_val, tensor_conditioning_val)
-            self.data_test = TensorDataset(tensor_test, tensor_conditioning_test)
+                # Training
+                normalized_dataset_train = normalize_tensor(
+                    np.copy(dataset_train), means, stds, sigma=self.hparams.normalize_sigma
+                )
+                tensor_train = torch.tensor(normalized_dataset_train, dtype=torch.float)
+
+                tensor_conditioning_train = normalize_tensor(
+                    tensor_conditioning_train,
+                    means_cond,
+                    stds_cond,
+                    sigma=self.hparams.normalize_sigma,
+                )
+
+                # Validation
+                normalized_dataset_val = normalize_tensor(
+                    np.copy(dataset_val),
+                    means,
+                    stds,
+                    sigma=self.hparams.normalize_sigma,
+                )
+                tensor_val = torch.tensor(normalized_dataset_val, dtype=torch.float)
+
+                tensor_conditioning_val = normalize_tensor(
+                    tensor_conditioning_val,
+                    means_cond,
+                    stds_cond,
+                    sigma=self.hparams.normalize_sigma,
+                )
+
+                # Test
+                tensor_conditioning_test = normalize_tensor(
+                    tensor_conditioning_test,
+                    means_cond,
+                    stds_cond,
+                    sigma=self.hparams.normalize_sigma,
+                )
+
+            unnormalized_tensor_train = torch.tensor(dataset_train, dtype=torch.float)
+            unnormalized_tensor_val = torch.tensor(dataset_val, dtype=torch.float)
+
+            tensor_test = torch.tensor(dataset_test, dtype=torch.float)
+
+            if self.hparams.normalize:
+                self.data_train = TensorDataset(tensor_train, tensor_conditioning_train)
+                self.data_val = TensorDataset(tensor_val, tensor_conditioning_val)
+                self.data_test = TensorDataset(tensor_test, tensor_conditioning_test)
+                self.means = torch.tensor(means)
+                self.stds = torch.tensor(stds)
+                self.cond_means = means_cond
+                self.cond_stds = stds_cond
+            else:
+                self.data_train = TensorDataset(
+                    unnormalized_tensor_train, tensor_conditioning_train
+                )
+                self.data_val = TensorDataset(unnormalized_tensor_val, tensor_conditioning_val)
+                self.data_test = TensorDataset(tensor_test, tensor_conditioning_test)
 
             if self.hparams.verbose:
                 print(f"Window: {self.hparams.window_left} - {self.hparams.window_right} TeV")
@@ -162,7 +222,7 @@ class LHCOJetFeatureDataModule(LightningDataModule):
                 print("Test dataset size:", len(self.data_test))
 
             self.tensor_train = tensor_train
-            self.tensor_val = tensor_val
+            self.tensor_val = unnormalized_tensor_val
             self.tensor_test = tensor_test
             self.tensor_conditioning_train = tensor_conditioning_train
             self.tensor_conditioning_val = tensor_conditioning_val

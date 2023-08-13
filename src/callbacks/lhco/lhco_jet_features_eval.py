@@ -204,8 +204,11 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             # Generate data
             data, generation_time = generate_data(
                 model=pl_module,
-                num_jet_samples=len(cond),
-                cond=torch.tensor(cond),
+                num_jet_samples=len(background_data),
+                cond=None,  # torch.tensor(cond),
+                normalized_data=trainer.datamodule.hparams.normalize,
+                means=trainer.datamodule.means,
+                stds=trainer.datamodule.stds,
                 **self.generation_config,
             )
 
