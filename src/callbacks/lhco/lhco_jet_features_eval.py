@@ -2,6 +2,7 @@ import warnings
 from typing import Callable, Mapping, Optional
 
 import awkward as ak
+import energyflow as ef
 import fastjet as fj
 import h5py
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ import vector
 import wandb
 
 from src.callbacks.ema import EMA
+from src.data.components import inverse_normalize_tensor
 from src.data.components.metrics import (
     calculate_all_wasserstein_metrics,
     calculate_wasserstein_metrics_jets,
@@ -203,7 +205,7 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             # Generate data
             data, generation_time = generate_data(
                 model=pl_module,
-                num_jet_samples=len(background_data),
+                num_jet_samples=len(cond),
                 cond=torch.tensor(cond),
                 normalized_data=trainer.datamodule.hparams.normalize,
                 means=trainer.datamodule.means,
@@ -218,6 +220,39 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
                 and self.use_ema
             ):
                 self.ema_callback.restore_original_weights(pl_module)
+
+            # de-standardize conditioning
+            cond_true = inverse_normalize_tensor(
+                torch.tensor(cond),
+                trainer.datamodule.cond_means,
+                trainer.datamodule.cond_stds,
+                trainer.datamodule.hparams.normalize_sigma,
+            )
+            cond_true = cond_true.numpy()
+
+            # Calculate mjj
+            p4_x_jet = ef.p4s_from_ptyphims(data[:, :4])
+            p4_y_jet = ef.p4s_from_ptyphims(data[:, 4:])
+            # get mjj from p4_jets
+            pj_x = np.sqrt(np.sum(p4_x_jet**2, axis=1))
+            pj_y = np.sqrt(np.sum(p4_y_jet**2, axis=1))
+            mjj = (pj_x + pj_y) ** 2
+
+            fig, axs = plt.subplots()
+            hist = axs.hist(
+                cond_true,
+                bins=np.arange(0.005e8, 1.8e8, 0.005e8),
+                histtype="stepfilled",
+                label="train data",
+                alpha=0.5,
+            )
+            axs.hist(mjj, bins=hist[1], histtype="step", label="generated")
+            axs.set_xlabel(r"$m_{jj}$")
+            axs.legend()
+            plt.tight_layout()
+            plot_name_mjj = "_lhco_jet_features_mjj"
+            plt.savefig(f"{self.image_path}{plot_name_mjj}.png")
+            plt.close()
 
             # Compare generated data to background data
 
@@ -248,13 +283,19 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             plt.tight_layout()
             plot_name = "_lhco_jet_features"
             plt.savefig(f"{self.image_path}{plot_name}.png")
+            plt.close()
 
             # Log plots
             img_path = f"{self.image_path}{plot_name}.png"
+            img_path_mjj = f"{self.image_path}{plot_name_mjj}.png"
             if self.comet_logger is not None:
                 self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
+                self.comet_logger.log_image(img_path_mjj, name=f"epoch{trainer.current_epoch}_mjj")
             if self.wandb_logger is not None:
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
+                self.wandb_logger.log(
+                    {f"epoch{trainer.current_epoch}_mjj": wandb.Image(img_path_mjj)}
+                )
 
             # Log jet generation time
             if self.log_times:
