@@ -351,6 +351,40 @@ if EVALUATE_SUBSTRUCTURE:
         simulation_name="JetClass",
         model_name="Generated",
     )
+    for jet_type, jet_type_idx in jet_types_dict.items():
+        pylogger.info(f"Plotting substructure for jet type {jet_type}")
+        jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+        jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+        plot_substructure(
+            tau21=tau21[jet_type_mask_gen],
+            tau32=tau32[jet_type_mask_gen],
+            d2=d2[jet_type_mask_gen],
+            tau21_jetnet=tau21_jetclass[jet_type_mask_sim],
+            tau32_jetnet=tau32_jetclass[jet_type_mask_sim],
+            d2_jetnet=d2_jetclass[jet_type_mask_sim],
+            save_fig=True,
+            save_folder=img_path,
+            save_name=file_name_substructure + "_" + jet_type,
+            close_fig=True,
+            simulation_name="JetClass",
+            model_name="Generated",
+        )
+        plot_full_substructure(
+            data_substructure=[
+                data_substructure[i][jet_type_mask_gen] for i in range(len(data_substructure))
+            ],
+            data_substructure_jetnet=[
+                data_substructure_jetclass[i][jet_type_mask_sim]
+                for i in range(len(data_substructure_jetclass))
+            ],
+            keys=keys,
+            save_fig=True,
+            save_folder=img_path,
+            save_name=file_name_full_substructure + "_" + jet_type,
+            close_fig=True,
+            simulation_name="JetClass",
+            model_name="Generated",
+        )
 
 yaml_path = output_dir / "eval_metrics.yml"
 pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
