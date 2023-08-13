@@ -23,10 +23,10 @@ trainer:
   max_epochs: 10000
   gradient_clip_val: 0.5
 
-model:
-  scheduler:
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
+#model:
+  #scheduler:
+  #  warmup: ${trainer.min_epochs}
+  #  max_iters: ${trainer.max_epochs}
 
 data:
   val_fraction: 0.05
@@ -41,7 +41,7 @@ callbacks:
     evaluate_ema_weights_instead: True
 
   lhco_jet_features_eval:
-    every_n_epochs: 50
+    every_n_epochs: 10
 
   #early_stopping:
   #  monitor: "val/loss"
