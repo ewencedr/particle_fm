@@ -9,16 +9,8 @@ lhco_jet_features_eval:
   log_times: True
   log_epoch_zero: True
   data_type: "val"
-  w_dist_config:
-    num_eval_samples: 50_000
-    num_batches: 40
-    calculate_efps: False
   generation_config:
     batch_size: 2048
     ode_solver: "midpoint"
     ode_steps: 100
-    verbose: True
-  plot_config:
-    plot_efps: False
-    plottype: ""
-    plot_jet_features: True
+    verbose: False
