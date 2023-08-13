@@ -151,50 +151,13 @@ else:
         names_conditioning=datamodule.names_conditioning,
     )
 
-# If there are multiple jet types, plot them separately
-jet_types_dict = {
-    var_name.split("_")[-1]: i
-    for i, var_name in enumerate(datamodule.names_conditioning)
-    if "jet_type" in var_name
-}
-pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
-
-plot_particle_features(
-    data_gen=data_gen,
-    data_sim=data_sim,
-    mask_gen=mask_gen,
-    mask_sim=mask_sim,
-    feature_names=datamodule.names_particle_features,
-    legend_label_sim="JetClass",
-    legend_label_gen="Generated",
-    plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
-)
-
-for jet_type, jet_type_idx in jet_types_dict.items():
-    jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
-    jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
-    plot_particle_features(
-        data_gen=data_gen[jet_type_mask_gen],
-        data_sim=data_sim[jet_type_mask_sim],
-        mask_gen=mask_gen[jet_type_mask_gen],
-        mask_sim=mask_sim[jet_type_mask_sim],
-        feature_names=datamodule.names_particle_features,
-        legend_label_sim="JetClass",
-        legend_label_gen="Generated",
-        plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
-    )
-
-# remove the additional particle features for compatibility with the rest of the code
-data_sim = data_sim[:, :, :3]
-data_gen = data_gen[:, :, :3]
-
 # Wasserstein distances
 
 pylogger.info("Calculating Wasserstein distances.")
-metrics = calculate_all_wasserstein_metrics(
-    data_sim, data_gen
-)  # TODO: should we add a config?, **self.w_dist_config)
-# metrics = {}
+# metrics = calculate_all_wasserstein_metrics(
+#     data_sim, data_gen
+# )  # TODO: should we add a config?, **self.w_dist_config)
+metrics = {}
 
 # Prepare Data for Plotting
 pylogger.info("Preparing data for plotting.")
@@ -217,13 +180,13 @@ else:
         efps_values_gen,
         pt_selected_particles_gen,
         _,
-    ) = prepare_data_for_plotting([data_gen_plotting], **plot_prep_config)
+    ) = prepare_data_for_plotting([data_gen_plotting[:, :, :3]], **plot_prep_config)
     (
         jet_data_sim,
         efps_values_sim,
         pt_selected_particles_sim,
         _,
-    ) = prepare_data_for_plotting([data_sim], **plot_prep_config)
+    ) = prepare_data_for_plotting([data_sim[:, :, :3]], **plot_prep_config)
     # prepare_data_for_plotting returns lists of arrays of the following shape:
     # jet_data: (n_datasets, n_jets, n_jet_features)
     # efps_values: (n_datasets, n_jets, n_efp_features)
@@ -232,8 +195,35 @@ else:
 
     # Save all the data to an HDF file
     with h5py.File(h5data_output_path, mode="w") as h5file:
+        # particle data
+        h5file.create_dataset("part_data_sim", data=data_sim)
+        h5file.create_dataset("part_data_gen", data=data_gen)
+        h5file.create_dataset("part_mask_sim", data=mask_sim)
+        h5file.create_dataset("part_mask_gen", data=mask_gen)
+        for ds_key in ["part_data_sim", "part_data_gen"]:
+            h5file[ds_key].attrs.create(
+                "names",
+                data=datamodule.names_particle_features,
+                dtype=h5py.special_dtype(vlen=str),
+            )
+        # jet data
+        h5file.create_dataset("cond_data_sim", data=cond_sim)
+        h5file.create_dataset("cond_data_gen", data=cond_gen)
+        for ds_key in ["cond_data_sim", "cond_data_gen"]:
+            h5file[ds_key].attrs.create(
+                "names",
+                data=datamodule.names_conditioning,
+                dtype=h5py.special_dtype(vlen=str),
+            )
+        # calculated jet data
         h5file.create_dataset("jet_data_gen", data=jet_data_gen[0])
         h5file.create_dataset("jet_data_sim", data=jet_data_sim[0])
+        for ds_key in ["jet_data_sim", "jet_data_gen"]:
+            h5file[ds_key].attrs.create(
+                "names",
+                data=["jet_pt", "jet_y", "jet_phi", "jet_mass"],
+                dtype=h5py.special_dtype(vlen=str),
+            )
         h5file.create_dataset("efp_values_gen", data=efps_values_gen[0])
         h5file.create_dataset("efp_values_sim", data=efps_values_sim[0])
         h5file.create_dataset(
@@ -245,6 +235,13 @@ else:
 
 # read the file
 with h5py.File(h5data_output_path) as h5file:
+    data_gen = h5file["part_data_gen"][:]
+    mask_gen = h5file["part_mask_gen"][:]
+    cond_gen = h5file["cond_data_gen"][:]
+    data_sim = h5file["part_data_sim"][:]
+    mask_sim = h5file["part_mask_sim"][:]
+    cond_sim = h5file["cond_data_sim"][:]
+
     jet_data_gen = h5file["jet_data_gen"][:]
     jet_data_sim = h5file["jet_data_sim"][:]
     efp_values_gen = h5file["efp_values_gen"][:]
@@ -252,6 +249,18 @@ with h5py.File(h5data_output_path) as h5file:
     pt_selected_particles_gen = h5file["pt_selected_particles_gen"][:]
     pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
 
+pylogger.info("Plotting particle features")
+plot_particle_features(
+    data_gen=data_gen,
+    data_sim=data_sim,
+    mask_gen=mask_gen,
+    mask_sim=mask_sim,
+    feature_names=datamodule.names_particle_features,
+    legend_label_sim="JetClass",
+    legend_label_gen="Generated",
+    plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
+)
+pylogger.info(f"Plotting jet features")
 plot_jet_features(
     jet_data_gen=jet_data_gen,
     jet_data_sim=jet_data_sim,
@@ -261,10 +270,28 @@ plot_jet_features(
     plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
 )
 
+# If there are multiple jet types, plot them separately
+jet_types_dict = {
+    var_name.split("_")[-1]: i
+    for i, var_name in enumerate(datamodule.names_conditioning)
+    if "jet_type" in var_name
+}
+pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
+
 for jet_type, jet_type_idx in jet_types_dict.items():
-    pylogger.info(f"Plotting jet features of jet type {jet_type}")
+    pylogger.info(f"Plotting jet type {jet_type}")
     jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
     jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+    plot_particle_features(
+        data_gen=data_gen[jet_type_mask_gen],
+        data_sim=data_sim[jet_type_mask_sim],
+        mask_gen=mask_gen[jet_type_mask_gen],
+        mask_sim=mask_sim[jet_type_mask_sim],
+        feature_names=datamodule.names_particle_features,
+        legend_label_sim="JetClass",
+        legend_label_gen="Generated",
+        plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
+    )
     plot_jet_features(
         jet_data_gen=jet_data_gen[jet_type_mask_gen],
         jet_data_sim=jet_data_sim[jet_type_mask_sim],
