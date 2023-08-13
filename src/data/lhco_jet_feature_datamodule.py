@@ -91,6 +91,7 @@ class LHCOJetFeatureDataModule(LightningDataModule):
         self.tensor_conditioning_train: Optional[torch.Tensor] = None
         self.tensor_conditioning_val: Optional[torch.Tensor] = None
         self.tensor_conditioning_test: Optional[torch.Tensor] = None
+        self.conditioning_full: Optional[torch.Tensor] = None
 
     def prepare_data(self):
         """Download data if needed.
@@ -119,10 +120,10 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             pj_x = np.sqrt(np.sum(p4_jets[:, 0] ** 2, axis=1))
             pj_y = np.sqrt(np.sum(p4_jets[:, 1] ** 2, axis=1))
             mjj = (pj_x + pj_y) ** 2
-
+            conditioning_full = mjj.copy().reshape(-1, 1)
             # cut window
             args_to_remove = (mjj >= self.hparams.window_left) & (mjj <= self.hparams.window_right)
-            conditioning = mjj[~args_to_remove].reshape(-1, 1)
+            conditioning_cut = mjj[~args_to_remove].reshape(-1, 1)
 
             jet_data_cut = jet_data[~args_to_remove]
 
@@ -141,10 +142,10 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             )
 
             conditioning_train, conditioning_val, conditioning_test = np.split(
-                conditioning,
+                conditioning_cut,
                 [
-                    len(conditioning) - (n_samples_val + n_samples_test),
-                    len(conditioning) - n_samples_test,
+                    len(conditioning_cut) - (n_samples_val + n_samples_test),
+                    len(conditioning_cut) - n_samples_test,
                 ],
             )
 
@@ -227,6 +228,7 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             self.tensor_conditioning_train = tensor_conditioning_train
             self.tensor_conditioning_val = tensor_conditioning_val
             self.tensor_conditioning_test = tensor_conditioning_test
+            self.conditioning_full = torch.tensor(conditioning_full)
 
     def train_dataloader(self):
         return DataLoader(
