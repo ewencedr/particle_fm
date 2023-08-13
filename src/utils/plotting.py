@@ -1552,6 +1552,7 @@ def plot_particle_features(
         fig.savefig(plot_path)
         if also_png and plot_path.endswith(".pdf"):
             fig.savefig(plot_path.replace(".pdf", ".png"))
+    plt.close(fig)
 
 def plot_jet_features(
     jet_data_sim: np.array,
@@ -1603,4 +1604,5 @@ def plot_jet_features(
         fig.savefig(plot_path)
         if also_png and plot_path.endswith(".pdf"):
             fig.savefig(plot_path.replace(".pdf", ".png"))
+    plt.close(fig)
 
