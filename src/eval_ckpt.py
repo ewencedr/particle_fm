@@ -8,6 +8,7 @@ import h5py
 import hydra
 
 # plots and metrics
+import pandas as pd
 import numpy as np
 import torch
 import yaml
@@ -420,8 +421,19 @@ metrics = {k: float(v) for k, v in metrics.items()}
 # write to yaml file
 with open(yaml_path, "w") as outfile:
     yaml.dump(metrics, outfile, default_flow_style=False)
+# also print to terminal
+print(pd.DataFrame.from_dict(metrics, orient="index"))
 
-# rename wasserstein distances for better distinction
-metrics_final = {}
-for key, value in metrics.items():
-    metrics_final[key + "_final"] = value
+# write to tex file (already formatted as table)
+tex_table_metrics = ["w1m", "w1p", "w1efp", "w_dist_tau21", "w_dist_tau32", "w_dist_d2"]
+with open(output_dir / "eval_metrics.tex", "w") as f:
+    header = ""
+    for metric_name in tex_table_metrics:
+        header += f"{metric_name} & "
+    header = header[:-2] + "\\\\\n"
+    f.write(header)
+    numbers = ""
+    for metric_name in tex_table_metrics:
+        numbers += f"\\num{{{metrics[metric_name+'_mean']:.6f} \\pm {metrics[metric_name+'_std']:.6f}}} & "
+    numbers = numbers[:-2] + "\\\\\n"
+    f.write(numbers)
