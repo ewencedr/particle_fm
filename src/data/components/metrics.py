@@ -143,10 +143,10 @@ def calculate_all_wasserstein_metrics(
 
     w_dists = {
         "w1m_mean": w1m_mean,
-        "w1p_mean": np.mean(w1p_mean),
-        "w1efp_mean": np.mean(w1efp_mean),
         "w1m_std": w1m_std,
+        "w1p_mean": np.mean(w1p_mean),
         "w1p_std": np.mean(w1p_std),
+        "w1efp_mean": np.mean(w1efp_mean),
         "w1efp_std": np.mean(w1efp_std),
     }
     return w_dists
