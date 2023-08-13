@@ -1443,16 +1443,16 @@ def plot_substructure(
     )
     ax2.hist(tau32, bins=hist_tau32_jetnet[1], label=f"{model_name}", histtype="step")
     ax2.set_xlabel(r"$\tau_{32}$")
-    ax2.legend(loc="best", frameon=False)
+    # ax2.legend(loc="best", frameon=False)
 
     hist_d2_jetnet = ax3.hist(
         d2_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
     ax3.hist(d2, bins=hist_d2_jetnet[1], label=f"{model_name}", histtype="step")
     ax3.set_xlabel(r"$d_2$")
-    ax3.legend(loc="best", frameon=False)
+  # ax3.legend(loc="best", frameon=False)
 
-    plt.legend(loc="best", frameon=False)
+    # plt.legend(loc="best", frameon=False)
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
