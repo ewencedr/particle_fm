@@ -267,7 +267,7 @@ plot_jet_features(
     jet_feature_names=["jet_pt", "jet_y", "jet_phi", "jet_mrel"],
     legend_label_sim="JetClass",
     legend_label_gen="Generated",
-    plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
+    plot_path=output_dir / f"epoch_{ckpt_epoch}_jet_features.pdf",
 )
 
 # If there are multiple jet types, plot them separately
