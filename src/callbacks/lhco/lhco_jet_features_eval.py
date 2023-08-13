@@ -184,7 +184,6 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
                 ]
 
             cond = background_cond
-
             # maximum number of samples to plot is the number of samples in the dataset
             num_plot_samples = len(background_data)
 
@@ -205,7 +204,7 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             data, generation_time = generate_data(
                 model=pl_module,
                 num_jet_samples=len(background_data),
-                cond=None,  # torch.tensor(cond),
+                cond=torch.tensor(cond),
                 normalized_data=trainer.datamodule.hparams.normalize,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
