@@ -1,6 +1,8 @@
 """Script to evaluate a checkpoint and generate plots and metrics.
+
 Usage: python src/eval_ckpt.py --ckpt <path_to_ckpt> --n_samples <int>
 """
+import argparse
 import logging
 import os
 import shutil
@@ -9,13 +11,12 @@ from pathlib import Path
 
 import h5py
 import hydra
+import numpy as np
 
 # plots and metrics
 import pandas as pd
-import numpy as np
 import torch
 import yaml
-import argparse
 
 # set env variable DATA_DIR again because of hydra
 from omegaconf import OmegaConf
@@ -30,8 +31,8 @@ from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,
     apply_mpl_styles,
     plot_data,
     plot_full_substructure,
-    plot_particle_features,
     plot_jet_features,
+    plot_particle_features,
     plot_substructure,
     prepare_data_for_plotting,
 )
@@ -78,7 +79,7 @@ def main():
     # load the model from the checkpoint
     model = hydra.utils.instantiate(cfg.model)
     model = model.load_from_checkpoint(ckpt)
-    # model.to("cpu")  # TODO: dev
+    # model.to("cpu")
 
     # ------------------------------------------------
     data_sim = np.array(datamodule.tensor_test)
@@ -134,7 +135,7 @@ def main():
             normalized_data=datamodule.hparams.normalize,
             means=datamodule.means,
             stds=datamodule.stds,
-            # device="cpu",  # TODO: dev
+            # device="cpu",
         )
         pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
 
@@ -231,7 +232,7 @@ def main():
         legend_label_gen="Generated",
         plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
     )
-    pylogger.info(f"Plotting jet features")
+    pylogger.info("Plotting jet features")
     plot_jet_features(
         jet_data_gen=jet_data_gen,
         jet_data_sim=jet_data_sim,
