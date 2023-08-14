@@ -1450,7 +1450,7 @@ def plot_substructure(
     )
     ax3.hist(d2, bins=hist_d2_jetnet[1], label=f"{model_name}", histtype="step")
     ax3.set_xlabel(r"$d_2$")
-  # ax3.legend(loc="best", frameon=False)
+    # ax3.legend(loc="best", frameon=False)
 
     # plt.legend(loc="best", frameon=False)
     plt.tight_layout()
@@ -1554,6 +1554,7 @@ def plot_particle_features(
             fig.savefig(plot_path.replace(".pdf", ".png"))
     plt.close(fig)
 
+
 def plot_jet_features(
     jet_data_sim: np.array,
     jet_data_gen: np.array,
@@ -1605,4 +1606,3 @@ def plot_jet_features(
         if also_png and plot_path.endswith(".pdf"):
             fig.savefig(plot_path.replace(".pdf", ".png"))
     plt.close(fig)
-
