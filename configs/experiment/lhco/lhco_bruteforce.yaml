@@ -35,8 +35,6 @@ data:
   normalize: True
   conditioning: False
   relative_coords: False
-  use_all_jets: True
-  one_pc: True
   num_particles: ${model.num_particles}
   val_fraction: 0.05
   test_fraction: 0.35
