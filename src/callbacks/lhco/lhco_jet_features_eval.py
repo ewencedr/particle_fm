@@ -269,6 +269,7 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             )
             axs.hist(mjj, bins=hist[1], histtype="step", label="generated")
             axs.set_xlabel(r"$m_{jj}$")
+            axs.set_yscale("log")
             axs.legend(frameon=False)
             plt.tight_layout()
             plot_name_mjj = "_lhco_jet_features_mjj"
@@ -330,6 +331,7 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             )
             axs.hist(mjj_full_cond, bins=hist[1], histtype="step", label="generated")
             axs.set_xlabel(r"$m_{jj}$ (full conditioning)")
+            axs.set_yscale("log")
             axs.legend(frameon=False)
             plt.tight_layout()
             plot_name_mjj_full_cond = "_lhco_jet_features_mjj_full_cond"
