@@ -38,6 +38,31 @@ def apply_mpl_styles() -> None:
     mpl.rcParams["patch.linewidth"] = 1.25
 
 
+JETCLASS_FEATURE_LABELS = {
+    "part_pt": "Particle $p_\\mathrm{T}$",
+    "part_eta": "Particle $\\eta$",
+    "part_phi": "Particle $\\phi$",
+    "part_mass": "Particle $m$",
+    "part_etarel": "Particle $\\eta^\\mathrm{rel}$",
+    "part_dphi": "Particle $\\phi^\\mathrm{rel}$",
+    "part_ptrel": "Particle $p_\\mathrm{T}^\\mathrm{rel}$",
+    "part_d0val": "Particle $d_0$",
+    "part_dzval": "Particle $d_z$",
+    "part_d0err": "Particle $\\sigma_{d_0}$",
+    "part_dzerr": "Particle $\\sigma_{d_z}$",
+}
+
+JET_FEATURE_LABELS = {
+    "jet_pt": "Jet $p_\\mathrm{T}$",
+    "jet_y": "Jet $y$",
+    "jet_eta": "Jet $\\eta$",
+    "jet_eta": "Jet $\\eta$",
+    "jet_mrel": "Jet $m_\\mathrm{rel}$",
+    "jet_m": "Jet $m$",
+    "jet_phi": "Jet $\\phi$",
+}
+
+
 def plot_single_jets(
     data: np.ndarray,
     color: str = "#E2001A",
@@ -1217,9 +1242,9 @@ def prepare_data_for_plotting(
             Defaults to [20, 30, 40].
 
     Returns:
-        np.ndarray : jet_data
-        np.ndarray : efps
-        np.ndarray : pt_selected_particles
+        np.ndarray : jet_data, shape (len(data), n_jets, n_features)
+        np.ndarray : efps, shape (len(data), n_jets, n_efps)
+        np.ndarray : pt_selected_particles, shape (len(data), n_selected_particles, n_jets)
         dict : pt_selected_multiplicities
     """
 
@@ -1410,24 +1435,24 @@ def plot_substructure(
         tau21_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
     ax1.hist(tau21, bins=hist_tau21_jetnet[1], label=model_name, histtype="step")
-    ax1.set_title(r"$\tau_{21}$")
-    ax1.legend(loc="best")
+    ax1.set_xlabel(r"$\tau_{21}$")
+    ax1.legend(loc="best", frameon=False)
 
     hist_tau32_jetnet = ax2.hist(
         tau32_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
     ax2.hist(tau32, bins=hist_tau32_jetnet[1], label=f"{model_name}", histtype="step")
-    ax2.set_title(r"$\tau_{32}$")
-    ax2.legend(loc="best")
+    ax2.set_xlabel(r"$\tau_{32}$")
+    # ax2.legend(loc="best", frameon=False)
 
     hist_d2_jetnet = ax3.hist(
         d2_jetnet, bins=bins, label=simulation_name, histtype="stepfilled", alpha=0.5
     )
     ax3.hist(d2, bins=hist_d2_jetnet[1], label=f"{model_name}", histtype="step")
-    ax3.set_title(r"$d_2$")
-    ax3.legend(loc="best")
+    ax3.set_xlabel(r"$d_2$")
+  # ax3.legend(loc="best", frameon=False)
 
-    plt.legend(loc="best")
+    # plt.legend(loc="best", frameon=False)
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
@@ -1462,9 +1487,9 @@ def plot_full_substructure(
         )
         ax.hist(data_substructure[i], bins=hist_jetnet[1], label=f"{model_name}", histtype="step")
         ax.set_title(keys[i])
-        ax.legend(loc="best")
+        ax.legend(loc="best", frameon=False)
 
-    plt.legend(loc="best")
+    plt.legend(loc="best", frameon=False)
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
@@ -1472,3 +1497,112 @@ def plot_full_substructure(
     if close_fig:
         plt.close(fig)
     return fig
+
+
+def plot_particle_features(
+    data_sim: np.array,
+    data_gen: np.array,
+    mask_sim: np.array,
+    mask_gen: np.array,
+    feature_names: list,
+    legend_label_sim: str = "Sim. data",
+    legend_label_gen: str = "Gen. data",
+    plot_path: str = None,
+    also_png: bool = False,
+):
+    """Plot the particle features.
+
+    Args:
+        data_sim (np.array): Simulated particle data of shape (n_jets, n_particles, n_features)
+        data_gen (np.array): Generated particle data of shape (n_jets, n_particles, n_features)
+        mask_sim (np.array): Mask for simulated particle data of shape (n_jets, n_particles, 1)
+        mask_gen (np.array): Mask for generated particle data of shape (n_jets, n_particles, 1)
+        feature_names (list): List of feature names (as in the file, e.g. `part_etarel`)
+        legend_label_sim (str, optional): Label for the simulated data. Defaults to "Sim. data".
+        legend_label_gen (str, optional): Label for the generated data. Defaults to "Gen. data".
+        plot_path (str, optional): Path to save the plot. Defaults to None. Which means
+            the plot is not saved.
+        also_png (bool, optional): If True, also save the plot as png. Defaults to False.
+    """
+    # plot the generated features and compare sim. data to gen. data
+    nvars = data_sim.shape[-1]
+    plot_cols = 3
+    plot_rows = nvars // 3 + 1 * int(bool(nvars % 3))
+    fig, ax = plt.subplots(plot_rows, plot_cols, figsize=(11, 2.8 * plot_rows))
+    ax = ax.flatten()
+    hist_kwargs = {}
+    for i in range(data_sim.shape[-1]):
+        values_sim = data_sim[:, :, i][mask_sim[:, :, 0] != 0].flatten()
+        values_gen = data_gen[:, :, i][mask_sim[:, :, 0] != 0].flatten()
+        _, bin_edges = np.histogram(np.concatenate([values_sim, values_gen]), bins=100)
+        hist_kwargs["bins"] = bin_edges
+        ax[i].hist(values_sim, label=legend_label_sim, alpha=0.5, **hist_kwargs)
+        ax[i].hist(
+            values_gen,
+            label=legend_label_gen,
+            histtype="step",
+            **hist_kwargs,
+        )
+        ax[i].set_yscale("log")
+        feature_name = feature_names[i]
+        ax[i].set_xlabel(JETCLASS_FEATURE_LABELS.get(feature_name, feature_name))
+    ax[2].legend(frameon=False)
+    fig.tight_layout()
+    if plot_path is not None:
+        fig.savefig(plot_path)
+        if also_png and plot_path.endswith(".pdf"):
+            fig.savefig(plot_path.replace(".pdf", ".png"))
+    plt.close(fig)
+
+def plot_jet_features(
+    jet_data_sim: np.array,
+    jet_data_gen: np.array,
+    jet_feature_names: list,
+    legend_label_sim: str = "Sim. data",
+    legend_label_gen: str = "Gen. data",
+    plot_path: str = None,
+    also_png: bool = False,
+):
+    """Plot the particle features.
+
+    Args:
+        jet_data_sim (np.array): Simulated jet data of shape (n_jets, n_features)
+        jet_data_gen (np.array): Generated jet data of shape (n_jets, n_features)
+        jet_feature_names (list): List of feature names (as in the file, e.g. `jet_pt`)
+        legend_label_sim (str, optional): Label for the simulated data. Defaults to "Sim. data".
+        legend_label_gen (str, optional): Label for the generated data. Defaults to "Gen. data".
+        plot_path (str, optional): Path to save the plot. Defaults to None. Which means
+            the plot is not saved.
+        also_png (bool, optional): If True, also save the plot as png. Defaults to False.
+    """
+    # plot the generated features and compare sim. data to gen. data
+    # nvars = data_sim.shape[-1]
+    # plot_cols = 3
+    # plot_rows = nvars // 3 + 1 * int(bool(nvars % 3))
+    plot_rows = 3
+    fig, ax = plt.subplots(plot_rows, 3, figsize=(11, 2.8 * plot_rows))
+    ax = ax.flatten()
+    hist_kwargs = {}
+    for i in range(jet_data_sim.shape[-1]):
+        values_sim = jet_data_sim[:, i]
+        values_gen = jet_data_gen[:, i]
+        _, bin_edges = np.histogram(np.concatenate([values_sim, values_gen]), bins=100)
+        hist_kwargs["bins"] = bin_edges
+        ax[i].hist(values_sim, label=legend_label_sim, alpha=0.5, **hist_kwargs)
+        ax[i].hist(
+            values_gen,
+            label=legend_label_gen,
+            histtype="step",
+            **hist_kwargs,
+        )
+        ax[i].set_yscale("log")
+        feature_name = jet_feature_names[i]
+        ax[i].set_xlabel(JET_FEATURE_LABELS.get(feature_name, feature_name))
+    ax[2].legend(frameon=False)
+    fig.tight_layout()
+    if plot_path is not None:
+        fig.savefig(plot_path)
+        if also_png and plot_path.endswith(".pdf"):
+            fig.savefig(plot_path.replace(".pdf", ".png"))
+    plt.close(fig)
+

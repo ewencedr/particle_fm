@@ -22,7 +22,12 @@ def get_feat_index(names_array: np.array, name: str):
         names_array (np.array): Array of feature names.
         name (str): Name of the feature to find.
     """
-    return np.argwhere(names_array == name)[0][0]
+    names_list = list(names_array)
+    if name not in names_list:
+        raise Exception(
+            f"Feature {name} not found in names array. Available features: {names_list}"
+        )
+    return names_list.index(name)
 
 
 class JetClassDataModule(LightningDataModule):
@@ -69,6 +74,7 @@ class JetClassDataModule(LightningDataModule):
         self,
         data_dir: str,
         filename_dict: dict,
+        additional_part_features: list = None,
         used_jet_types: list = None,
         number_of_used_jets: int = None,
         val_fraction: float = 0.15,
@@ -161,6 +167,7 @@ class JetClassDataModule(LightningDataModule):
             names_dict = {}
 
             for split, filename in self.hparams.filename_dict.items():
+                pylogger.info(f"Loading {split} data from {filename}")
                 if not os.path.isfile(filename):
                     raise FileNotFoundError(f"File {filename} does not exist.")
 
@@ -179,24 +186,43 @@ class JetClassDataModule(LightningDataModule):
             index_part_ptrel = get_feat_index(names_particle_features, "part_ptrel")
 
             # NOTE: everything below here assumes that the particle features
-            # array after preprocessing stores the features [eta_rel, phi_rel, pt_rel]
+            # array after preprocessing stores the features in the order
+            # [eta_rel, phi_rel, pt_rel, <additional features>]
             indices_etaphiptrel = [index_part_etarel, index_part_dphi, index_part_ptrel]
-            names_particle_features = names_particle_features[indices_etaphiptrel]
+
+            if self.hparams.additional_part_features is None:
+                self.hparams.additional_part_features = ["part_etarel", "part_dphi", "part_ptrel"]
+                pylogger.info(
+                    "No `additional_part_features` specified. Using default:"
+                    f" {self.hparams.additional_part_features}"
+                )
+                indices_part_features = indices_etaphiptrel
+            else:
+                pylogger.info(
+                    f"Using `additional_part_features`: {self.hparams.additional_part_features}"
+                )
+                indices_additional_part_features = [
+                    get_feat_index(names_particle_features, feat)
+                    for feat in self.hparams.additional_part_features
+                ]
+                indices_part_features = indices_etaphiptrel + indices_additional_part_features
+
+            names_particle_features = names_particle_features[indices_part_features]
 
             np.random.seed(332211)
             permutation_train = np.random.permutation(len(arrays_dict["train"]["jet_features"]))
-            dataset_train = arrays_dict["train"]["part_features"][:, :, indices_etaphiptrel][
+            dataset_train = arrays_dict["train"]["part_features"][:, :, indices_part_features][
                 permutation_train
             ]
             mask_train = arrays_dict["train"]["part_mask"][..., np.newaxis][permutation_train]
             jet_features_train = arrays_dict["train"]["jet_features"][permutation_train]
             labels_train = arrays_dict["train"]["labels"][permutation_train]
-            part_stds_train = arrays_dict["train"]["part_stds"][indices_etaphiptrel]
-            part_means_train = arrays_dict["train"]["part_means"][indices_etaphiptrel]
+            part_stds_train = arrays_dict["train"]["part_stds"][indices_part_features]
+            part_means_train = arrays_dict["train"]["part_means"][indices_part_features]
 
             np.random.seed(332211)
             permutation_val = np.random.permutation(len(arrays_dict["val"]["jet_features"]))
-            dataset_val = arrays_dict["val"]["part_features"][:, :, indices_etaphiptrel][
+            dataset_val = arrays_dict["val"]["part_features"][:, :, indices_part_features][
                 permutation_val
             ]
             mask_val = arrays_dict["val"]["part_mask"][..., np.newaxis][permutation_val]
@@ -205,7 +231,7 @@ class JetClassDataModule(LightningDataModule):
 
             np.random.seed(332211)
             permutation_test = np.random.permutation(len(arrays_dict["test"]["jet_features"]))
-            dataset_test = arrays_dict["test"]["part_features"][:, :, indices_etaphiptrel][
+            dataset_test = arrays_dict["test"]["part_features"][:, :, indices_part_features][
                 permutation_test
             ]
             mask_test = arrays_dict["test"]["part_mask"][..., np.newaxis][permutation_test]
@@ -307,7 +333,7 @@ class JetClassDataModule(LightningDataModule):
             self.tensor_val = torch.clone(tensor_val)
 
             # revert standardization for those tensors
-            for i in range(len(indices_etaphiptrel)):
+            for i in range(len(indices_part_features)):
                 self.tensor_train[:, :, i] = (
                     (self.tensor_train[:, :, i] * part_stds_train[i]) + part_means_train[i]
                 ) * mask_train[..., 0]

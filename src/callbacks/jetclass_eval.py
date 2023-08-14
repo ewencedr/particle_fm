@@ -17,7 +17,12 @@ from src.schedulers.logging_scheduler import (
     nolog10000,
 )
 from src.utils.data_generation import generate_data
-from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
+from src.utils.plotting import (
+    apply_mpl_styles,
+    plot_data,
+    plot_particle_features,
+    prepare_data_for_plotting,
+)
 from src.utils.pylogger import get_pylogger
 
 from .ema import EMA
@@ -196,18 +201,20 @@ class JetClassEvaluationCallback(pl.Callback):
         if log:
             pylogger.info(f"Evaluating model after epoch {trainer.current_epoch}.")
             # Get background data for plotting and calculating Wasserstein distances
+            # fmt: off
             if self.data_type == "test":
-                background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
+                background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]  # noqa: E501
                 background_mask = np.array(trainer.datamodule.mask_test)[: self.num_jet_samples]
                 background_cond = np.array(trainer.datamodule.tensor_conditioning_test)[
                     : self.num_jet_samples
                 ]
             elif self.data_type == "val":
-                background_data = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]
+                background_data = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]  # noqa: E501
                 background_mask = np.array(trainer.datamodule.mask_val)[: self.num_jet_samples]
                 background_cond = np.array(trainer.datamodule.tensor_conditioning_val)[
                     : self.num_jet_samples
                 ]
+            # fmt: on
 
             mask = background_mask
             cond = background_cond
@@ -242,6 +249,74 @@ class JetClassEvaluationCallback(pl.Callback):
                 **self.generation_config,
             )
             pylogger.info(f"Generated {len(data)} samples in {generation_time:.0f} seconds.")
+
+            # If there are multiple jet types, plot them separately
+            jet_types_dict = {
+                var_name.split("_")[-1]: i
+                for i, var_name in enumerate(trainer.datamodule.names_conditioning)
+                if "jet_type" in var_name
+            }
+            pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
+
+            plot_path_part_features = (
+                f"{self.image_path}/particle_features_epoch_{trainer.current_epoch}.pdf"
+            )
+            plot_path_part_features_png = plot_path_part_features.replace(".pdf", ".png")
+            plot_particle_features(
+                data_sim=background_data,
+                data_gen=data,
+                mask_sim=background_mask,
+                mask_gen=mask,
+                feature_names=trainer.datamodule.names_particle_features,
+                legend_label_sim="JetClass",
+                legend_label_gen="Generated",
+                plot_path=plot_path_part_features,
+                also_png=True,
+            )
+
+            # todo: combine this later on with the image logging further down
+            # fmt: off
+            if self.comet_logger is not None:
+                self.comet_logger.log_image(plot_path_part_features_png, name=f"epoch{trainer.current_epoch}_particle_features")  # noqa: E501
+            if self.wandb_logger is not None:
+                self.wandb_logger.log({f"epoch{trainer.current_epoch}_particle_features": wandb.Image(plot_path_part_features_png)})  # noqa: E501
+
+            # fmt: on
+            for jet_type, jet_type_idx in jet_types_dict.items():
+                jet_type_mask_sim = background_cond[:, jet_type_idx] == 1
+                jet_type_mask_gen = cond[:, jet_type_idx] == 1
+                path_part_feats_this_type = plot_path_part_features.replace(
+                    ".pdf", f"_{jet_type}.pdf"
+                )
+                path_part_feats_this_type_png = path_part_feats_this_type.replace(".pdf", ".png")
+                plot_particle_features(
+                    data_sim=background_data[jet_type_mask_sim],
+                    data_gen=data[jet_type_mask_gen],
+                    mask_sim=background_mask[jet_type_mask_sim],
+                    mask_gen=mask[jet_type_mask_gen],
+                    feature_names=trainer.datamodule.names_particle_features,
+                    legend_label_sim="JetClass",
+                    legend_label_gen="Generated",
+                    plot_path=path_part_feats_this_type,
+                    also_png=True,
+                )
+                if self.comet_logger is not None:
+                    self.comet_logger.log_image(
+                        path_part_feats_this_type_png,
+                        name=f"epoch{trainer.current_epoch}_particle_features_{jet_type}",
+                    )  # noqa: E501
+                if self.wandb_logger is not None:
+                    self.wandb_logger.log(
+                        {
+                            f"epoch{trainer.current_epoch}_particle_features_{jet_type}": wandb.Image(
+                                path_part_feats_this_type_png
+                            )
+                        }
+                    )
+
+            # remove the additional particle features for compatibility with the rest of the code
+            background_data = background_data[:, :, :3]
+            data = data[:, :, :3]
 
             # Get normal weights back after sampling
             if (

@@ -16,19 +16,20 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: "jet-type conditioning, using all 10 jet types"
+run_note: "jet-type conditioning, all 10 jet types"
 
 seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 2_000
+  max_epochs: 300
   gradient_clip_val: 0.5
 
 model:
   num_particles: 128
   global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
+  features: 13  # = 3 + number of `additional_part_features` (see below)
 
 data:
   # preprocessing
@@ -41,6 +42,17 @@ data:
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
+  additional_part_features:
+    - part_d0val
+    - part_d0err
+    - part_dzval
+    - part_dzerr
+    - part_charge
+    - part_isChargedHadron
+    - part_isNeutralHadron
+    - part_isPhoton
+    - part_isElectron
+    - part_isMuon
 
 callbacks:
   ema:

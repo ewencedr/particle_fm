@@ -25,25 +25,32 @@ seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 2
+  max_epochs: 4
   gradient_clip_val: 0.5
 
 model:
   num_particles: 128
-  global_cond_dim: 2 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
+  features: 4
 
 data:
   # preprocessing
   number_of_used_jets: 30_000
   normalize: True
-  normalize_sigma: 1
+  normalize_sigma: 5
   # conditioning
   conditioning_pt: False
   conditioning_eta: False
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
+  additional_part_features:
+    - part_energy
+    # - part_d0val
+    # - part_d0err
+    # - part_dzval
+    # - part_dzerr
 
 callbacks:
   ema:
@@ -54,7 +61,7 @@ callbacks:
     evaluate_ema_weights_instead: True
   jetclass_eval:
     every_n_epochs: 5 # evaluate every n epochs
-    additional_eval_epochs: [] # evaluate at these epochs as well
+    additional_eval_epochs: [1, 2] # evaluate at these epochs as well
     num_jet_samples: 100 # jet samples to generate
   jetclass_eval_test:
     num_jet_samples: 1_000 # jet samples to generate

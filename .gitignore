@@ -1,6 +1,8 @@
 lightning_logs/
 logs/
 .cometml-runs
+*.pdf
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

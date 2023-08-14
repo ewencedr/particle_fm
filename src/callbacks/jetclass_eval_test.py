@@ -3,6 +3,9 @@
 Specific to JetClass dataset.
 """
 
+import os
+import shutil
+from pathlib import Path
 from typing import Mapping, Optional
 
 import h5py
@@ -20,6 +23,7 @@ from src.utils.plotting import (
     apply_mpl_styles,
     plot_data,
     plot_full_substructure,
+    plot_particle_features,
     plot_substructure,
     prepare_data_for_plotting,
 )
@@ -208,25 +212,103 @@ class JetClassTestEvaluationCallback(pl.Callback):
             mask_gen = np.repeat(mask_gen, self.datasets_multiplier, axis=0)
             cond_gen = np.repeat(cond_gen, self.datasets_multiplier, axis=0)
 
-        # Generate data
-        data_gen, generation_time = generate_data(
-            model=model,
-            num_jet_samples=len(mask_gen),
-            cond=torch.tensor(cond_gen),
-            variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
-            mask=torch.tensor(mask_gen),
-            normalized_data=trainer.datamodule.hparams.normalize,
-            means=trainer.datamodule.means,
-            stds=trainer.datamodule.stds,
-            **self.generation_config,
+        # check if the output already exists
+        # --> only generate new data if it does not exist yet
+        checkpoint = torch.load(ckpt, map_location=lambda storage, loc: storage)
+        ckpt_epoch = checkpoint["epoch"]
+        pylogger.info(f"Loaded checkpoint from epoch {ckpt_epoch}")
+
+        ckpt_path = Path(ckpt)
+        output_dir = (
+            ckpt_path.parent  # this should then be the "evaluated_ckpts" folder
+            if f"evaluated_ckpts/epoch_{ckpt_epoch}" in str(ckpt_path)
+            else ckpt_path.parent.parent / "evaluated_ckpts" / f"epoch_{ckpt_epoch}"
         )
-        pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
+        os.makedirs(output_dir, exist_ok=True)
+        if not (output_dir / f"epoch_{ckpt_epoch}.ckpt").exists():
+            pylogger.info(f"Copy checkpoint file to {output_dir}")
+            shutil.copyfile(ckpt, output_dir / f"epoch_{ckpt_epoch}.ckpt")
+
+        data_output_path = (
+            output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(mask_gen)}.npz"
+        )
+        if data_output_path.exists():
+            pylogger.info(
+                f"Output file {data_output_path} already exists. "
+                "Will use existing file instead of generating again."
+            )
+            npfile = np.load(data_output_path, allow_pickle=True)
+            data_gen = npfile["data_gen"]
+        else:
+            # Generate data
+            data_gen, generation_time = generate_data(
+                model=model,
+                num_jet_samples=len(mask_gen),
+                cond=torch.tensor(cond_gen),
+                variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
+                mask=torch.tensor(mask_gen),
+                normalized_data=trainer.datamodule.hparams.normalize,
+                means=trainer.datamodule.means,
+                stds=trainer.datamodule.stds,
+                **self.generation_config,
+            )
+            pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
+
+            pylogger.info(f"Saving generated data to {data_output_path}")
+            np.savez_compressed(
+                data_output_path.resolve(),
+                data_gen=data_gen,
+                mask_gen=mask_gen,
+                cond_gen=cond_gen,
+                data_sim=data_sim,
+                mask_sim=mask_sim,
+                cond_sim=cond_sim,
+                names_particles_features=trainer.datamodule.names_particle_features,
+                names_conditioning=trainer.datamodule.names_conditioning,
+            )
+
+        # If there are multiple jet types, plot them separately
+        jet_types_dict = {
+            var_name.split("_")[-1]: i
+            for i, var_name in enumerate(trainer.datamodule.names_conditioning)
+            if "jet_type" in var_name
+        }
+        pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
+
+        plot_particle_features(
+            data_gen=data_gen,
+            data_sim=data_sim,
+            mask_gen=mask_gen,
+            mask_sim=mask_sim,
+            feature_names=trainer.datamodule.names_particle_features,
+            legend_label_sim="JetClass",
+            legend_label_gen="Generated",
+            plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
+        )
+
+        for jet_type, jet_type_idx in jet_types_dict.items():
+            jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+            jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+            plot_particle_features(
+                data_gen=data_gen[jet_type_mask_gen],
+                data_sim=data_sim[jet_type_mask_sim],
+                mask_gen=mask_gen[jet_type_mask_gen],
+                mask_sim=mask_sim[jet_type_mask_sim],
+                feature_names=trainer.datamodule.names_particle_features,
+                legend_label_sim="JetClass",
+                legend_label_gen="Generated",
+                plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
+            )
+
+        # remove the additional particle features for compatibility with the rest of the code
+        data_sim = data_sim[:, :, :3]
+        data_gen = data_gen[:, :, :3]
 
         # save generated data
-        path = "/".join(ckpt.split("/")[:-2]) + "/"
-        file_name = f"final_generated_data{self.suffix}.npy"
-        full_path = path + file_name
-        np.save(full_path, data_gen)
+        # path = "/".join(ckpt.split("/")[:-2]) + "/"
+        # file_name = f"final_generated_data{self.suffix}.npy"
+        # full_path = path + file_name
+        # np.save(full_path, data_gen)
 
         # Wasserstein distances
         pylogger.info("Calculating Wasserstein distances.")
@@ -285,14 +367,6 @@ class JetClassTestEvaluationCallback(pl.Callback):
             close_fig=True,
             **self.plot_config,
         )
-
-        # If there are multiple jet types, plot them separately
-        jet_types_dict = {
-            var_name: i
-            for i, var_name in enumerate(trainer.datamodule.names_conditioning)
-            if "jet_type" in var_name
-        }
-        pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
 
         if len(jet_types_dict) > 0:
             pylogger.info("Plotting jet types separately")
@@ -423,6 +497,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                 save_name=file_name_substructure,
                 close_fig=True,
                 simulation_name="JetClass",
+                model_name="Generated",
             )
             plot_full_substructure(
                 data_substructure=data_substructure,
@@ -433,6 +508,7 @@ class JetClassTestEvaluationCallback(pl.Callback):
                 save_name=file_name_full_substructure,
                 close_fig=True,
                 simulation_name="JetClass",
+                model_name="Generated",
             )
 
             # log substructure images

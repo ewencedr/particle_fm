@@ -17,9 +17,10 @@ normalize_sigma: 5
 # select jet types to use
 # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
 used_jet_types: null # null means all jet types
+additional_part_features: null # null means no additional part features
 
 # files and jet types to use
-data_dir: /beegfs/desy/user/birkjosc/datasets/jetclass_h5
+data_dir: /beegfs/desy/user/birkjosc/datasets/jetclass_h5_more_part_features_including_binary
 filename_dict:
   train: ${data.data_dir}/train_100M/merged_standardized.h5
   val: ${data.data_dir}/val_5M/merged_standardized.h5
