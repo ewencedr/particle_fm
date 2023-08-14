@@ -69,13 +69,11 @@ class LHCODataModule(LightningDataModule):
         drop_last: bool = False,
         verbose: bool = True,
         # data
-        jet_type: str | list[str] = "qcd",
         num_particles: int = 279,
         variable_jet_sizes: bool = True,
         conditioning: bool = False,
         relative_coords: bool = True,
-        use_all_jets: bool = False,
-        one_pc: bool = False,
+        jet_type: str = "x",
         use_all_data: bool = False,
         shuffle_data: bool = True,
         # preprocessing
@@ -145,24 +143,29 @@ class LHCODataModule(LightningDataModule):
                     jet_data = f["jet_data"][:]
                     particle_data = f["constituents"][:]
                     mask = f["mask"][:]
-                if self.hparams.use_all_jets:
-                    if self.hparams.one_pc:
-                        particle_data = particle_data.reshape(
-                            particle_data.shape[0], -1, particle_data.shape[-1]
-                        )
-                        mask = mask.reshape(mask.shape[0], -1, mask.shape[-1])
-                        if self.hparams.conditioning:
-                            raise ValueError("Conditioning does not make sense for one_pc")
-                    else:
-                        jet_data = jet_data.reshape(-1, jet_data.shape[-1])
-                        particle_data = particle_data.reshape(
-                            -1, particle_data.shape[-2], particle_data.shape[-1]
-                        )
-                        mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
-                else:
+                if self.hparams.jet_type == "all_one_pc":
+                    particle_data = particle_data.reshape(
+                        particle_data.shape[0], -1, particle_data.shape[-1]
+                    )
+                    mask = mask.reshape(mask.shape[0], -1, mask.shape[-1])
+                    if self.hparams.conditioning:
+                        raise ValueError("Conditioning does not make sense for one_pc")
+                elif self.hparams.jet_type == "all":
+                    jet_data = jet_data.reshape(-1, jet_data.shape[-1])
+                    particle_data = particle_data.reshape(
+                        -1, particle_data.shape[-2], particle_data.shape[-1]
+                    )
+                    mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
+                elif self.hparams.jet_type == "x":
                     particle_data = particle_data[:, 0]
                     mask = mask[:, 0]
                     jet_data = jet_data[:, 0]
+                elif self.hparams.jet_type == "y":
+                    particle_data = particle_data[:, 0]
+                    mask = mask[:, 0]
+                    jet_data = jet_data[:, 0]
+                else:
+                    raise ValueError("Unknown jet type")
 
             # reorder to eta, phi, pt to match the order of jetnet
             particle_data = particle_data[:, :, [1, 2, 0]]

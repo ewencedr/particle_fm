@@ -5,7 +5,6 @@ num_workers: 32
 pin_memory: False
 val_fraction: 0.15
 test_fraction: 0.15
-jet_type: "qcd"
 num_particles: 279
 variable_jet_sizes: True
 centering: False
@@ -13,7 +12,6 @@ normalize: True
 conditioning: True
 use_all_data: True
 relative_coords: True
-use_all_jets: False
-one_pc: False
+jet_type: "x"
 shuffle_data: True
 use_calculated_base_distribution: True
