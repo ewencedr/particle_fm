@@ -161,9 +161,9 @@ class LHCODataModule(LightningDataModule):
                     mask = mask[:, 0]
                     jet_data = jet_data[:, 0]
                 elif self.hparams.jet_type == "y":
-                    particle_data = particle_data[:, 0]
-                    mask = mask[:, 0]
-                    jet_data = jet_data[:, 0]
+                    particle_data = particle_data[:, 1]
+                    mask = mask[:, 1]
+                    jet_data = jet_data[:, 1]
                 else:
                     raise ValueError("Unknown jet type")
 
