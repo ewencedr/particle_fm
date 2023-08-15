@@ -19,6 +19,9 @@ import torch
 import yaml
 
 # set env variable DATA_DIR again because of hydra
+from dotenv import load_dotenv
+
+# set env variable DATA_DIR again because of hydra
 from omegaconf import OmegaConf
 
 from src.data.components import calculate_all_wasserstein_metrics
@@ -27,9 +30,8 @@ from src.data.components.metrics import wasserstein_distance_batched
 # from src.data.components.utils import calculate_jet_features
 from src.utils.data_generation import generate_data
 from src.utils.jet_substructure import dump_hlvs
-from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,
+from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; plot_data,
     apply_mpl_styles,
-    plot_data,
     plot_full_substructure,
     plot_jet_features,
     plot_particle_features,
@@ -41,6 +43,9 @@ from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,
 pylogger = logging.getLogger("eval_ckpt")
 logging.basicConfig(level=logging.INFO)
 logging.info("test")
+
+load_dotenv()
+os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")
 
 apply_mpl_styles()
 
@@ -86,9 +91,13 @@ def main():
     mask_sim = np.array(datamodule.mask_test)
     cond_sim = np.array(datamodule.tensor_conditioning_test)
 
-    data_sim = data_sim[:n_samples]
-    mask_sim = mask_sim[:n_samples]
-    cond_sim = cond_sim[:n_samples]
+    if len(data_sim) < n_samples:
+        pylogger.info(f"Only {len(data_sim)} samples available, generating {n_samples} samples.")
+        n_samples = len(data_sim)
+    else:
+        data_sim = data_sim[:n_samples]
+        mask_sim = mask_sim[:n_samples]
+        cond_sim = cond_sim[:n_samples]
 
     means = np.array(datamodule.means)
     stds = np.array(datamodule.stds)
@@ -466,7 +475,7 @@ def main():
                 model_name="Generated",
             )
 
-    yaml_path = output_dir / "eval_metrics.yml"
+    yaml_path = output_dir / f"eval_metrics_{n_samples}.yml"
     pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
 
     # transform numpy.float64 for better readability in yaml file
