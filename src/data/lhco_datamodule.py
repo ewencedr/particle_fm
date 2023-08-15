@@ -156,10 +156,11 @@ class LHCODataModule(LightningDataModule):
                 # args_to_remove = (mjj >= self.hparams.window_left) & (
                 #    mjj <= self.hparams.window_right
                 # )
-                args_to_remove = (mjj > 5000) | (mjj < 2300) | ((mjj > 3300) & (mjj < 3700))
-                jet_data = jet_data[~args_to_remove]
-                particle_data = particle_data[~args_to_remove]
-                mask = mask[~args_to_remove]
+                # args_to_remove = (mjj > 5000) | (mjj < 2300) | ((mjj > 3300) & (mjj < 3700))
+                args_to_keep = ((mjj < 3300) & (mjj > 2300)) | ((mjj > 3700) & (mjj < 5000))
+                jet_data = jet_data[args_to_keep]
+                particle_data = particle_data[args_to_keep]
+                mask = mask[args_to_keep]
 
                 if self.hparams.jet_type == "all_one_pc":
                     particle_data = particle_data.reshape(
