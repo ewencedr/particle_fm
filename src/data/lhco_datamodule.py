@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 
+import energyflow as ef
 import h5py
 import numpy as np
 import pandas as pd
@@ -76,6 +77,8 @@ class LHCODataModule(LightningDataModule):
         jet_type: str = "x",
         use_all_data: bool = False,
         shuffle_data: bool = True,
+        window_left: float = 3.3e3,
+        window_right: float = 3.7e3,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -143,6 +146,20 @@ class LHCODataModule(LightningDataModule):
                     jet_data = f["jet_data"][:]
                     particle_data = f["constituents"][:]
                     mask = f["mask"][:]
+
+                # cut mjj window
+                p4_jets = ef.p4s_from_ptyphims(jet_data)
+                # get mjj from p4_jets
+                sum_p4 = p4_jets[:, 0] + p4_jets[:, 1]
+                mjj = ef.ms_from_p4s(sum_p4)
+
+                args_to_remove = (mjj >= self.hparams.window_left) & (
+                    mjj <= self.hparams.window_right
+                )
+                jet_data = jet_data[~args_to_remove]
+                particle_data = particle_data[~args_to_remove]
+                mask = mask[~args_to_remove]
+
                 if self.hparams.jet_type == "all_one_pc":
                     particle_data = particle_data.reshape(
                         particle_data.shape[0], -1, particle_data.shape[-1]
