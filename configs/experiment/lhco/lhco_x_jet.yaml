@@ -55,7 +55,7 @@ callbacks:
     num_jet_samples: -1 # jet samples to generate
     model_name: "lhco_flow_matching_x_jet"
     log_epoch_zero: True
-    data_type: "test"
+    data_type: "val"
     w_dist_config:
       num_eval_samples: 10_000
       num_batches: 40
@@ -74,7 +74,7 @@ callbacks:
     num_jet_samples: -1 # jet samples to generate
     model_name: "lhco_flow_matching_x_jet_sr"
     log_epoch_zero: True
-    data_type: "val"
+    data_type: "test"
     w_dist_config:
       num_eval_samples: 10_000
       num_batches: 40
