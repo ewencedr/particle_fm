@@ -1,0 +1,22 @@
+# Generate data, calculate plots and metrics and log them to the logger
+lhco_eval_sr:
+  _target_: src.callbacks.lhco.lhco_eval_sr.JetNetEvaluationCallbackSR
+  every_n_epochs: 100 # evaluate every n epochs
+  num_jet_samples: -1 # jet samples to generate
+  image_path: ${paths.log_dir}callback_logs/
+  model_name: "model-test"
+  use_ema: True
+  log_times: True
+  log_epoch_zero: False
+  data_type: "test"
+  w_dist_config:
+    num_eval_samples: 10_000
+    num_batches: 40
+    calculate_efps: False
+  generation_config:
+    batch_size: 1000
+    ode_solver: "midpoint"
+    ode_steps: 100
+    verbose: False
+  plot_config:
+    plot_efps: False
