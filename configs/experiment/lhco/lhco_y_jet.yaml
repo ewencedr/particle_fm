@@ -40,6 +40,7 @@ data:
   val_fraction: 0.05
   test_fraction: 0.35
   use_all_data: False
+  shuffle_data: False
 
 callbacks:
   ema:
