@@ -153,9 +153,10 @@ class LHCODataModule(LightningDataModule):
                 sum_p4 = p4_jets[:, 0] + p4_jets[:, 1]
                 mjj = ef.ms_from_p4s(sum_p4)
 
-                args_to_remove = (mjj >= self.hparams.window_left) & (
-                    mjj <= self.hparams.window_right
-                )
+                # args_to_remove = (mjj >= self.hparams.window_left) & (
+                #    mjj <= self.hparams.window_right
+                # )
+                args_to_remove = (mjj > 5000) | (mjj < 2300) | ((mjj > 3300) & (mjj < 3700))
                 jet_data = jet_data[~args_to_remove]
                 particle_data = particle_data[~args_to_remove]
                 mask = mask[~args_to_remove]

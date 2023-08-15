@@ -121,7 +121,8 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             mjj = ef.ms_from_p4s(sum_p4)
             conditioning_full = mjj.copy().reshape(-1, 1)
             # cut window
-            args_to_remove = (mjj >= self.hparams.window_left) & (mjj <= self.hparams.window_right)
+            # args_to_remove = (mjj >= self.hparams.window_left) & (mjj <= self.hparams.window_right)
+            args_to_remove = (mjj > 5000) | (mjj < 2300) | ((mjj > 3300) & (mjj < 3700))
             conditioning_cut = mjj[~args_to_remove].reshape(-1, 1)
 
             jet_data_cut = jet_data[~args_to_remove]
