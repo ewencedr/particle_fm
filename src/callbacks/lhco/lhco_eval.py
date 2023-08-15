@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 import torch
 import wandb
 
+from src.callbacks.ema import EMA
 from src.data.components import calculate_all_wasserstein_metrics
 from src.schedulers.logging_scheduler import (
     custom1,
@@ -17,8 +18,6 @@ from src.schedulers.logging_scheduler import (
 from src.utils.data_generation import generate_data
 from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
 from src.utils.pylogger import get_pylogger
-
-from .ema import EMA
 
 log = get_pylogger("JetNetEvaluationCallback")
 
