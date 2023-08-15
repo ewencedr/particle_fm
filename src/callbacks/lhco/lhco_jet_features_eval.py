@@ -255,20 +255,19 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             p4_x_jet = ef.p4s_from_ptyphims(data[:, :4])
             p4_y_jet = ef.p4s_from_ptyphims(data[:, 4:])
             # get mjj from p4_jets
-            pj_x = np.sqrt(np.sum(p4_x_jet**2, axis=1))
-            pj_y = np.sqrt(np.sum(p4_y_jet**2, axis=1))
-            mjj = (pj_x + pj_y) ** 2
+            sum_p4 = p4_x_jet + p4_y_jet
+            mjj = ef.ms_from_p4s(sum_p4)
 
             fig, axs = plt.subplots()
             hist = axs.hist(
                 cond_true,
-                bins=np.arange(0.005e8, 1.8e8, 0.005e8),
+                bins=np.arange(1e3, 9.5e3, 0.1e3),
                 histtype="stepfilled",
                 label="train data",
                 alpha=0.5,
             )
             axs.hist(mjj, bins=hist[1], histtype="step", label="generated")
-            axs.set_xlabel(r"$m_{jj}$")
+            axs.set_xlabel(r"$m_{jj}$ [GeV]")
             axs.set_yscale("log")
             axs.legend(frameon=False)
             plt.tight_layout()
@@ -317,20 +316,19 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             p4_x_jet_full_cond = ef.p4s_from_ptyphims(data_full_cond[:, :4])
             p4_y_jet_full_cond = ef.p4s_from_ptyphims(data_full_cond[:, 4:])
             # get mjj from p4_jets
-            pj_x_full_cond = np.sqrt(np.sum(p4_x_jet_full_cond**2, axis=1))
-            pj_y_full_cond = np.sqrt(np.sum(p4_y_jet_full_cond**2, axis=1))
-            mjj_full_cond = (pj_x_full_cond + pj_y_full_cond) ** 2
+            sum_p4 = p4_x_jet_full_cond + p4_y_jet_full_cond
+            mjj_full_cond = ef.ms_from_p4s(sum_p4)
 
             fig, axs = plt.subplots()
             hist = axs.hist(
                 full_conditioning.numpy(),
-                bins=np.arange(0.005e8, 1.8e8, 0.005e8),
+                bins=np.arange(1e3, 9.5e3, 0.1e3),
                 histtype="stepfilled",
                 label="train data",
                 alpha=0.5,
             )
             axs.hist(mjj_full_cond, bins=hist[1], histtype="step", label="generated")
-            axs.set_xlabel(r"$m_{jj}$ (full conditioning)")
+            axs.set_xlabel(r"$m_{jj}$ (full conditioning) [GeV]")
             axs.set_yscale("log")
             axs.legend(frameon=False)
             plt.tight_layout()

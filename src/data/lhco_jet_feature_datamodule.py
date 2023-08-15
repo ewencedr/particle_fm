@@ -65,8 +65,8 @@ class LHCOJetFeatureDataModule(LightningDataModule):
         # data
         normalize: bool = True,
         normalize_sigma: int = 5,
-        window_left: float = 0.33e8,
-        window_right: float = 0.37e8,
+        window_left: float = 3.3e3,
+        window_right: float = 3.7e3,
     ):
         super().__init__()
 
@@ -117,9 +117,8 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             p4_jets = ef.p4s_from_ptyphims(jet_data)
 
             # get mjj from p4_jets
-            pj_x = np.sqrt(np.sum(p4_jets[:, 0] ** 2, axis=1))
-            pj_y = np.sqrt(np.sum(p4_jets[:, 1] ** 2, axis=1))
-            mjj = (pj_x + pj_y) ** 2
+            sum_p4 = p4_jets[:, 0] + p4_jets[:, 1]
+            mjj = ef.ms_from_p4s(sum_p4)
             conditioning_full = mjj.copy().reshape(-1, 1)
             # cut window
             args_to_remove = (mjj >= self.hparams.window_left) & (mjj <= self.hparams.window_right)
