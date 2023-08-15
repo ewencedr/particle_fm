@@ -210,10 +210,10 @@ def main():
 
         jet_data_gen = h5file["jet_data_gen"][:]
         jet_data_sim = h5file["jet_data_sim"][:]
-        efp_values_gen = h5file["efp_values_gen"][:]
-        efp_values_sim = h5file["efp_values_sim"][:]
         pt_selected_particles_gen = h5file["pt_selected_particles_gen"][:]
         pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
+
+        part_names_sim = h5file["part_data_sim"].attrs["names"][:]
 
     pylogger.info("Calculating Wasserstein distances.")
     metrics = calculate_all_wasserstein_metrics(data_sim, data_gen)
@@ -264,6 +264,16 @@ def main():
         )
         for key, value in metrics_this_type.items():
             metrics[f"{key}_{jet_type}"] = value
+
+        for i, part_feature_name in enumerate(part_names_sim):
+            w_dist_config = {"num_eval_samples": 50_000, "num_batches": 40}
+            w1_mean, w1_std = wasserstein_distance_batched(
+                data_sim[jet_type_mask_sim, :, i][mask_sim[jet_type_mask_sim, :, 0] == 1],
+                data_gen[jet_type_mask_gen, :, i][mask_gen[jet_type_mask_gen, :, 0] == 1],
+                **w_dist_config,
+            )
+            metrics[f"w_dist_{part_feature_name}_mean_{jet_type}"] = w1_mean
+            metrics[f"w_dist_{part_feature_name}_std_{jet_type}"] = w1_std
 
         plot_particle_features(
             data_gen=data_gen[jet_type_mask_gen],
