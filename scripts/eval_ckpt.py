@@ -216,9 +216,7 @@ def main():
         pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
 
     pylogger.info("Calculating Wasserstein distances.")
-    metrics = calculate_all_wasserstein_metrics(
-        data_sim, data_gen
-    )  # TODO: should we add a config?, **self.w_dist_config)
+    metrics = calculate_all_wasserstein_metrics(data_sim, data_gen)
     # metrics = {}
 
     pylogger.info("Plotting particle features")
@@ -248,12 +246,25 @@ def main():
         for i, var_name in enumerate(datamodule.names_conditioning)
         if "jet_type" in var_name
     }
+    jet_types_dict["all_jet_types"] = None
     pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
 
     for jet_type, jet_type_idx in jet_types_dict.items():
         pylogger.info(f"Plotting jet type {jet_type}")
-        jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
-        jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+        if jet_type == "all_jet_types":
+            jet_type_mask_sim = np.ones(len(cond_sim), dtype=bool)
+            jet_type_mask_gen = np.ones(len(cond_gen), dtype=bool)
+        else:
+            jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+            jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+
+        # calculate metrics and add to dict
+        metrics_this_type = calculate_all_wasserstein_metrics(
+            data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen]
+        )
+        for key, value in metrics_this_type.items():
+            metrics[f"{key}_{jet_type}"] = value
+
         plot_particle_features(
             data_gen=data_gen[jet_type_mask_gen],
             data_sim=data_sim[jet_type_mask_sim],
@@ -391,8 +402,29 @@ def main():
         )
         for jet_type, jet_type_idx in jet_types_dict.items():
             pylogger.info(f"Plotting substructure for jet type {jet_type}")
-            jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
-            jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+            if jet_type == "all_jet_types":
+                jet_type_mask_sim = np.ones(len(cond_sim), dtype=bool)
+                jet_type_mask_gen = np.ones(len(cond_gen), dtype=bool)
+            else:
+                jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+                jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+            w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
+                tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **w_dist_config
+            )
+            w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
+                tau32_jetclass[jet_type_mask_sim], tau32[jet_type_mask_gen], **w_dist_config
+            )
+            w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
+                d2_jetclass[jet_type_mask_sim], d2[jet_type_mask_gen], **w_dist_config
+            )
+            # add to metrics
+            metrics[f"w_dist_tau21_mean_{jet_type}"] = w_dist_tau21_mean
+            metrics[f"w_dist_tau21_std_{jet_type}"] = w_dist_tau21_std
+            metrics[f"w_dist_tau32_mean_{jet_type}"] = w_dist_tau32_mean
+            metrics[f"w_dist_tau32_std_{jet_type}"] = w_dist_tau32_std
+            metrics[f"w_dist_d2_mean_{jet_type}"] = w_dist_d2_mean
+            metrics[f"w_dist_d2_std_{jet_type}"] = w_dist_d2_std
+
             plot_substructure(
                 tau21=tau21[jet_type_mask_gen],
                 tau32=tau32[jet_type_mask_gen],
