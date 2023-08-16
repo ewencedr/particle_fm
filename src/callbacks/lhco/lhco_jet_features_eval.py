@@ -294,9 +294,14 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
                 x_min, x_max = min(np.min(background_data[:, index]), np.min(data[:, index])), max(
                     np.max(background_data[:, index]), np.max(data[:, index])
                 )
+                if index == 4 or index == 9:
+                    bin_width = 1
+                    bins = range(int(x_min), int(x_max) + bin_width, bin_width)
+                else:
+                    bins = 100
                 hist1 = ax.hist(
                     background_data[:, index],
-                    bins=100,
+                    bins=bins,
                     label="train data",
                     range=[x_min, x_max],
                     alpha=0.5,
