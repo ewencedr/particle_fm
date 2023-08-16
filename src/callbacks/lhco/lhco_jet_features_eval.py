@@ -213,27 +213,6 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
                 **self.generation_config,
             )
 
-            # Generate data with full conditioning
-
-            conditioning_sr = trainer.datamodule.conditioning_sr[: self.num_jet_samples]
-
-            cond_sr_normalized = normalize_tensor(
-                conditioning_sr.clone(),
-                trainer.datamodule.cond_means,
-                trainer.datamodule.cond_stds,
-                trainer.datamodule.hparams.normalize_sigma,
-            )
-
-            data_cond_sr, generation_time_cond_sr = generate_data(
-                model=pl_module,
-                num_jet_samples=len(conditioning_sr),
-                cond=cond_sr_normalized,
-                normalized_data=trainer.datamodule.hparams.normalize,
-                means=trainer.datamodule.means,
-                stds=trainer.datamodule.stds,
-                **self.generation_config,
-            )
-
             # Get normal weights back after sampling
             if (
                 self.ema_callback is not None
@@ -317,67 +296,25 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             plt.savefig(f"{self.image_path}{plot_name}.png")
             plt.close()
 
-            # full conditioning
-
-            # Calculate mjj
-            p4_x_jet_cond_sr = ef.p4s_from_ptyphims(data_cond_sr[:, 0:4])
-            p4_y_jet_cond_sr = ef.p4s_from_ptyphims(data_cond_sr[:, 5:9])
-            # get mjj from p4_jets
-            sum_p4 = p4_x_jet_cond_sr + p4_y_jet_cond_sr
-            mjj_cond_sr = ef.ms_from_p4s(sum_p4)
-
-            fig, axs = plt.subplots()
-            hist = axs.hist(
-                conditioning_sr.numpy(),
-                bins=np.arange(1e3, 9.5e3, 0.1e3),
-                histtype="stepfilled",
-                label="train data",
-                alpha=0.5,
-            )
-            axs.hist(mjj_cond_sr, bins=hist[1], histtype="step", label="generated")
-            axs.set_xlabel(r"$m_{jj}$ (full conditioning) [GeV]")
-            axs.set_yscale("log")
-            axs.legend(frameon=False)
-            plt.tight_layout()
-            plot_name_mjj_cond_sr = "_lhco_jet_features_mjj_cond_sr"
-            plt.savefig(f"{self.image_path}{plot_name_mjj_cond_sr}.png")
-            plt.close()
-
             # Log plots
             img_path = f"{self.image_path}{plot_name}.png"
             img_path_mjj = f"{self.image_path}{plot_name_mjj}.png"
-            img_path_mjj_cond_sr = f"{self.image_path}{plot_name_mjj_cond_sr}.png"
+            # img_path_mjj_cond_sr = f"{self.image_path}{plot_name_mjj_cond_sr}.png"
             if self.comet_logger is not None:
                 self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
                 self.comet_logger.log_image(img_path_mjj, name=f"epoch{trainer.current_epoch}_mjj")
-                self.comet_logger.log_image(
-                    img_path_mjj_cond_sr, name=f"epoch{trainer.current_epoch}_mjj_cond_sr"
-                )
             if self.wandb_logger is not None:
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
                 self.wandb_logger.log(
                     {f"epoch{trainer.current_epoch}_mjj": wandb.Image(img_path_mjj)}
-                )
-                self.wandb_logger.log(
-                    {
-                        f"epoch{trainer.current_epoch}_mjj_cond_sr": wandb.Image(
-                            img_path_mjj_cond_sr
-                        )
-                    }
                 )
 
             # Log jet generation time
             if self.log_times:
                 if self.comet_logger is not None:
                     self.comet_logger.log_metrics({"Jet generation time": generation_time})
-                    self.comet_logger.log_metrics(
-                        {"Jet generation time full cond": generation_time_cond_sr}
-                    )
                 if self.wandb_logger is not None:
                     self.wandb_logger.log({"Jet generation time": generation_time})
-                    self.wandb_logger.log(
-                        {"Jet generation time full cond": generation_time_cond_sr}
-                    )
 
         if self.fix_seed:
             torch.manual_seed(torch.seed())
