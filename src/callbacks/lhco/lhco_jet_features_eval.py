@@ -252,8 +252,8 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             cond_true = cond_true.numpy()
 
             # Calculate mjj
-            p4_x_jet = ef.p4s_from_ptyphims(data[:, :4])
-            p4_y_jet = ef.p4s_from_ptyphims(data[:, 4:])
+            p4_x_jet = ef.p4s_from_ptyphims(data[:, 0:4])
+            p4_y_jet = ef.p4s_from_ptyphims(data[:, 5:9])
             # get mjj from p4_jets
             sum_p4 = p4_x_jet + p4_y_jet
             mjj = ef.ms_from_p4s(sum_p4)
@@ -282,12 +282,14 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
                 "1": r"$\eta_1$",
                 "2": r"$\phi_1$",
                 "3": r"$m_1$",
-                "4": r"${p_T}_2$",
-                "5": r"$\eta_2$",
-                "6": r"$\phi_2$",
-                "7": r"$m_2$",
+                "4": "Particle Multiplicity 1",
+                "5": r"${p_T}_2$",
+                "6": r"$\eta_2$",
+                "7": r"$\phi_2$",
+                "8": r"$m_2$",
+                "9": "Particle Multiplicity 2",
             }
-            fig, axs = plt.subplots(2, 4, figsize=(15, 10))
+            fig, axs = plt.subplots(2, 5, figsize=(25, 10))
             for index, ax in enumerate(axs.reshape(-1)):
                 x_min, x_max = min(np.min(background_data[:, index]), np.min(data[:, index])), max(
                     np.max(background_data[:, index]), np.max(data[:, index])
@@ -302,7 +304,7 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
                 ax.hist(data[:, index], bins=hist1[1], label="generated", histtype="step")
                 ax.set_xlabel(f"{label_map[str(index)]}")
                 ax.set_yscale("log")
-                if index == 2 or index == 6:
+                if index == 2 or index == 7:
                     ax.legend(frameon=False)
                     ax.set_ylim(1e-1, 1e6)
             plt.tight_layout()
@@ -313,8 +315,8 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             # full conditioning
 
             # Calculate mjj
-            p4_x_jet_full_cond = ef.p4s_from_ptyphims(data_full_cond[:, :4])
-            p4_y_jet_full_cond = ef.p4s_from_ptyphims(data_full_cond[:, 4:])
+            p4_x_jet_full_cond = ef.p4s_from_ptyphims(data_full_cond[:, 0:4])
+            p4_y_jet_full_cond = ef.p4s_from_ptyphims(data_full_cond[:, 5:9])
             # get mjj from p4_jets
             sum_p4 = p4_x_jet_full_cond + p4_y_jet_full_cond
             mjj_full_cond = ef.ms_from_p4s(sum_p4)
