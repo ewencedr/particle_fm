@@ -251,11 +251,14 @@ class JetClassEvaluationCallback(pl.Callback):
             pylogger.info(f"Generated {len(data)} samples in {generation_time:.0f} seconds.")
 
             # If there are multiple jet types, plot them separately
-            jet_types_dict = {
-                var_name.split("_")[-1]: i
-                for i, var_name in enumerate(trainer.datamodule.names_conditioning)
-                if "jet_type" in var_name
-            }
+            if trainer.datamodule.names_conditioning is not None:
+                jet_types_dict = {
+                    var_name.split("_")[-1]: i
+                    for i, var_name in enumerate(trainer.datamodule.names_conditioning)
+                    if "jet_type" in var_name
+                }
+            else:
+                jet_types_dict = {}
             pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
 
             plot_path_part_features = (
