@@ -43,6 +43,8 @@ callbacks:
   lhco_jet_features_eval:
     every_n_epochs: 100
 
+  lhco_jet_features_eval_sr:
+    every_n_epochs: ${callbacks.lhco_jet_features_eval.every_n_epochs}
   #early_stopping:
   #  monitor: "val/loss"
   #  patience: 2000
