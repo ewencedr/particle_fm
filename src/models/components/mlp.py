@@ -26,7 +26,7 @@ class small_cond_MLP_model(nn.Module):
         self,
         in_features: int,
         out_features: int,
-        activation: str = "Tanh",
+        activation: str = "ELU",
         dim_t: int = 6,
         dim_cond: int = 1,
     ):

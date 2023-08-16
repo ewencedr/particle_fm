@@ -113,6 +113,10 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
             with h5py.File(path, "r") as f:
                 jet_data = f["jet_data"][:]
+                mask = f["mask"][:]
+
+            # get particle multilicities
+            n_particles = np.sum(mask, axis=-2)
 
             p4_jets = ef.p4s_from_ptyphims(jet_data)
 
@@ -127,8 +131,11 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             conditioning_cut = mjj[args_to_keep].reshape(-1, 1)
 
             jet_data_cut = jet_data[args_to_keep]
+            n_particles_cut = n_particles[args_to_keep]
 
-            data = np.reshape(jet_data_cut, (jet_data_cut.shape[0], -1))
+            jet_data_n_particles_cut = np.concatenate([jet_data_cut, n_particles_cut], axis=-1)
+
+            data = np.reshape(jet_data_n_particles_cut, (jet_data_n_particles_cut.shape[0], -1))
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(data))
