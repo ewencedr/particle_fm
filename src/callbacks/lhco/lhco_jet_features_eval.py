@@ -215,10 +215,10 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
 
             # Generate data with full conditioning
 
-            full_conditioning = trainer.datamodule.conditioning_full[: self.num_jet_samples]
+            conditioning_sr = trainer.datamodule.conditioning_sr[: self.num_jet_samples]
 
             full_cond_normalized = normalize_tensor(
-                full_conditioning.clone(),
+                conditioning_sr.clone(),
                 trainer.datamodule.cond_means,
                 trainer.datamodule.cond_stds,
                 trainer.datamodule.hparams.normalize_sigma,
@@ -226,7 +226,7 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
 
             data_full_cond, generation_time_full_cond = generate_data(
                 model=pl_module,
-                num_jet_samples=len(full_conditioning),
+                num_jet_samples=len(conditioning_sr),
                 cond=full_cond_normalized,
                 normalized_data=trainer.datamodule.hparams.normalize,
                 means=trainer.datamodule.means,
@@ -323,7 +323,7 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
 
             fig, axs = plt.subplots()
             hist = axs.hist(
-                full_conditioning.numpy(),
+                conditioning_sr.numpy(),
                 bins=np.arange(1e3, 9.5e3, 0.1e3),
                 histtype="stepfilled",
                 label="train data",
