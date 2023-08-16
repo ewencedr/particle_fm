@@ -1,23 +1,13 @@
 import warnings
-from typing import Callable, Mapping, Optional
+from typing import Any, Callable, Dict, Mapping, Optional
 
-import awkward as ak
-import energyflow as ef
-import fastjet as fj
-import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
-import vector
 import wandb
 
 from src.callbacks.ema import EMA
-from src.data.components import inverse_normalize_tensor, normalize_tensor
-from src.data.components.metrics import (
-    calculate_all_wasserstein_metrics,
-    calculate_wasserstein_metrics_jets,
-)
+from src.data.components import calculate_all_wasserstein_metrics
 from src.schedulers.logging_scheduler import (
     custom1,
     custom5000epochs,
@@ -26,11 +16,10 @@ from src.schedulers.logging_scheduler import (
     nolog10000,
 )
 from src.utils.data_generation import generate_data
-from src.utils.lhco_utils import plot_unprocessed_data_lhco, sort_by_pt
 from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
 from src.utils.pylogger import get_pylogger
 
-log = get_pylogger("LHCOEvaluationCallback")
+log = get_pylogger("JetNetEvaluationCallbackSR")
 
 # TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
@@ -38,9 +27,9 @@ log = get_pylogger("LHCOEvaluationCallback")
 # TODO use ema can be taken from ema callback and should be removed here
 
 
-class LHCOJetFeaturesEvaluationCallback(pl.Callback):
-    """Create a callback to evaluate the model on the test dataset of the LHCO dataset and log the
-    results to loggers. Currently supported are CometLogger and WandbLogger.
+class JetNetEvaluationCallbackSR(pl.Callback):
+    """Create a callback to evaluate the model on the test dataset of the JetNet dataset and log
+    the results to loggers. Currently supported are CometLogger and WandbLogger.
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
@@ -69,17 +58,15 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
         use_ema: bool = False,
         fix_seed: bool = True,
         w_dist_config: Mapping = {
-            "num_eval_samples": 50_000,
+            "num_jet_samples": 10_000,
             "num_batches": 40,
-            "calculate_efps": False,
         },
         generation_config: Mapping = {
-            "batch_size": 2048,
+            "batch_size": 256,
             "ode_solver": "midpoint",
             "ode_steps": 100,
-            "verbose": False,
         },
-        plot_config: Mapping = {"plot_efps": False, "plottype": "", "plot_jet_features": True},
+        plot_config: Mapping = {"plot_efps": False},
     ):
         super().__init__()
         self.every_n_epochs = every_n_epochs
@@ -121,11 +108,11 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
         if self.num_jet_samples < 0:
             self.datasets_multiplier = abs(self.num_jet_samples)
             if self.data_type == "test":
-                self.num_jet_samples = len(trainer.datamodule.tensor_test) * abs(
+                self.num_jet_samples = len(trainer.datamodule.tensor_test_sr) * abs(
                     self.num_jet_samples
                 )
             if self.data_type == "val":
-                self.num_jet_samples = len(trainer.datamodule.tensor_val) * abs(
+                self.num_jet_samples = len(trainer.datamodule.tensor_val_sr) * abs(
                     self.num_jet_samples
                 )
         else:
@@ -175,21 +162,30 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
         if log:
             # Get background data for plotting and calculating Wasserstein distances
             if self.data_type == "test":
-                background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]
-                background_cond = np.array(trainer.datamodule.tensor_conditioning_test)[
+                background_data = np.array(trainer.datamodule.tensor_test_sr)[
+                    : self.num_jet_samples
+                ]
+                background_mask = np.array(trainer.datamodule.mask_test_sr)[: self.num_jet_samples]
+                background_cond = np.array(trainer.datamodule.tensor_conditioning_test_sr)[
                     : self.num_jet_samples
                 ]
             elif self.data_type == "val":
-                background_data = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]
-                background_cond = np.array(trainer.datamodule.tensor_conditioning_val)[
+                background_data = np.array(trainer.datamodule.tensor_val_sr)[
+                    : self.num_jet_samples
+                ]
+                background_mask = np.array(trainer.datamodule.mask_val_sr)[: self.num_jet_samples]
+                background_cond = np.array(trainer.datamodule.tensor_conditioning_val_sr)[
                     : self.num_jet_samples
                 ]
 
+            mask = background_mask
             cond = background_cond
+
             # maximum number of samples to plot is the number of samples in the dataset
             num_plot_samples = len(background_data)
 
             if self.datasets_multiplier > 1:
+                mask = np.repeat(mask, self.datasets_multiplier, axis=0)
                 cond = np.repeat(cond, self.datasets_multiplier, axis=0)
 
             # Get EMA weights if available
@@ -205,8 +201,10 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             # Generate data
             data, generation_time = generate_data(
                 model=pl_module,
-                num_jet_samples=len(cond),
+                num_jet_samples=len(mask),
                 cond=torch.tensor(cond),
+                variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
+                mask=torch.tensor(mask),
                 normalized_data=trainer.datamodule.hparams.normalize,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
@@ -221,100 +219,88 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             ):
                 self.ema_callback.restore_original_weights(pl_module)
 
-            # de-standardize conditioning
-            cond_true = inverse_normalize_tensor(
-                torch.tensor(cond),
-                trainer.datamodule.cond_means,
-                trainer.datamodule.cond_stds,
-                trainer.datamodule.hparams.normalize_sigma,
+            # Wasserstein distances
+            w_dists = calculate_all_wasserstein_metrics(
+                background_data, data, **self.w_dist_config
             )
-            cond_true = cond_true.numpy()
 
-            # Calculate mjj
-            p4_x_jet = ef.p4s_from_ptyphims(data[:, 0:4])
-            p4_y_jet = ef.p4s_from_ptyphims(data[:, 5:9])
-            # get mjj from p4_jets
-            sum_p4 = p4_x_jet + p4_y_jet
-            mjj = ef.ms_from_p4s(sum_p4)
+            self.log("w1m_mean_sr", w_dists["w1m_mean"])
+            self.log("w1p_mean_sr", w_dists["w1p_mean"])
+            self.log("w1m_std_sr", w_dists["w1m_std"])
+            self.log("w1p_std_sr", w_dists["w1p_std"])
 
-            fig, axs = plt.subplots()
-            hist = axs.hist(
-                cond_true,
-                bins=np.arange(1e3, 9.5e3, 0.1e3),
-                histtype="stepfilled",
-                label="train data",
-                alpha=0.5,
-            )
-            axs.hist(mjj, bins=hist[1], histtype="step", label="generated")
-            axs.set_xlabel(r"$m_{jj}$ [GeV]")
-            axs.set_yscale("log")
-            axs.legend(frameon=False)
-            plt.tight_layout()
-            plot_name_mjj = "_lhco_jet_features_mjj"
-            plt.savefig(f"{self.image_path}{plot_name_mjj}.png")
-            plt.close()
+            if self.comet_logger is not None:
+                text = (
+                    f"SR W-Dist epoch:{trainer.current_epoch} W1m:"
+                    f" {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, W1p:"
+                    f" {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, W1efp:"
+                    f" {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+                )
+                self.comet_logger.log_text(text)
 
-            # Compare generated data to background data
-
-            label_map = {
-                "0": r"${p_T}_1$",
-                "1": r"$\eta_1$",
-                "2": r"$\phi_1$",
-                "3": r"$m_1$",
-                "4": "Particle Multiplicity 1",
-                "5": r"${p_T}_2$",
-                "6": r"$\eta_2$",
-                "7": r"$\phi_2$",
-                "8": r"$m_2$",
-                "9": "Particle Multiplicity 2",
+            # Prepare Data for Plotting
+            plot_prep_config = {
+                "calculate_efps" if key == "plot_efps" else key: value
+                for key, value in self.plot_config.items()
+                if key in ["plot_efps", "selected_particles", "selected_multiplicities"]
             }
-            fig, axs = plt.subplots(2, 5, figsize=(25, 10))
-            for index, ax in enumerate(axs.reshape(-1)):
-                x_min, x_max = min(np.min(background_data[:, index]), np.min(data[:, index])), max(
-                    np.max(background_data[:, index]), np.max(data[:, index])
-                )
-                if index == 4 or index == 9:
-                    bin_width = 1
-                    bins = range(int(x_min), int(x_max) + bin_width, bin_width)
-                else:
-                    bins = 100
-                hist1 = ax.hist(
-                    background_data[:, index],
-                    bins=bins,
-                    label="train data",
-                    range=[x_min, x_max],
-                    alpha=0.5,
-                )
-                ax.hist(data[:, index], bins=hist1[1], label="generated", histtype="step")
-                ax.set_xlabel(f"{label_map[str(index)]}")
-                ax.set_yscale("log")
-                if index == 2 or index == 7:
-                    ax.legend(frameon=False)
-                    ax.set_ylim(1e-1, 1e6)
-            plt.tight_layout()
-            plot_name = "_lhco_jet_features"
-            plt.savefig(f"{self.image_path}{plot_name}.png")
-            plt.close()
+
+            (
+                jet_data,
+                efps_values,
+                pt_selected_particles,
+                pt_selected_multiplicities,
+            ) = prepare_data_for_plotting(np.array([data]), **plot_prep_config)
+
+            (
+                jet_data_sim,
+                efps_sim,
+                pt_selected_particles_sim,
+                pt_selected_multiplicities_sim,
+            ) = prepare_data_for_plotting(
+                [background_data],
+                **plot_prep_config,
+            )
+            jet_data_sim, efps_sim, pt_selected_particles_sim = (
+                jet_data_sim[0],
+                efps_sim[0],
+                pt_selected_particles_sim[0],
+            )
+
+            # Plotting
+            plot_name = f"{self.model_name}--epoch{trainer.current_epoch}_sr"
+            fig = plot_data(
+                particle_data=np.array([data]),
+                sim_data=background_data,
+                jet_data_sim=jet_data_sim,
+                jet_data=jet_data,
+                efps_sim=efps_sim,
+                efps_values=efps_values,
+                num_samples=num_plot_samples,
+                pt_selected_particles=pt_selected_particles,
+                pt_selected_multiplicities=pt_selected_multiplicities,
+                pt_selected_particles_sim=pt_selected_particles_sim,
+                pt_selected_multiplicities_sim=pt_selected_multiplicities_sim,
+                save_fig=True,
+                save_folder=self.image_path,
+                save_name=plot_name,
+                close_fig=True,
+                **self.plot_config,
+            )
 
             # Log plots
             img_path = f"{self.image_path}{plot_name}.png"
-            img_path_mjj = f"{self.image_path}{plot_name_mjj}.png"
-            # img_path_mjj_cond_sr = f"{self.image_path}{plot_name_mjj_cond_sr}.png"
             if self.comet_logger is not None:
-                self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}")
-                self.comet_logger.log_image(img_path_mjj, name=f"epoch{trainer.current_epoch}_mjj")
+                self.comet_logger.log_image(img_path, name=f"epoch{trainer.current_epoch}_sr")
             if self.wandb_logger is not None:
-                self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
-                self.wandb_logger.log(
-                    {f"epoch{trainer.current_epoch}_mjj": wandb.Image(img_path_mjj)}
-                )
+                self.wandb_logger.log({f"epoch{trainer.current_epoch}_sr": wandb.Image(img_path)})
 
             # Log jet generation time
             if self.log_times:
                 if self.comet_logger is not None:
-                    self.comet_logger.log_metrics({"Jet generation time": generation_time})
+                    self.comet_logger.log_metrics({"Jet generation time sr": generation_time})
                 if self.wandb_logger is not None:
-                    self.wandb_logger.log({"Jet generation time": generation_time})
+                    self.wandb_logger.log({"Jet generation time sr": generation_time})
 
         if self.fix_seed:
             torch.manual_seed(torch.seed())

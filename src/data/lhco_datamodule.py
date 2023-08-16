@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 
+import energyflow as ef
 import h5py
 import numpy as np
 import pandas as pd
@@ -76,6 +77,8 @@ class LHCODataModule(LightningDataModule):
         jet_type: str = "x",
         use_all_data: bool = False,
         shuffle_data: bool = True,
+        window_left: float = 3.3e3,
+        window_right: float = 3.7e3,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -105,6 +108,16 @@ class LHCODataModule(LightningDataModule):
         self.tensor_conditioning_train: Optional[torch.Tensor] = None
         self.tensor_conditioning_val: Optional[torch.Tensor] = None
         self.tensor_conditioning_test: Optional[torch.Tensor] = None
+
+        self.tensor_train_sr: Optional[torch.Tensor] = None
+        self.mask_train_sr: Optional[torch.Tensor] = None
+        self.tensor_test_sr: Optional[torch.Tensor] = None
+        self.mask_test_sr: Optional[torch.Tensor] = None
+        self.tensor_val_sr: Optional[torch.Tensor] = None
+        self.mask_val_sr: Optional[torch.Tensor] = None
+        self.tensor_conditioning_train_sr: Optional[torch.Tensor] = None
+        self.tensor_conditioning_val_sr: Optional[torch.Tensor] = None
+        self.tensor_conditioning_test_sr: Optional[torch.Tensor] = None
 
     def prepare_data(self):
         """Download data if needed.
@@ -143,6 +156,33 @@ class LHCODataModule(LightningDataModule):
                     jet_data = f["jet_data"][:]
                     particle_data = f["constituents"][:]
                     mask = f["mask"][:]
+
+                # cut mjj window
+                p4_jets = ef.p4s_from_ptyphims(jet_data)
+                # get mjj from p4_jets
+                sum_p4 = p4_jets[:, 0] + p4_jets[:, 1]
+                mjj = ef.ms_from_p4s(sum_p4)
+
+                # args_to_remove = (mjj >= self.hparams.window_left) & (
+                #    mjj <= self.hparams.window_right
+                # )
+                # args_to_remove = (mjj > 5000) | (mjj < 2300) | ((mjj > 3300) & (mjj < 3700))
+
+                jet_data2 = jet_data.copy()
+                particle_data2 = particle_data.copy()
+                mask2 = mask.copy()
+
+                args_to_keep = ((mjj < 3300) & (mjj > 2300)) | ((mjj > 3700) & (mjj < 5000))
+                jet_data = jet_data[args_to_keep]
+                particle_data = particle_data[args_to_keep]
+                mask = mask[args_to_keep]
+
+                # sr
+                args_to_keep_sr = (mjj > 3300) & (mjj < 3700)
+                jet_data_sr = jet_data2[args_to_keep_sr]
+                particle_data_sr = particle_data2[args_to_keep_sr]
+                mask_sr = mask2[args_to_keep_sr]
+
                 if self.hparams.jet_type == "all_one_pc":
                     particle_data = particle_data.reshape(
                         particle_data.shape[0], -1, particle_data.shape[-1]
@@ -160,16 +200,26 @@ class LHCODataModule(LightningDataModule):
                     particle_data = particle_data[:, 0]
                     mask = mask[:, 0]
                     jet_data = jet_data[:, 0]
+                    # sr
+                    particle_data_sr = particle_data_sr[:, 0]
+                    mask_sr = mask_sr[:, 0]
+                    jet_data_sr = jet_data_sr[:, 0]
                 elif self.hparams.jet_type == "y":
                     particle_data = particle_data[:, 1]
                     mask = mask[:, 1]
                     jet_data = jet_data[:, 1]
+                    # sr
+                    particle_data_sr = particle_data_sr[:, 1]
+                    mask_sr = mask_sr[:, 1]
+                    jet_data_sr = jet_data_sr[:, 1]
                 else:
                     raise ValueError("Unknown jet type")
 
             # reorder to eta, phi, pt to match the order of jetnet
             particle_data = particle_data[:, :, [1, 2, 0]]
             particle_data = np.concatenate([particle_data, mask], axis=-1)
+            particle_data_sr = particle_data_sr[:, :, [1, 2, 0]]
+            particle_data_sr = np.concatenate([particle_data_sr, mask_sr], axis=-1)
 
             # shuffle data
             if self.hparams.shuffle_data:
@@ -178,6 +228,11 @@ class LHCODataModule(LightningDataModule):
                     jet_data = jet_data[perm]
                 particle_data = particle_data[perm]
 
+                perm_sr = np.random.permutation(len(particle_data_sr))
+                if jet_data_sr is not None and len(jet_data_sr) == len(particle_data_sr):
+                    jet_data_sr = jet_data_sr[perm_sr]
+                particle_data_sr = particle_data_sr[perm_sr]
+
             # mask and select number of particles, mainly relevant for smaller jet sizes
             x, mask, masked_particle_data, masked_jet_data = mask_data(
                 particle_data,
@@ -185,10 +240,18 @@ class LHCODataModule(LightningDataModule):
                 num_particles=self.hparams.num_particles,
                 variable_jet_sizes=self.hparams.variable_jet_sizes,
             )
+            x_sr, mask_sr, masked_particle_data_sr, masked_jet_data_sr = mask_data(
+                particle_data_sr,
+                jet_data_sr,
+                num_particles=self.hparams.num_particles,
+                variable_jet_sizes=self.hparams.variable_jet_sizes,
+            )
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(x))
             n_samples_test = int(self.hparams.test_fraction * len(x))
+            n_samples_val_sr = int(self.hparams.val_fraction * len(x_sr))
+            n_samples_test_sr = int(self.hparams.test_fraction * len(x_sr))
 
             full_mask = np.repeat(mask, repeats=3, axis=-1) == 0
             full_mask = np.ma.make_mask(full_mask, shrink=False)
@@ -200,9 +263,20 @@ class LHCODataModule(LightningDataModule):
                     len(x_ma) - n_samples_test,
                 ],
             )
+            full_mask_sr = np.repeat(mask_sr, repeats=3, axis=-1) == 0
+            full_mask_sr = np.ma.make_mask(full_mask_sr, shrink=False)
+            x_ma_sr = np.ma.masked_array(x_sr, full_mask_sr)
+            dataset_train_sr, dataset_val_sr, dataset_test_sr = np.split(
+                x_ma_sr,
+                [
+                    len(x_ma_sr) - (n_samples_val_sr + n_samples_test_sr),
+                    len(x_ma_sr) - n_samples_test_sr,
+                ],
+            )
 
             # conditioning
             conditioning_data = self._handle_conditioning(jet_data)
+            conditioning_data_sr = jet_data_sr
             if conditioning_data is not None:
                 tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
                 conditioning_train, conditioning_val, conditioning_test = np.split(
@@ -217,10 +291,31 @@ class LHCODataModule(LightningDataModule):
                 tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)
                 if len(tensor_conditioning) != len(x_ma):
                     raise ValueError("Conditioning tensor and data tensor must have same length.")
+
+                tensor_conditioning_sr = torch.tensor(conditioning_data_sr, dtype=torch.float32)
+                conditioning_train_sr, conditioning_val_sr, conditioning_test_sr = np.split(
+                    conditioning_data_sr,
+                    [
+                        len(conditioning_data_sr) - (n_samples_val_sr + n_samples_test_sr),
+                        len(conditioning_data_sr) - n_samples_test_sr,
+                    ],
+                )
+                tensor_conditioning_train_sr = torch.tensor(
+                    conditioning_train_sr, dtype=torch.float32
+                )
+                tensor_conditioning_val_sr = torch.tensor(conditioning_val_sr, dtype=torch.float32)
+                tensor_conditioning_test_sr = torch.tensor(
+                    conditioning_test_sr, dtype=torch.float32
+                )
+
             else:
                 tensor_conditioning_train = torch.zeros(len(dataset_train))
                 tensor_conditioning_val = torch.zeros(len(dataset_val))
                 tensor_conditioning_test = torch.zeros(len(dataset_test))
+
+                tensor_conditioning_train_sr = torch.zeros(len(dataset_train_sr))
+                tensor_conditioning_val_sr = torch.zeros(len(dataset_val_sr))
+                tensor_conditioning_test_sr = torch.zeros(len(dataset_test_sr))
 
             if self.hparams.normalize:
                 means = np.ma.mean(dataset_train, axis=(0, 1))
@@ -234,6 +329,14 @@ class LHCODataModule(LightningDataModule):
                 mask_train = torch.tensor(np.expand_dims(mask_train[..., 0], axis=-1))
                 tensor_train = torch.tensor(normalized_dataset_train)
 
+                normalized_dataset_train_sr = normalize_tensor(
+                    np.ma.copy(dataset_train_sr), means, stds, sigma=self.hparams.normalize_sigma
+                )
+                mask_train_sr = np.ma.getmask(normalized_dataset_train_sr) == 0
+                mask_train_sr = mask_train_sr.astype(int)
+                mask_train_sr = torch.tensor(np.expand_dims(mask_train_sr[..., 0], axis=-1))
+                tensor_train_sr = torch.tensor(normalized_dataset_train_sr)
+
                 # Validation
                 normalized_dataset_val = normalize_tensor(
                     np.ma.copy(dataset_val),
@@ -246,6 +349,17 @@ class LHCODataModule(LightningDataModule):
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
 
+                normalized_dataset_val_sr = normalize_tensor(
+                    np.ma.copy(dataset_val_sr),
+                    means,
+                    stds,
+                    sigma=self.hparams.normalize_sigma,
+                )
+                mask_val_sr = np.ma.getmask(normalized_dataset_val_sr) == 0
+                mask_val_sr = mask_val_sr.astype(int)
+                mask_val_sr = torch.tensor(np.expand_dims(mask_val_sr[..., 0], axis=-1))
+                tensor_val_sr = torch.tensor(normalized_dataset_val_sr)
+
                 if conditioning_data is not None:
                     means_cond = torch.mean(tensor_conditioning_train, axis=0)
                     stds_cond = torch.std(tensor_conditioning_train, axis=0)
@@ -253,6 +367,12 @@ class LHCODataModule(LightningDataModule):
                     # Train
                     tensor_conditioning_train = normalize_tensor(
                         tensor_conditioning_train,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+                    tensor_conditioning_train_sr = normalize_tensor(
+                        tensor_conditioning_train_sr,
                         means_cond,
                         stds_cond,
                         sigma=self.hparams.normalize_sigma,
@@ -265,10 +385,22 @@ class LHCODataModule(LightningDataModule):
                         stds_cond,
                         sigma=self.hparams.normalize_sigma,
                     )
+                    tensor_conditioning_val_sr = normalize_tensor(
+                        tensor_conditioning_val_sr,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
 
                     # Test
                     tensor_conditioning_test = normalize_tensor(
                         tensor_conditioning_test,
+                        means_cond,
+                        stds_cond,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+                    tensor_conditioning_test_sr = normalize_tensor(
+                        tensor_conditioning_test_sr,
                         means_cond,
                         stds_cond,
                         sigma=self.hparams.normalize_sigma,
@@ -281,6 +413,12 @@ class LHCODataModule(LightningDataModule):
             unnormalized_mask_train = torch.tensor(
                 np.expand_dims(unnormalized_mask_train[..., 0], axis=-1)
             )
+            unnormalized_tensor_train_sr = torch.tensor(dataset_train_sr)
+            unnormalized_mask_train_sr = np.ma.getmask(dataset_train_sr) == 0
+            unnormalized_mask_train_sr = unnormalized_mask_train_sr.astype(int)
+            unnormalized_mask_train_sr = torch.tensor(
+                np.expand_dims(unnormalized_mask_train_sr[..., 0], axis=-1)
+            )
 
             # Validation without normalization
             unnormalized_tensor_val = torch.tensor(dataset_val)
@@ -289,12 +427,22 @@ class LHCODataModule(LightningDataModule):
             unnormalized_mask_val = torch.tensor(
                 np.expand_dims(unnormalized_mask_val[..., 0], axis=-1)
             )
+            unnormalized_tensor_val_sr = torch.tensor(dataset_val_sr)
+            unnormalized_mask_val_sr = np.ma.getmask(dataset_val_sr) == 0
+            unnormalized_mask_val_sr = unnormalized_mask_val_sr.astype(int)
+            unnormalized_mask_val_sr = torch.tensor(
+                np.expand_dims(unnormalized_mask_val_sr[..., 0], axis=-1)
+            )
 
             # Test
             tensor_test = torch.tensor(dataset_test)
             mask_test = np.ma.getmask(dataset_test) == 0
             mask_test = mask_test.astype(int)
             mask_test = torch.tensor(np.expand_dims(mask_test[..., 0], axis=-1))
+            tensor_test_sr = torch.tensor(dataset_test_sr)
+            mask_test_sr = np.ma.getmask(dataset_test_sr) == 0
+            mask_test_sr = mask_test_sr.astype(int)
+            mask_test_sr = torch.tensor(np.expand_dims(mask_test_sr[..., 0], axis=-1))
 
             if self.hparams.normalize:
                 self.data_train = TensorDataset(
@@ -348,6 +496,16 @@ class LHCODataModule(LightningDataModule):
             self.tensor_conditioning_train = tensor_conditioning_train
             self.tensor_conditioning_val = tensor_conditioning_val
             self.tensor_conditioning_test = tensor_conditioning_test
+
+            self.tensor_train_sr = unnormalized_tensor_train_sr
+            self.mask_train_sr = unnormalized_mask_train_sr
+            self.tensor_test_sr = tensor_test_sr
+            self.mask_test_sr = mask_test_sr
+            self.tensor_val_sr = unnormalized_tensor_val_sr
+            self.mask_val_sr = unnormalized_mask_val_sr
+            self.tensor_conditioning_train_sr = tensor_conditioning_train_sr
+            self.tensor_conditioning_val_sr = tensor_conditioning_val_sr
+            self.tensor_conditioning_test_sr = tensor_conditioning_test_sr
 
     def train_dataloader(self):
         return DataLoader(

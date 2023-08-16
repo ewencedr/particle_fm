@@ -41,7 +41,6 @@ class CNF(nn.Module):
         activation: str = "Tanh",
     ):
         super().__init__()
-
         self.net = small_cond_MLP_model(
             features, features, dim_t=2 * freqs, dim_cond=1, activation=activation
         )
@@ -113,7 +112,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         self,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler = None,
-        features: int = 8,
+        features: int = 10,
         n_transforms: int = 1,
         sigma: float = 1e-4,
         activation: str = "ELU",
