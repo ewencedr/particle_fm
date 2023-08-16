@@ -154,6 +154,8 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(data))
             n_samples_test = int(self.hparams.test_fraction * len(data))
+            n_samples_val_sr = int(self.hparams.val_fraction * len(data_sr))
+            n_samples_test_sr = int(self.hparams.test_fraction * len(data_sr))
 
             dataset_train, dataset_val, dataset_test = np.split(
                 data,
@@ -165,8 +167,8 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             dataset_train_sr, dataset_val_sr, dataset_test_sr = np.split(
                 data_sr,
                 [
-                    len(data_sr) - (n_samples_val + n_samples_test),
-                    len(data_sr) - n_samples_test,
+                    len(data_sr) - (n_samples_val_sr + n_samples_test_sr),
+                    len(data_sr) - n_samples_test_sr,
                 ],
             )
 
@@ -180,8 +182,8 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             conditioning_train_sr, conditioning_val_sr, conditioning_test_sr = np.split(
                 conditioning_sr,
                 [
-                    len(conditioning_sr) - (n_samples_val + n_samples_test),
-                    len(conditioning_sr) - n_samples_test,
+                    len(conditioning_sr) - (n_samples_val_sr + n_samples_test_sr),
+                    len(conditioning_sr) - n_samples_test_sr,
                 ],
             )
 
