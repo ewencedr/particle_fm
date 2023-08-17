@@ -198,11 +198,12 @@ def main():
             h5file.create_dataset("cond_data_gen", data=cond_gen)
             for ds_key in ["cond_data_sim", "cond_data_gen"]:
                 if hasattr(datamodule, "names_conditioning"):
-                    h5file[ds_key].attrs.create(
-                        "names",
-                        data=datamodule.names_conditioning,
-                        dtype=h5py.special_dtype(vlen=str),
-                    )
+                    if datamodule.names_conditioning is not None:
+                        h5file[ds_key].attrs.create(
+                            "names",
+                            data=datamodule.names_conditioning,
+                            dtype=h5py.special_dtype(vlen=str),
+                        )
             # calculated jet data
             h5file.create_dataset("jet_data_gen", data=jet_data_gen[0])
             h5file.create_dataset("jet_data_sim", data=jet_data_sim[0])
@@ -268,6 +269,9 @@ def main():
             datamodule.names_conditioning = []
         else:
             datamodule.names_conditioning = [f"cond_var_{i}" for i in range(cond_sim.shape[1])]
+    else:
+        if datamodule.names_conditioning is None:
+            datamodule.names_conditioning = []
 
     # If there are multiple jet types, plot them separately
     jet_types_dict = {
