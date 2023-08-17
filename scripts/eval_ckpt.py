@@ -238,10 +238,6 @@ def main():
 
         part_names_sim = h5file["part_data_sim"].attrs["names"][:]
 
-    pylogger.info("Calculating Wasserstein distances.")
-    metrics = calculate_all_wasserstein_metrics(data_sim, data_gen)
-    # metrics = {}
-
     pylogger.info("Plotting particle features")
     plot_particle_features(
         data_gen=data_gen,
@@ -272,6 +268,10 @@ def main():
     else:
         if datamodule.names_conditioning is None:
             datamodule.names_conditioning = []
+
+    pylogger.info("Calculating Wasserstein distances.")
+    metrics = calculate_all_wasserstein_metrics(data_sim, data_gen)
+    # metrics = {}
 
     # If there are multiple jet types, plot them separately
     jet_types_dict = {
