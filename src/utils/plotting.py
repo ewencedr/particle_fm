@@ -62,6 +62,12 @@ JET_FEATURE_LABELS = {
     "jet_phi": "Jet $\\phi$",
 }
 
+BINNINGS = {
+    "part_d0val": np.linspace(-5, 5, 101),
+    "part_dzval": np.linspace(-5, 5, 101),
+    "part_charge": np.linspace(-3.5, 3.5, 8),
+}
+
 
 def plot_single_jets(
     data: np.ndarray,
@@ -1532,10 +1538,14 @@ def plot_particle_features(
     ax = ax.flatten()
     hist_kwargs = {}
     for i in range(data_sim.shape[-1]):
+        feature_name = feature_names[i]
         values_sim = data_sim[:, :, i][mask_sim[:, :, 0] != 0].flatten()
         values_gen = data_gen[:, :, i][mask_sim[:, :, 0] != 0].flatten()
+        # use same binning for both histograms
         _, bin_edges = np.histogram(np.concatenate([values_sim, values_gen]), bins=100)
-        hist_kwargs["bins"] = bin_edges
+        # use explicitly specified binning if exists, otherwise use the one from above
+        hist_kwargs["bins"] = BINNINGS.get(feature_name, bin_edges)
+
         ax[i].hist(values_sim, label=legend_label_sim, alpha=0.5, **hist_kwargs)
         ax[i].hist(
             values_gen,
@@ -1544,7 +1554,6 @@ def plot_particle_features(
             **hist_kwargs,
         )
         ax[i].set_yscale("log")
-        feature_name = feature_names[i]
         ax[i].set_xlabel(JETCLASS_FEATURE_LABELS.get(feature_name, feature_name))
     ax[2].legend(frameon=False)
     fig.tight_layout()
