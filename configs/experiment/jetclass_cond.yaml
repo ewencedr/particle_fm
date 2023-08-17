@@ -12,7 +12,8 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-
+# add here checkpoint to continue training
+# ckpt_path: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-36-26/checkpoints/last-EMA.ckpt
 
 tags: ["flow_matching", "JetClass", "cond"]
 
@@ -22,7 +23,7 @@ seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 300
+  max_epochs: 500
   gradient_clip_val: 0.5
 
 model:
@@ -30,9 +31,14 @@ model:
   global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
   features: 13  # = 3 + number of `additional_part_features` (see below)
+  scheduler:
+    warmup: 50
+    max_iters: 500
 
 data:
   # preprocessing
+  # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
+  # used_jet_types: [Tbqq] # null means all jet types
   number_of_used_jets: 3_000_000
   normalize: True
   normalize_sigma: 5
