@@ -50,8 +50,16 @@ os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")
 apply_mpl_styles()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ckpt", type=str, default=None)
-parser.add_argument("--n_samples", type=int, default=100_000)
+parser.add_argument(
+    "--ckpt",
+    type=str,
+    default=None,
+)
+parser.add_argument(
+    "--n_samples",
+    type=int,
+    default=100_000,
+)
 
 
 def main():
