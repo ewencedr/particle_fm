@@ -23,7 +23,7 @@ seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 500
+  max_epochs: 1000
   gradient_clip_val: 0.5
 
 model:
@@ -33,7 +33,7 @@ model:
   features: 8  # = 3 + number of `additional_part_features` (see below)
   scheduler:
     warmup: 50
-    max_iters: 500
+    max_iters: 1000
 
 data:
   # preprocessing
