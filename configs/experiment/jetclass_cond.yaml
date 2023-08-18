@@ -30,7 +30,7 @@ model:
   num_particles: 128
   global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
-  features: 8  # = 3 + number of `additional_part_features` (see below)
+  features: 13  # = 3 + number of `additional_part_features` (see below)
   scheduler:
     warmup: 50
     max_iters: 1000
@@ -54,11 +54,11 @@ data:
     - part_dzval
     - part_dzerr
     - part_charge
-    # - part_isChargedHadron
-    # - part_isNeutralHadron
-    # - part_isPhoton
-    # - part_isElectron
-    # - part_isMuon
+    - part_isChargedHadron
+    - part_isNeutralHadron
+    - part_isPhoton
+    - part_isElectron
+    - part_isMuon
 
 callbacks:
   ema:
