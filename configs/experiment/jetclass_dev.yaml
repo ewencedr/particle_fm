@@ -46,8 +46,8 @@ data:
   conditioning_num_particles: False
   conditioning_jet_type: True
   additional_part_features:
-    - part_energy
-    # - part_d0val
+    # - part_energy
+    - part_d0val
     # - part_d0err
     # - part_dzval
     # - part_dzerr
@@ -71,7 +71,7 @@ callbacks:
   #  patience: 2000
   #  mode: "min"
 
-task_name: "jetclass_flow_matching_dev"
+task_name: "jetclass_dev"
 
 logger:
   wandb:
