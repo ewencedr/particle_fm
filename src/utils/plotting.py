@@ -63,8 +63,8 @@ JET_FEATURE_LABELS = {
 }
 
 BINNINGS = {
-    "part_d0val": np.linspace(-5, 5, 101),
-    "part_dzval": np.linspace(-5, 5, 101),
+    "part_d0val": np.linspace(-5, 5, 100),
+    "part_dzval": np.linspace(-5, 5, 100),
     "part_charge": np.linspace(-3.5, 3.5, 8),
 }
 
