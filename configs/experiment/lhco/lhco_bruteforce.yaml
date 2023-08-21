@@ -4,7 +4,7 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: lhco.yaml
+  - override /data: lhco_bruteforce.yaml
   - override /model: flow_matching.yaml
   - override /callbacks: /lhco/lhco_bruteforce.yaml
   - override /trainer: gpu.yaml
@@ -33,12 +33,9 @@ model:
 
 data:
   normalize: True
-  conditioning: False
-  relative_coords: False
   num_particles: ${model.num_particles}
   val_fraction: 0.05
   test_fraction: 0.35
-  use_all_data: True
 
 callbacks:
   ema:
