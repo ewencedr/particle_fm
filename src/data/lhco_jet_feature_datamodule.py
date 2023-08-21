@@ -14,7 +14,6 @@ from .components import normalize_tensor
 log = get_pylogger("JetNetDataModule")
 
 
-# TODO Standardization
 class LHCOJetFeatureDataModule(LightningDataModule):
     """LightningDataModule for JetFeatures of LHCO dataset. If no conditioning is used, the
     conditioning tensor will be a tensor of zeros.
