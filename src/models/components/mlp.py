@@ -66,3 +66,26 @@ class small_cond_MLP_model(nn.Module):
         x = torch.cat([t, x, cond], dim=-1)
         x = self.mlp4(x)
         return x
+
+
+class very_small_cond_MLP_model(nn.Module):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        activation: str = "ELU",
+        dim_t: int = 6,
+        dim_cond: int = 1,
+    ):
+        super().__init__()
+        self.mlp1 = MLP(
+            in_features + dim_t + dim_cond,
+            out_features=out_features,
+            hidden_features=[64, 64],
+            activation=activation,
+        )
+
+    def forward(self, t, x, cond):
+        x = torch.cat([t, x, cond], dim=-1)
+        x = self.mlp1(x)
+        return x
