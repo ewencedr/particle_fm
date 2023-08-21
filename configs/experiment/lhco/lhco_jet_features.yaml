@@ -23,10 +23,10 @@ trainer:
   max_epochs: 10000
   gradient_clip_val: 0.5
 
-#model:
-  #scheduler:
-  #  warmup: ${trainer.min_epochs}
-  #  max_iters: ${trainer.max_epochs}
+model:
+  scheduler:
+    warmup: ${trainer.min_epochs}
+    max_iters: ${trainer.max_epochs}
 
 data:
   val_fraction: 0.05
@@ -45,10 +45,6 @@ callbacks:
 
   lhco_jet_features_eval_sr:
     every_n_epochs: ${callbacks.lhco_jet_features_eval.every_n_epochs}
-  #early_stopping:
-  #  monitor: "val/loss"
-  #  patience: 2000
-  #  mode: "min"
 
 task_name: "lhco_flow_matching_jet_features"
 

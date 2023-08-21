@@ -2,7 +2,7 @@ defaults:
   - model_checkpoint.yaml
   #- model_checkpoint2.yaml
   #- model_checkpoint3.yaml
-  #- early_stopping.yaml
+  - early_stopping.yaml
   - model_summary.yaml
   - lr_monitor.yaml
   # - device_stats_monitor.yaml
@@ -24,12 +24,10 @@ model_checkpoint:
   metric_map:
     "val/loss": "loss"
 
-
-
-#early_stopping:
-#  monitor: "val/loss"
-#  patience: 100
-#  mode: "min"
+early_stopping:
+  monitor: "val/loss"
+  patience: 100
+  mode: "min"
 
 model_summary:
   max_depth: -1
