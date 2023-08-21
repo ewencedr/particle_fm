@@ -19,8 +19,8 @@ tags: ["flow_matching", "LHCO", "cond", "x_jet"]
 seed: 12345
 
 trainer:
-  min_epochs: 1000
-  max_epochs: 10000
+  min_epochs: 500
+  max_epochs: 5000
   gradient_clip_val: 0.5
 
 model:
@@ -87,11 +87,6 @@ callbacks:
     plot_config:
       plot_efps: False
       plottype: ""
-
-  #early_stopping:
-  #  monitor: "val/loss"
-  #  patience: 2000
-  #  mode: "min"
 
 task_name: "lhco_flow_matching_x_jet"
 
