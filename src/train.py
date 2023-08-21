@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Tuple
 
 import hydra
@@ -51,6 +52,7 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         pl.seed_everything(cfg.seed, workers=True)
 
     # save config for reproducibility and debugging
+    os.makedirs(cfg.trainer.get("default_root_dir"), exist_ok=True)
     cfg_backup_file = f'{cfg.trainer.get("default_root_dir")}/config.yaml'
     with open(cfg_backup_file, "w") as f:
         OmegaConf.save(cfg, f)
