@@ -138,6 +138,7 @@ def plot_data(
     pt_selected_multiplicities: list[float] = None,
     plottype: str = "sim_data",
     bins: int = 100,
+    use_custom_ticks_for_efps: bool = False,
     save_fig: bool = True,
     save_folder: str = "logs/plots/",
     save_name: str = "plot",
@@ -364,9 +365,7 @@ def plot_data(
             )
     ax3.set_xlabel(plot_xlabels[2])
     ax3.set_yscale("log")
-    ax3.set_ylim(
-        0.5,
-    )
+    ax3.set_ylim(0.5, 1e6)
 
     if plot_jet_features:
         ax4 = fig.add_subplot(gs[gs_counter + 3])
@@ -405,7 +404,6 @@ def plot_data(
                     label=f"{labels[count]}",
                 )
         ax4.set_xlabel(plot_xlabels[3])
-        # ax4.set_yscale("log")
 
         ax5 = fig.add_subplot(gs[gs_counter + 4])
         data1 = jet_data_sim[:, 1]
@@ -481,9 +479,7 @@ def plot_data(
                 )
         ax6.set_xlabel(r"Jet $\phi$")
         ax6.set_yscale("log")
-        ax6.set_ylim(
-            0.5,
-        )
+        ax6.set_ylim(0.5, 1e4)
         gs_counter += 6
     else:
         gs_counter = 3
@@ -581,9 +577,10 @@ def plot_data(
 
     ax9 = fig.add_subplot(gs[gs_counter + 2])
     if plot_efps:
-        data1 = np.concatenate(efps_sim)
+        # data1 = np.concatenate(efps_sim)
+        data1 = efps_sim[:, 0]
         if not plot_data_only:
-            data = [np.concatenate(d) for d in efps_values]
+            data = [d[:, 0] for d in efps_values]
             x_min, x_max = (
                 np.array([d.min() for d in data]).min(),
                 np.array([d.max() for d in data]).max(),
@@ -616,10 +613,12 @@ def plot_data(
                     range=[x_min, x_max],
                     label=f"{labels[count]}",
                 )
-        ax9.set_xlabel("Jet EFPs")
+        ax9.set_xlabel(r"Jet EFP 0 (n=4, d=4, p=1)")
         ax9.set_yscale("log")
         ax9.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
-
+        if use_custom_ticks_for_efps:
+            ax9.xaxis.get_offset_text().set_visible(False)
+            ax9.text(2.2e12, 0.23, "1e12")
     ax10 = fig.add_subplot(gs[gs_counter + 3])
 
     data1 = pt_selected_particles_sim[0]
