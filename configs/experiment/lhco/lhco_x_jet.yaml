@@ -6,7 +6,7 @@
 defaults:
   - override /data: lhco.yaml
   - override /model: flow_matching.yaml
-  - override /callbacks: lhco.yaml
+  - override /callbacks: /lhco/lhco.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
