@@ -52,7 +52,6 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         pl.seed_everything(cfg.seed, workers=True)
 
     # save config for reproducibility and debugging
-    os.makedirs(cfg.trainer.get("default_root_dir"), exist_ok=True)
     cfg_backup_file = f'{cfg.trainer.get("default_root_dir")}/config.yaml'
     with open(cfg_backup_file, "w") as f:
         OmegaConf.save(cfg, f)
@@ -111,6 +110,10 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def main(cfg: DictConfig) -> Optional[float]:
     torch.set_float32_matmul_precision("medium")
+
+    if cfg.trainer.get("default_root_dir", False):
+        log.info(f"Creating dir <{cfg.trainer.default_root_dir}>...")
+        os.makedirs(cfg.trainer.get("default_root_dir"), exist_ok=True)
 
     # train the model
     metric_dict, _ = train(cfg)
