@@ -64,6 +64,7 @@ class LHCOJetFeatureDataModule(LightningDataModule):
         # data
         normalize: bool = True,
         normalize_sigma: int = 5,
+        set_data: bool = False,
     ):
         super().__init__()
 
@@ -145,8 +146,13 @@ class LHCOJetFeatureDataModule(LightningDataModule):
             jet_data_n_particles_cut = np.concatenate([jet_data_cut, n_particles_cut], axis=-1)
             jet_data_n_particles_sr = np.concatenate([jet_data_sr, n_particles_sr], axis=-1)
 
-            data = np.reshape(jet_data_n_particles_cut, (jet_data_n_particles_cut.shape[0], -1))
-            data_sr = np.reshape(jet_data_n_particles_sr, (jet_data_n_particles_sr.shape[0], -1))
+            if not self.hparams.set_data:
+                data = np.reshape(
+                    jet_data_n_particles_cut, (jet_data_n_particles_cut.shape[0], -1)
+                )
+                data_sr = np.reshape(
+                    jet_data_n_particles_sr, (jet_data_n_particles_sr.shape[0], -1)
+                )
 
             # data splitting
             n_samples_val = int(self.hparams.val_fraction * len(data))
