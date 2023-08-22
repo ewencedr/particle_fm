@@ -155,7 +155,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         pass
 
     def training_step(self, batch, batch_idx):
-        x, cond = batch
+        x, mask, cond = batch
 
         loss = self.loss(x, cond=cond)
 
@@ -170,7 +170,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         torch.manual_seed(torch.seed())
 
     def validation_step(self, batch, batch_idx: int):
-        x, cond = batch
+        x, mask, cond = batch
 
         loss = self.loss(x, cond=cond)
 
