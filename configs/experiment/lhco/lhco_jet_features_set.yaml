@@ -4,9 +4,9 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: lhco_bruteforce.yaml
+  - override /data: lhco_jet_features_set.yaml
   - override /model: flow_matching.yaml
-  - override /callbacks: /lhco/lhco_bruteforce.yaml
+  - override /callbacks: /lhco/lhco_jet_feature.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "LHCO", "uncond", "bruteforce"]
+tags: ["flow_matching", "LHCO", "jet_features", "set_data"]
 
 seed: 12345
 
@@ -24,7 +24,8 @@ trainer:
   gradient_clip_val: 0.5
 
 model:
-  num_particles: 560
+  features: 5
+  num_particles: 2
   global_cond_dim: 1 # needs to be calculated when using conditioning
   local_cond_dim: 1
   scheduler:
@@ -32,8 +33,6 @@ model:
     max_iters: ${trainer.max_epochs}
 
 data:
-  normalize: True
-  num_particles: ${model.num_particles}
   val_fraction: 0.05
   test_fraction: 0.35
 
@@ -45,38 +44,19 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
 
-  lhco_bruteforce_eval:
-    every_n_epochs: 500 # evaluate every n epochs
-    num_jet_samples: -1 # jet samples to generate
-    model_name: "lhco_flow_matching_bruteforce"
-    log_epoch_zero: False
-    data_type: "val"
-    w_dist_config:
-      num_eval_samples: 50_000
-      num_batches: 40
-      calculate_efps: False
-    generation_config:
-      batch_size: 2048
-      ode_solver: "midpoint"
-      ode_steps: 50
-      verbose: False
-    plot_config:
-      plot_efps: False
-      plottype: ""
-      plot_jet_features: True
+  lhco_jet_features_eval:
+    every_n_epochs: 100
 
-  #early_stopping:
-  #  monitor: "val/loss"
-  #  patience: 2000
-  #  mode: "min"
+  lhco_jet_features_eval_sr:
+    every_n_epochs: ${callbacks.lhco_jet_features_eval.every_n_epochs}
 
-task_name: "lhco_flow_matching"
+task_name: "lhco_flow_matching_jet_features"
 
 logger:
   wandb:
     tags: ${tags}
     project: "LHCO"
-    group: "lhco_flow_matching"
+    group: "lhco_flow_matching_jet_features"
     name: ${task_name}
   comet:
     project_name: "LHCO"

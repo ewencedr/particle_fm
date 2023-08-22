@@ -230,6 +230,10 @@ class LHCOJetFeaturesEvaluationCallback(pl.Callback):
             )
             cond_true = cond_true.numpy()
 
+            # reshape in case of set data
+            data = np.reshape(data, (data.shape[0], -1))
+            background_data = np.reshape(background_data, (background_data.shape[0], -1))
+
             # Calculate mjj
             p4_x_jet = ef.p4s_from_ptyphims(data[:, 0:4])
             p4_y_jet = ef.p4s_from_ptyphims(data[:, 5:9])
