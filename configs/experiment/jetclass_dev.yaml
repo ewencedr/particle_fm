@@ -36,6 +36,7 @@ model:
 
 data:
   # preprocessing
+  loss_per_jettype: true
   number_of_used_jets: 30_000
   normalize: True
   normalize_sigma: 5

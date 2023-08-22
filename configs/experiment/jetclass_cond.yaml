@@ -36,6 +36,7 @@ model:
     max_iters: 1000
 
 data:
+  loss_per_jettype: true
   # preprocessing
   # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
   # used_jet_types: [Tbqq] # null means all jet types

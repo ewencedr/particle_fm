@@ -94,6 +94,7 @@ class JetClassDataModule(LightningDataModule):
         # preprocessing
         normalize: bool = True,
         normalize_sigma: int = 5,
+        loss_per_jettype: bool = False,
         # use_custom_eta_centering: bool = True,
         # remove_etadiff_tails: bool = True,
         # spectator_jet_features: list = None,
