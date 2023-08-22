@@ -64,8 +64,6 @@ class LHCOJetFeatureDataModule(LightningDataModule):
         # data
         normalize: bool = True,
         normalize_sigma: int = 5,
-        window_left: float = 3.3e3,
-        window_right: float = 3.7e3,
     ):
         super().__init__()
 
@@ -292,7 +290,6 @@ class LHCOJetFeatureDataModule(LightningDataModule):
                 self.data_test = TensorDataset(tensor_test, tensor_conditioning_test)
 
             if self.hparams.verbose:
-                print(f"Window: {self.hparams.window_left} - {self.hparams.window_right}")
                 print(f"{len(p4_jets) - len(data)} events are removed due to the window cut.")
                 print("Train dataset size:", len(self.data_train))
                 print("Validation dataset size:", len(self.data_val))
