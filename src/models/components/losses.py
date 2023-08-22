@@ -39,7 +39,7 @@ class FlowMatchingLoss(nn.Module):
         self, x: torch.Tensor, mask: torch.Tensor = None, cond: torch.Tensor = None
     ) -> torch.Tensor:
         if mask is None:
-            mask = torch.ones_like(x)
+            mask = torch.ones_like(x[..., 0]).unsqueeze(-1)
 
         if len(x.shape) == 3:
             # for set data
