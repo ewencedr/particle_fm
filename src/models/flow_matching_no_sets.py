@@ -41,7 +41,7 @@ class CNF(nn.Module):
         activation: str = "Tanh",
     ):
         super().__init__()
-        self.net = very_small_cond_MLP_model(
+        self.net = small_cond_MLP_model(
             features, features, dim_t=2 * freqs, dim_cond=1, activation=activation
         )
 
