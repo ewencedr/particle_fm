@@ -17,7 +17,7 @@ defaults:
 
 tags: ["flow_matching", "JetClass", "cond"]
 
-run_note: "jet-type conditioning, all 10 jet types"
+run_note: ""
 
 seed: 12345
 
@@ -31,6 +31,9 @@ model:
   global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
   features: 13  # = 3 + number of `additional_part_features` (see below)
+  layers: 10 # default is 6
+  hidden_dim: 200 # default is 128
+  latent: 15 # default is 10
   scheduler:
     warmup: 50
     max_iters: 1000
@@ -40,7 +43,8 @@ data:
   # preprocessing
   # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
   # used_jet_types: [Tbqq] # null means all jet types
-  number_of_used_jets: 3_000_000
+  number_of_used_jets: 3_000_000  # training jets
+  number_of_used_jets_val: 80_000  # validation jets
   normalize: True
   normalize_sigma: 5
   # conditioning
@@ -88,5 +92,5 @@ logger:
     group: "flow_matching_jetclass"
     name: ${task_name}
   comet:
-    experiment_name: ${task_name}
+    experiment_name: null
     project_name: "flow-matching"

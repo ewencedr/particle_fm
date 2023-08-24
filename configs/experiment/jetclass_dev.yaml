@@ -81,5 +81,5 @@ logger:
     group: "jetclass_flow_matching_dev"
     name: ${task_name}
   comet:
-    experiment_name: ${task_name}
+    experiment_name: null
     project_name: "flow-matching"
