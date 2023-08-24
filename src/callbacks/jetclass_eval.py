@@ -3,12 +3,14 @@ import os
 import warnings
 from typing import Callable, Mapping, Optional
 
+import h5py
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
 
 from src.data.components import calculate_all_wasserstein_metrics
+from src.data.components.metrics import wasserstein_distance_batched
 from src.schedulers.logging_scheduler import (
     custom1,
     custom5000epochs,
@@ -17,6 +19,7 @@ from src.schedulers.logging_scheduler import (
     nolog10000,
 )
 from src.utils.data_generation import generate_data
+from src.utils.jet_substructure import dump_hlvs
 from src.utils.plotting import (
     apply_mpl_styles,
     plot_data,
@@ -29,10 +32,44 @@ from .ema import EMA
 
 pylogger = get_pylogger("JetClassEvaluationCallback")
 
-# TODO wandb logging min and max values
-# TODO wandb logging video of jets, histograms, and point clouds
-# TODO fix efp logging
-# TODO use ema can be taken from ema callback and should be removed here
+
+def load_substructure(filepath):
+    """Load substructure data from a h5 file.
+
+    Args:
+        filepath (str): Path to the h5 file.
+
+    Returns:
+        data_substructure (np.ndarray): Substructure data.
+        keys (np.ndarray): Keys of the substructure data.
+        tau21 (np.ndarray): Tau21 values (nan set to 0)
+        tau32 (np.ndarray): Tau32 values (nan set to 0).
+        d2 (np.ndarray): D2 values (nan set to 0).
+    """
+    keys = []
+    data_substructure = []
+    with h5py.File(filepath) as f:
+        tau21 = np.array(f["tau21"])
+        tau32 = np.array(f["tau32"])
+        d2 = np.array(f["d2"])
+        tau21_isnan = np.isnan(tau21)
+        tau32_isnan = np.isnan(tau32)
+        d2_isnan = np.isnan(d2)
+        if np.sum(tau21_isnan) > 0 or np.sum(tau32_isnan) > 0 or np.sum(d2_isnan) > 0:
+            pylogger.warning(f"Found {np.sum(tau21_isnan)} nan values in tau21")
+            pylogger.warning(f"Found {np.sum(tau32_isnan)} nan values in tau32")
+            pylogger.warning(f"Found {np.sum(d2_isnan)} nan values in d2")
+            pylogger.warning("Setting nan values to zero.")
+        tau21[tau21_isnan] = 0
+        tau32[tau32_isnan] = 0
+        d2[d2_isnan] = 0
+        for key in f.keys():
+            keys.append(key)
+            data_substructure.append(np.array(f[key]))
+    keys = np.array(keys)
+    data_substructure = np.array(data_substructure)
+
+    return data_substructure, keys, tau21, tau32, d2
 
 
 class JetClassEvaluationCallback(pl.Callback):
@@ -203,12 +240,14 @@ class JetClassEvaluationCallback(pl.Callback):
             # Get background data for plotting and calculating Wasserstein distances
             # fmt: off
             if self.data_type == "test":
+                pylogger.info("Using test data for evaluation.")
                 background_data = np.array(trainer.datamodule.tensor_test)[: self.num_jet_samples]  # noqa: E501
                 background_mask = np.array(trainer.datamodule.mask_test)[: self.num_jet_samples]
                 background_cond = np.array(trainer.datamodule.tensor_conditioning_test)[
                     : self.num_jet_samples
                 ]
             elif self.data_type == "val":
+                pylogger.info("Using validation data for evaluation.")
                 background_data = np.array(trainer.datamodule.tensor_val)[: self.num_jet_samples]  # noqa: E501
                 background_mask = np.array(trainer.datamodule.mask_val)[: self.num_jet_samples]
                 background_cond = np.array(trainer.datamodule.tensor_conditioning_val)[
@@ -284,7 +323,69 @@ class JetClassEvaluationCallback(pl.Callback):
             if self.wandb_logger is not None:
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}_particle_features": wandb.Image(plot_path_part_features_png)})  # noqa: E501
 
+            substructure_full_path = f"{self.image_path}/substructure_epoch_{trainer.current_epoch}_gen"  # noqa: E501
+            substructure_full_path_jetclass = substructure_full_path.replace("_gen", "_sim")  # noqa: E501
+            # calculate substructure for generated data
+            pylogger.info("Calculating substructure for generated data.")
+            dump_hlvs(data, substructure_full_path, plot=False)
+            # calculate substructure for reference data
+            pylogger.info("Calculating substructure for JetClass data.")
+            dump_hlvs(background_data, substructure_full_path_jetclass, plot=False)
             # fmt: on
+
+            # load substructure data
+            pylogger.info("Loading substructure data.")
+            data_substructure, keys, tau21, tau32, d2 = load_substructure(
+                substructure_full_path + ".h5"
+            )
+            (
+                data_substructure_jetclass,
+                keys_jetclass,
+                tau21_jetclass,
+                tau32_jetclass,
+                d2_jetclass,
+            ) = load_substructure(substructure_full_path_jetclass + ".h5")
+
+            # ---------------------------------------------------------------
+            pylogger.info("Calculating Wasserstein distances for substructure.")
+
+            # Wasserstein distances
+            # mass and particle features averaged
+            w_dists = calculate_all_wasserstein_metrics(
+                background_data, data, **self.w_dist_config
+            )
+            # substructure
+            w_dist_config = {
+                "num_eval_samples": self.w_dist_config["num_eval_samples"],
+                "num_batches": self.w_dist_config["num_batches"],
+            }
+            w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
+                tau21_jetclass, tau21, **w_dist_config
+            )
+            w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
+                tau32_jetclass, tau32, **w_dist_config
+            )
+            w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
+                d2_jetclass, d2, **w_dist_config
+            )
+            self.log("w_dist_tau21_mean", w_dist_tau21_mean)
+            self.log("w_dist_tau21_std", w_dist_tau21_std)
+            self.log("w_dist_tau32_mean", w_dist_tau32_mean)
+            self.log("w_dist_tau32_std", w_dist_tau32_std)
+            self.log("w1m_mean", w_dists["w1m_mean"])
+            self.log("w1p_mean", w_dists["w1p_mean"])
+            self.log("w1m_std", w_dists["w1m_std"])
+            self.log("w1p_std", w_dists["w1p_std"])
+
+            if self.comet_logger is not None:
+                text = (
+                    f"W-Dist epoch:{trainer.current_epoch} "
+                    f"W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, "
+                    f"W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, "
+                    f"W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
+                )
+                self.comet_logger.log_text(text)
+
             for jet_type, jet_type_idx in jet_types_dict.items():
                 jet_type_mask_sim = background_cond[:, jet_type_idx] == 1
                 jet_type_mask_gen = cond[:, jet_type_idx] == 1
@@ -311,11 +412,43 @@ class JetClassEvaluationCallback(pl.Callback):
                 if self.wandb_logger is not None:
                     self.wandb_logger.log(
                         {
-                            f"epoch{trainer.current_epoch}_particle_features_{jet_type}": wandb.Image(
-                                path_part_feats_this_type_png
+                            f"epoch{trainer.current_epoch}_particle_features_{jet_type}": (
+                                wandb.Image(path_part_feats_this_type_png)
                             )
                         }
                     )
+                # calculate the wasserstein distances for this jet type
+                pylogger.info(f"Calculating Wasserstein distances for {jet_type} jets.")
+                w_dists_tt = calculate_all_wasserstein_metrics(
+                    background_data[jet_type_mask_sim],
+                    data[jet_type_mask_gen],
+                    **self.w_dist_config,
+                )
+                w_dist_tau21_mean_tt, w_dist_tau21_std_tt = wasserstein_distance_batched(
+                    tau21_jetclass[jet_type_mask_sim],
+                    tau21[jet_type_mask_gen],
+                    **w_dist_config,
+                )
+                w_dist_tau32_mean_tt, w_dist_tau32_std_tt = wasserstein_distance_batched(
+                    tau32_jetclass[jet_type_mask_sim],
+                    tau32[jet_type_mask_gen],
+                    **w_dist_config,
+                )
+                w_dist_d2_mean_tt, w_dist_d2_std_tt = wasserstein_distance_batched(
+                    d2_jetclass[jet_type_mask_sim],
+                    d2[jet_type_mask_gen],
+                    **w_dist_config,
+                )
+                self.log(f"w_dist_tau21_mean_{jet_type}", w_dist_tau21_mean_tt)
+                self.log(f"w_dist_tau21_std_{jet_type}", w_dist_tau21_std_tt)
+                self.log(f"w_dist_tau32_mean_{jet_type}", w_dist_tau32_mean_tt)
+                self.log(f"w_dist_tau32_std_{jet_type}", w_dist_tau32_std_tt)
+                self.log(f"w1m_mean_{jet_type}", w_dists_tt["w1m_mean"])
+                self.log(f"w1p_mean_{jet_type}", w_dists_tt["w1p_mean"])
+                self.log(f"w1m_std_{jet_type}", w_dists_tt["w1m_std"])
+                self.log(f"w1p_std_{jet_type}", w_dists_tt["w1p_std"])
+
+                # todo: plot substructure for different jet types and log them
 
             # remove the additional particle features for compatibility with the rest of the code
             background_data = background_data[:, :, :3]
@@ -328,25 +461,6 @@ class JetClassEvaluationCallback(pl.Callback):
                 and self.use_ema
             ):
                 self.ema_callback.restore_original_weights(pl_module)
-
-            # Wasserstein distances
-            w_dists = calculate_all_wasserstein_metrics(
-                background_data, data, **self.w_dist_config
-            )
-
-            self.log("w1m_mean", w_dists["w1m_mean"])
-            self.log("w1p_mean", w_dists["w1p_mean"])
-            self.log("w1m_std", w_dists["w1m_std"])
-            self.log("w1p_std", w_dists["w1p_std"])
-
-            if self.comet_logger is not None:
-                text = (
-                    f"W-Dist epoch:{trainer.current_epoch} "
-                    f"W1m: {w_dists['w1m_mean']}+-{w_dists['w1m_std']}, "
-                    f"W1p: {w_dists['w1p_mean']}+-{w_dists['w1p_std']}, "
-                    f"W1efp: {w_dists['w1efp_mean']}+-{w_dists['w1efp_std']}"
-                )
-                self.comet_logger.log_text(text)
 
             # Prepare Data for Plotting
             plot_prep_config = {

@@ -9,10 +9,10 @@ jetclass_eval:
   use_ema: True
   log_times: True
   log_epoch_zero: False
-  data_type: "test"
+  data_type: "val"
   w_dist_config:
-    num_eval_samples: 10_000
-    num_batches: 40
+    num_eval_samples: 20_000
+    num_batches: 5
     calculate_efps: False
   generation_config:
     batch_size: 1_000
