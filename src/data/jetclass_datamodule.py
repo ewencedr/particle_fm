@@ -96,16 +96,10 @@ class JetClassDataModule(LightningDataModule):
         normalize: bool = True,
         normalize_sigma: int = 5,
         loss_per_jettype: bool = False,
-        # use_custom_eta_centering: bool = True,
-        # remove_etadiff_tails: bool = True,
         # spectator_jet_features: list = None,
-        # centering: bool = False,
-        # use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
 
-        # TODO: this doesn't work yet...
-        # self.hparams["jet_types_list"] = list(jet_types.keys())
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
