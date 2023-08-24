@@ -23,7 +23,9 @@ from src.utils.jet_substructure import dump_hlvs
 from src.utils.plotting import (
     apply_mpl_styles,
     plot_data,
+    plot_full_substructure,
     plot_particle_features,
+    plot_substructure,
     prepare_data_for_plotting,
 )
 from src.utils.pylogger import get_pylogger
@@ -449,6 +451,52 @@ class JetClassEvaluationCallback(pl.Callback):
                 self.log(f"w1p_std_{jet_type}", w_dists_tt["w1p_std"])
 
                 # todo: plot substructure for different jet types and log them
+                # plot substructure
+                file_name_substructure = f"epoch{trainer.current_epoch}_subs_3plots_{jet_type}"
+                file_name_full_substructure = f"epoch{trainer.current_epoch}_subs_full_{jet_type}"
+                plot_substructure(
+                    tau21=tau21[jet_type_mask_gen],
+                    tau32=tau32[jet_type_mask_gen],
+                    d2=d2[jet_type_mask_gen],
+                    tau21_jetnet=tau21_jetclass[jet_type_mask_sim],
+                    tau32_jetnet=tau32_jetclass[jet_type_mask_sim],
+                    d2_jetnet=d2_jetclass[jet_type_mask_sim],
+                    save_fig=True,
+                    save_folder=self.image_path,
+                    save_name=file_name_substructure,
+                    close_fig=True,
+                    simulation_name="JetClass",
+                    model_name="Generated",
+                )
+                plot_full_substructure(
+                    data_substructure=[
+                        data_substructure[i][jet_type_mask_gen]
+                        for i in range(len(data_substructure))
+                    ],
+                    data_substructure_jetnet=[
+                        data_substructure_jetclass[i][jet_type_mask_sim]
+                        for i in range(len(data_substructure_jetclass))
+                    ],
+                    keys=keys,
+                    save_fig=True,
+                    save_folder=self.image_path,
+                    save_name=file_name_full_substructure,
+                    close_fig=True,
+                    simulation_name="JetClass",
+                    model_name="Generated",
+                )
+                # upload image to comet
+                img_path_3plots = f"{self.image_path}/{file_name_substructure}.png"
+                img_path_full = f"{self.image_path}/{file_name_full_substructure}.png"
+                if self.comet_logger is not None:
+                    self.comet_logger.log_image(
+                        img_path_3plots,
+                        name=f"epoch{trainer.current_epoch}_substructure_3plots_{jet_type}",
+                    )
+                    self.comet_logger.log_image(
+                        img_path_full,
+                        name=f"epoch{trainer.current_epoch}_substructure_full_{jet_type}",
+                    )
 
             # remove the additional particle features for compatibility with the rest of the code
             background_data = background_data[:, :, :3]
