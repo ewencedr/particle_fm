@@ -36,7 +36,9 @@ model:
 
 data:
   # preprocessing
+  loss_per_jettype: true
   number_of_used_jets: 30_000
+  number_of_used_jets_val: 10_000
   normalize: True
   normalize_sigma: 5
   # conditioning
@@ -46,8 +48,8 @@ data:
   conditioning_num_particles: False
   conditioning_jet_type: True
   additional_part_features:
-    - part_energy
-    # - part_d0val
+    # - part_energy
+    - part_d0val
     # - part_d0err
     # - part_dzval
     # - part_dzerr
@@ -71,7 +73,7 @@ callbacks:
   #  patience: 2000
   #  mode: "min"
 
-task_name: "jetclass_flow_matching_dev"
+task_name: "jetclass_dev"
 
 logger:
   wandb:
@@ -79,5 +81,5 @@ logger:
     group: "jetclass_flow_matching_dev"
     name: ${task_name}
   comet:
-    experiment_name: ${task_name}
+    experiment_name: null
     project_name: "flow-matching"

@@ -12,29 +12,33 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-
+# add here checkpoint to continue training
+# ckpt_path: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-36-26/checkpoints/last-EMA.ckpt
 
 tags: ["flow_matching", "JetClass", "uncond"]
-
 run_note: ""
 
 seed: 12345
 
 trainer:
   min_epochs: 1
-  max_epochs: 1_500
+  max_epochs: 5000
   gradient_clip_val: 0.5
 
 model:
   num_particles: 128
-  global_cond_dim: 0 # needs to be calculated when using conditioning
+  global_cond_dim: 0 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
+  features: 8  # = 3 + number of `additional_part_features` (see below)
+  scheduler:
+    warmup: 500
+    max_iters: 5000
 
 data:
   # preprocessing
-  number_of_used_jets: 1_000_000
-  use_custom_eta_centering: True  # this means we are using eta_rel = eta_particle - eta_jet
-  remove_etadiff_tails: True  # remove tracks with | eta_rel | > 1
+  # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
+  used_jet_types: [Tbqq] # null means all jet types
+  number_of_used_jets: 3_000_000
   normalize: True
   normalize_sigma: 5
   # conditioning
@@ -43,6 +47,17 @@ data:
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: False
+  additional_part_features:
+    - part_d0val
+    - part_d0err
+    - part_dzval
+    - part_dzerr
+    - part_charge
+    # - part_isChargedHadron
+    # - part_isNeutralHadron
+    # - part_isPhoton
+    # - part_isElectron
+    # - part_isMuon
 
 callbacks:
   ema:
@@ -52,8 +67,8 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
   jetclass_eval:
-    every_n_epochs: 100 # evaluate every n epochs
-    additional_eval_epochs: [1, 5, 10, 30, 50, 75] # evaluate at these epochs as well
+    every_n_epochs: 50 # evaluate every n epochs
+    additional_eval_epochs: [1, 30, 75] # evaluate at these epochs as well
     num_jet_samples: 50_000 # jet samples to generate
   jetclass_eval_test:
     num_jet_samples: 200_000 # jet samples to generate
@@ -71,5 +86,5 @@ logger:
     group: "flow_matching_jetclass"
     name: ${task_name}
   comet:
-    experiment_name: ${task_name}
+    experiment_name: null
     project_name: "flow-matching"

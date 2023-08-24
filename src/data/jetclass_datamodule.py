@@ -77,6 +77,7 @@ class JetClassDataModule(LightningDataModule):
         additional_part_features: list = None,
         used_jet_types: list = None,
         number_of_used_jets: int = None,
+        number_of_used_jets_val: int = None,
         val_fraction: float = 0.15,
         test_fraction: float = 0.15,
         batch_size: int = 256,
@@ -94,16 +95,11 @@ class JetClassDataModule(LightningDataModule):
         # preprocessing
         normalize: bool = True,
         normalize_sigma: int = 5,
-        # use_custom_eta_centering: bool = True,
-        # remove_etadiff_tails: bool = True,
+        loss_per_jettype: bool = False,
         # spectator_jet_features: list = None,
-        # centering: bool = False,
-        # use_calculated_base_distribution: bool = True,
     ):
         super().__init__()
 
-        # TODO: this doesn't work yet...
-        # self.hparams["jet_types_list"] = list(jet_types.keys())
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
@@ -278,17 +274,19 @@ class JetClassDataModule(LightningDataModule):
 
             if self.hparams.number_of_used_jets is not None:
                 dataset_train = dataset_train[: self.hparams.number_of_used_jets]
-                dataset_val = dataset_val[: self.hparams.number_of_used_jets]
                 dataset_test = dataset_test[: self.hparams.number_of_used_jets]
                 mask_train = mask_train[: self.hparams.number_of_used_jets]
-                mask_val = mask_val[: self.hparams.number_of_used_jets]
                 mask_test = mask_test[: self.hparams.number_of_used_jets]
                 jet_features_train = jet_features_train[: self.hparams.number_of_used_jets]
-                jet_features_val = jet_features_val[: self.hparams.number_of_used_jets]
                 jet_features_test = jet_features_test[: self.hparams.number_of_used_jets]
                 labels_train = labels_train[: self.hparams.number_of_used_jets]
-                labels_val = labels_val[: self.hparams.number_of_used_jets]
                 labels_test = labels_test[: self.hparams.number_of_used_jets]
+
+            if self.hparams.number_of_used_jets_val is not None:
+                dataset_val = dataset_val[: self.hparams.number_of_used_jets_val]
+                mask_val = mask_val[: self.hparams.number_of_used_jets_val]
+                jet_features_val = jet_features_val[: self.hparams.number_of_used_jets_val]
+                labels_val = labels_val[: self.hparams.number_of_used_jets_val]
 
             if self.num_cond_features == 0:
                 self.tensor_conditioning_train = torch.zeros(len(dataset_train))

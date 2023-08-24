@@ -481,6 +481,33 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         loss = self.loss(x, mask=mask, cond=cond)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+
+        if self.current_epoch % 20 == 0 and hasattr(
+            self.trainer.datamodule.hparams, "loss_per_jettype"
+        ):
+            if self.trainer.datamodule.hparams.loss_per_jettype:
+                jet_type_cond_mapping = {
+                    jet_type: list(self.trainer.datamodule.names_conditioning).index(
+                        f"jet_type_label_{jet_type}"
+                    )
+                    for jet_type in self.trainer.datamodule.hparams.used_jet_types
+                }
+                for jet_type, cond_idx in jet_type_cond_mapping.items():
+                    mask_this_jet_type = cond[:, cond_idx] == 1
+                    loss_this_jet_type = self.loss(
+                        x[mask_this_jet_type][:10_000],
+                        mask[mask_this_jet_type][:10_000],
+                        cond=cond[mask_this_jet_type][:10_000],
+                    )
+
+                    self.log(
+                        f"train/loss_{jet_type}",
+                        loss_this_jet_type,
+                        on_step=False,
+                        on_epoch=True,
+                        prog_bar=True,
+                    )
+
         return {"loss": loss}
 
     def on_validation_epoch_start(self) -> None:
@@ -501,6 +528,31 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             mask = None
 
         loss = self.loss(x, mask, cond=cond)
+
+        # if specified, calculate loss for each jet type
+        if hasattr(self.trainer.datamodule.hparams, "loss_per_jettype"):
+            if self.trainer.datamodule.hparams.loss_per_jettype:
+                jet_type_cond_mapping = {
+                    jet_type: list(self.trainer.datamodule.names_conditioning).index(
+                        f"jet_type_label_{jet_type}"
+                    )
+                    for jet_type in self.trainer.datamodule.hparams.used_jet_types
+                }
+                for jet_type, cond_idx in jet_type_cond_mapping.items():
+                    mask_this_jet_type = cond[:, cond_idx] == 1
+                    loss_this_jet_type = self.loss(
+                        x[mask_this_jet_type],
+                        mask[mask_this_jet_type],
+                        cond=cond[mask_this_jet_type],
+                    )
+
+                    self.log(
+                        f"val/loss_{jet_type}",
+                        loss_this_jet_type,
+                        on_step=False,
+                        on_epoch=True,
+                        prog_bar=True,
+                    )
 
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss}

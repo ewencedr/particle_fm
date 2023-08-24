@@ -93,14 +93,21 @@ def calculate_all_wasserstein_metrics(
     """Calculate the Wasserstein distances w1m, w1p and w1efp with standard deviations.
 
     Args:
-        jets1 (Union[np.array, Tensor]): Jets from the real data
+        jets1 (Union[np.array, Tensor]): Jets from the real data.
+            Shape: (num_jets, num_particles, num_features)
+            The first 3 features are assumed to be (eta, phi, pt)
         jets2 (Union[np.array, Tensor]): Jets from the generated data
+            Shape: (num_jets, num_particles, num_features)
+            The first 3 features are assumed to be (eta, phi, pt)
         mask1 (Union[np.array, Tensor]): Mask for the real data. Defaults to None.
         mask2 (Union[np.array, Tensor]): Mask for the generated data. Defaults to None.
-        num_eval_samples (int, optional): Number of jets out of the total to use for W1 measurement. Defaults to 50,000.
-        num_batches (int, optional): Number of different batches to average W1 scores over. Defaults to 5.
+        num_eval_samples (int, optional): Number of jets out of the total to
+            use for W1 measurement. Defaults to 50,000.
+        num_batches (int, optional): Number of different batches to average W1
+            scores over. Defaults to 5.
         calculate_efps (bool, optional): Calculate W1M_efps. Defaults to True.
-        use_masks (bool, optional): Use mask for w1p calculation. Otherwise exclude zero padded values. Defaults to False.
+        use_masks (bool, optional): Use mask for w1p calculation. Otherwise
+            exclude zero padded values. Defaults to False.
 
     Returns:
         dict{w1m_mean, w1p_mean, w1efp_mean, w1m_std, w1p_std, w1efp_std}

@@ -19,6 +19,9 @@ import torch
 import yaml
 
 # set env variable DATA_DIR again because of hydra
+from dotenv import load_dotenv
+
+# set env variable DATA_DIR again because of hydra
 from omegaconf import OmegaConf
 
 from src.data.components import calculate_all_wasserstein_metrics
@@ -27,9 +30,8 @@ from src.data.components.metrics import wasserstein_distance_batched
 # from src.data.components.utils import calculate_jet_features
 from src.utils.data_generation import generate_data
 from src.utils.jet_substructure import dump_hlvs
-from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,
+from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; plot_data,
     apply_mpl_styles,
-    plot_data,
     plot_full_substructure,
     plot_jet_features,
     plot_particle_features,
@@ -42,11 +44,22 @@ pylogger = logging.getLogger("eval_ckpt")
 logging.basicConfig(level=logging.INFO)
 logging.info("test")
 
+load_dotenv()
+os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")
+
 apply_mpl_styles()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ckpt", type=str, default=None)
-parser.add_argument("--n_samples", type=int, default=100_000)
+parser.add_argument(
+    "--ckpt",
+    type=str,
+    default=None,
+)
+parser.add_argument(
+    "--n_samples",
+    type=int,
+    default=100_000,
+)
 
 
 def main():
@@ -86,9 +99,13 @@ def main():
     mask_sim = np.array(datamodule.mask_test)
     cond_sim = np.array(datamodule.tensor_conditioning_test)
 
-    data_sim = data_sim[:n_samples]
-    mask_sim = mask_sim[:n_samples]
-    cond_sim = cond_sim[:n_samples]
+    if len(data_sim) < n_samples:
+        pylogger.info(f"Only {len(data_sim)} samples available, generating {n_samples} samples.")
+        n_samples = len(data_sim)
+    else:
+        data_sim = data_sim[:n_samples]
+        mask_sim = mask_sim[:n_samples]
+        cond_sim = cond_sim[:n_samples]
 
     means = np.array(datamodule.means)
     stds = np.array(datamodule.stds)
@@ -159,6 +176,10 @@ def main():
         # pt_selected_particles: (n_datasets, n_selected_particles, n_jets) --> swap axes here!
         print(f"Saving data to {h5data_output_path}")
 
+        # for jetnet compatibility
+        if not hasattr(datamodule, "names_particle_features"):
+            datamodule.names_particle_features = ["part_etarel", "part_dphi", "part_ptrel"]
+
         # Save all the data to an HDF file
         with h5py.File(h5data_output_path, mode="w") as h5file:
             # particle data
@@ -176,11 +197,13 @@ def main():
             h5file.create_dataset("cond_data_sim", data=cond_sim)
             h5file.create_dataset("cond_data_gen", data=cond_gen)
             for ds_key in ["cond_data_sim", "cond_data_gen"]:
-                h5file[ds_key].attrs.create(
-                    "names",
-                    data=datamodule.names_conditioning,
-                    dtype=h5py.special_dtype(vlen=str),
-                )
+                if hasattr(datamodule, "names_conditioning"):
+                    if datamodule.names_conditioning is not None:
+                        h5file[ds_key].attrs.create(
+                            "names",
+                            data=datamodule.names_conditioning,
+                            dtype=h5py.special_dtype(vlen=str),
+                        )
             # calculated jet data
             h5file.create_dataset("jet_data_gen", data=jet_data_gen[0])
             h5file.create_dataset("jet_data_sim", data=jet_data_sim[0])
@@ -210,16 +233,10 @@ def main():
 
         jet_data_gen = h5file["jet_data_gen"][:]
         jet_data_sim = h5file["jet_data_sim"][:]
-        efp_values_gen = h5file["efp_values_gen"][:]
-        efp_values_sim = h5file["efp_values_sim"][:]
         pt_selected_particles_gen = h5file["pt_selected_particles_gen"][:]
         pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
 
-    pylogger.info("Calculating Wasserstein distances.")
-    metrics = calculate_all_wasserstein_metrics(
-        data_sim, data_gen
-    )  # TODO: should we add a config?, **self.w_dist_config)
-    # metrics = {}
+        part_names_sim = h5file["part_data_sim"].attrs["names"][:]
 
     pylogger.info("Plotting particle features")
     plot_particle_features(
@@ -242,18 +259,55 @@ def main():
         plot_path=output_dir / f"epoch_{ckpt_epoch}_jet_features.pdf",
     )
 
+    # for jetnet compatibility
+    if not hasattr(datamodule, "names_conditioning"):
+        if len(cond_sim.shape) == 1:
+            datamodule.names_conditioning = []
+        else:
+            datamodule.names_conditioning = [f"cond_var_{i}" for i in range(cond_sim.shape[1])]
+    else:
+        if datamodule.names_conditioning is None:
+            datamodule.names_conditioning = []
+
+    pylogger.info("Calculating Wasserstein distances.")
+    metrics = calculate_all_wasserstein_metrics(data_sim, data_gen)
+    # metrics = {}
+
     # If there are multiple jet types, plot them separately
     jet_types_dict = {
         var_name.split("_")[-1]: i
         for i, var_name in enumerate(datamodule.names_conditioning)
         if "jet_type" in var_name
     }
+    jet_types_dict["all_jet_types"] = None
     pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
 
     for jet_type, jet_type_idx in jet_types_dict.items():
         pylogger.info(f"Plotting jet type {jet_type}")
-        jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
-        jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+        if jet_type == "all_jet_types":
+            jet_type_mask_sim = np.ones(len(cond_sim), dtype=bool)
+            jet_type_mask_gen = np.ones(len(cond_gen), dtype=bool)
+        else:
+            jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+            jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+
+        # calculate metrics and add to dict
+        metrics_this_type = calculate_all_wasserstein_metrics(
+            data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen]
+        )
+        for key, value in metrics_this_type.items():
+            metrics[f"{key}_{jet_type}"] = value
+
+        for i, part_feature_name in enumerate(part_names_sim):
+            w_dist_config = {"num_eval_samples": 50_000, "num_batches": 40}
+            w1_mean, w1_std = wasserstein_distance_batched(
+                data_sim[jet_type_mask_sim, :, i][mask_sim[jet_type_mask_sim, :, 0] == 1],
+                data_gen[jet_type_mask_gen, :, i][mask_gen[jet_type_mask_gen, :, 0] == 1],
+                **w_dist_config,
+            )
+            metrics[f"w_dist_{part_feature_name}_mean_{jet_type}"] = w1_mean
+            metrics[f"w_dist_{part_feature_name}_std_{jet_type}"] = w1_std
+
         plot_particle_features(
             data_gen=data_gen[jet_type_mask_gen],
             data_sim=data_sim[jet_type_mask_sim],
@@ -391,8 +445,29 @@ def main():
         )
         for jet_type, jet_type_idx in jet_types_dict.items():
             pylogger.info(f"Plotting substructure for jet type {jet_type}")
-            jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
-            jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+            if jet_type == "all_jet_types":
+                jet_type_mask_sim = np.ones(len(cond_sim), dtype=bool)
+                jet_type_mask_gen = np.ones(len(cond_gen), dtype=bool)
+            else:
+                jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+                jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+            w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
+                tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **w_dist_config
+            )
+            w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
+                tau32_jetclass[jet_type_mask_sim], tau32[jet_type_mask_gen], **w_dist_config
+            )
+            w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
+                d2_jetclass[jet_type_mask_sim], d2[jet_type_mask_gen], **w_dist_config
+            )
+            # add to metrics
+            metrics[f"w_dist_tau21_mean_{jet_type}"] = w_dist_tau21_mean
+            metrics[f"w_dist_tau21_std_{jet_type}"] = w_dist_tau21_std
+            metrics[f"w_dist_tau32_mean_{jet_type}"] = w_dist_tau32_mean
+            metrics[f"w_dist_tau32_std_{jet_type}"] = w_dist_tau32_std
+            metrics[f"w_dist_d2_mean_{jet_type}"] = w_dist_d2_mean
+            metrics[f"w_dist_d2_std_{jet_type}"] = w_dist_d2_std
+
             plot_substructure(
                 tau21=tau21[jet_type_mask_gen],
                 tau32=tau32[jet_type_mask_gen],
@@ -424,7 +499,7 @@ def main():
                 model_name="Generated",
             )
 
-    yaml_path = output_dir / "eval_metrics.yml"
+    yaml_path = output_dir / f"eval_metrics_{n_samples}.yml"
     pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
 
     # transform numpy.float64 for better readability in yaml file
