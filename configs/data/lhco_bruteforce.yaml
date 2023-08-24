@@ -1,0 +1,12 @@
+_target_: src.data.lhco_bruteforce_datamodule.LHCOBruteforceDataModule
+data_dir: ${paths.data_dir}
+batch_size: 1024
+num_workers: 32
+pin_memory: False
+val_fraction: 0.05
+test_fraction: 0.35
+num_particles: 560
+variable_jet_sizes: True
+centering: False
+normalize: True
+use_calculated_base_distribution: True

@@ -2,14 +2,14 @@ defaults:
   - model_checkpoint.yaml
   #- model_checkpoint2.yaml
   #- model_checkpoint3.yaml
-  #- early_stopping.yaml
+  - early_stopping.yaml
   - model_summary.yaml
   - lr_monitor.yaml
   # - device_stats_monitor.yaml
   - rich_progress_bar.yaml
   - ema.yaml
   - lhco_eval.yaml
-  #- jetnet_eval.yaml
+  - lhco_eval_sr.yaml
   #- jetnet_final_eval.yaml
   - _self_
 
@@ -25,10 +25,10 @@ model_checkpoint:
 
 
 
-#early_stopping:
-#  monitor: "val/loss"
-#  patience: 100
-#  mode: "min"
+early_stopping:
+  monitor: "val/loss"
+  patience: 100
+  mode: "min"
 
 model_summary:
   max_depth: -1

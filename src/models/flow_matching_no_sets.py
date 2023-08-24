@@ -6,7 +6,7 @@ from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
 from .components.losses import FlowMatchingLoss
-from .components.mlp import MLP, small_cond_MLP_model
+from .components.mlp import MLP, small_cond_MLP_model, very_small_cond_MLP_model
 
 
 class ode_wrapper(torch.nn.Module):
@@ -41,7 +41,6 @@ class CNF(nn.Module):
         activation: str = "Tanh",
     ):
         super().__init__()
-
         self.net = small_cond_MLP_model(
             features, features, dim_t=2 * freqs, dim_cond=1, activation=activation
         )
@@ -113,7 +112,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         self,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler = None,
-        features: int = 8,
+        features: int = 10,
         n_transforms: int = 1,
         sigma: float = 1e-4,
         activation: str = "ELU",
@@ -156,7 +155,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         pass
 
     def training_step(self, batch, batch_idx):
-        x, cond = batch
+        x, mask, cond = batch
 
         loss = self.loss(x, cond=cond)
 
@@ -171,7 +170,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         torch.manual_seed(torch.seed())
 
     def validation_step(self, batch, batch_idx: int):
-        x, cond = batch
+        x, mask, cond = batch
 
         loss = self.loss(x, cond=cond)
 

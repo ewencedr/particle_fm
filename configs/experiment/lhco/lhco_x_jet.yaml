@@ -6,7 +6,7 @@
 defaults:
   - override /data: lhco.yaml
   - override /model: flow_matching.yaml
-  - override /callbacks: lhco.yaml
+  - override /callbacks: /lhco/lhco.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -19,8 +19,8 @@ tags: ["flow_matching", "LHCO", "cond", "x_jet"]
 seed: 12345
 
 trainer:
-  min_epochs: 1000
-  max_epochs: 10000
+  min_epochs: 500
+  max_epochs: 5000
   gradient_clip_val: 0.5
 
 model:
@@ -40,6 +40,7 @@ data:
   val_fraction: 0.05
   test_fraction: 0.35
   use_all_data: False
+  shuffle_data: False
 
 callbacks:
   ema:
@@ -49,7 +50,7 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
 
-  jetnet_eval:
+  lhco_eval:
     every_n_epochs: 100 # evaluate every n epochs
     num_jet_samples: -1 # jet samples to generate
     model_name: "lhco_flow_matching_x_jet"
@@ -68,10 +69,24 @@ callbacks:
       plot_efps: False
       plottype: ""
 
-  #early_stopping:
-  #  monitor: "val/loss"
-  #  patience: 2000
-  #  mode: "min"
+  lhco_eval_sr:
+    every_n_epochs: 100 # evaluate every n epochs
+    num_jet_samples: -1 # jet samples to generate
+    model_name: "lhco_flow_matching_x_jet_sr"
+    log_epoch_zero: True
+    data_type: "test"
+    w_dist_config:
+      num_eval_samples: 10_000
+      num_batches: 40
+      calculate_efps: False
+    generation_config:
+      batch_size: 2048
+      ode_solver: "midpoint"
+      ode_steps: 100
+      verbose: True
+    plot_config:
+      plot_efps: False
+      plottype: ""
 
 task_name: "lhco_flow_matching_x_jet"
 

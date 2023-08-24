@@ -22,8 +22,8 @@ log = get_pylogger("JetNetDataModule")
 
 
 # TODO datadir
-class LHCODataModule(LightningDataModule):
-    """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
+class LHCOBruteforceDataModule(LightningDataModule):
+    """LightningDataModule for LHCO dataset. If no conditioning is used, the conditioning tensor
     will be a tensor of zeros.
 
     Args:
@@ -62,23 +62,16 @@ class LHCODataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        val_fraction: float = 0.15,
-        test_fraction: float = 0.15,
-        batch_size: int = 256,
+        val_fraction: float = 0.05,
+        test_fraction: float = 0.35,
+        batch_size: int = 1024,
         num_workers: int = 32,
         pin_memory: bool = False,
         drop_last: bool = False,
         verbose: bool = True,
         # data
-        num_particles: int = 279,
+        num_particles: int = 560,
         variable_jet_sizes: bool = True,
-        conditioning: bool = False,
-        relative_coords: bool = True,
-        jet_type: str = "x",
-        use_all_data: bool = False,
-        shuffle_data: bool = True,
-        window_left: float = 3.3e3,
-        window_right: float = 3.7e3,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -136,102 +129,44 @@ class LHCODataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             # data loading
-            if self.hparams.use_all_data:
-                path = f"{self.hparams.data_dir}/lhco/events_anomalydetection_v2.h5"
-                df = pd.read_hdf(path)
-                df_np = np.array(df)
-                background = df_np[df_np[:, 2100] == 0]
-                particle_data = background[:, :2100].reshape(-1, 700, 3)[:, :560, :]
-                mask = np.expand_dims((particle_data[..., 0] > 0).astype(int), axis=-1)
+            path = f"{self.hparams.data_dir}/lhco/events_anomalydetection_v2.h5"
+            df = pd.read_hdf(path)
+            df_np = np.array(df)
+            background = df_np[df_np[:, 2100] == 0]
+            particle_data = background[:, :2100].reshape(-1, 700, 3)[:, :560, :]
+            mask = np.expand_dims((particle_data[..., 0] > 0).astype(int), axis=-1)
 
-                jet_data = None
-            else:
-                if self.hparams.relative_coords:
-                    path = (
-                        f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
-                    )
-                else:
-                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background.h5"
-                with h5py.File(path, "r") as f:
-                    jet_data = f["jet_data"][:]
-                    particle_data = f["constituents"][:]
-                    mask = f["mask"][:]
+            # cut mjj window
+            path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
+            with h5py.File(path, "r") as f:
+                jet_data_temp = f["jet_data"][:]
 
-                # cut mjj window
-                p4_jets = ef.p4s_from_ptyphims(jet_data)
-                # get mjj from p4_jets
-                sum_p4 = p4_jets[:, 0] + p4_jets[:, 1]
-                mjj = ef.ms_from_p4s(sum_p4)
+            p4_jets = ef.p4s_from_ptyphims(jet_data_temp)
+            # get mjj from p4_jets
+            sum_p4 = p4_jets[:, 0] + p4_jets[:, 1]
+            mjj = ef.ms_from_p4s(sum_p4)
 
-                # args_to_remove = (mjj >= self.hparams.window_left) & (
-                #    mjj <= self.hparams.window_right
-                # )
-                # args_to_remove = (mjj > 5000) | (mjj < 2300) | ((mjj > 3300) & (mjj < 3700))
+            args_to_keep = ((mjj < 3300) & (mjj > 2300)) | ((mjj > 3700) & (mjj < 5000))
 
-                jet_data2 = jet_data.copy()
-                particle_data2 = particle_data.copy()
-                mask2 = mask.copy()
+            particle_data_sr = particle_data.copy()
+            mask_sr = mask.copy()
 
-                args_to_keep = ((mjj < 3300) & (mjj > 2300)) | ((mjj > 3700) & (mjj < 5000))
-                jet_data = jet_data[args_to_keep]
-                particle_data = particle_data[args_to_keep]
-                mask = mask[args_to_keep]
+            particle_data = particle_data[args_to_keep]
+            mask = mask[args_to_keep]
+            jet_data = None
+            conditioning_data = mjj.copy()[args_to_keep].reshape(-1, 1)
 
-                # sr
-                args_to_keep_sr = (mjj > 3300) & (mjj < 3700)
-                jet_data_sr = jet_data2[args_to_keep_sr]
-                particle_data_sr = particle_data2[args_to_keep_sr]
-                mask_sr = mask2[args_to_keep_sr]
-
-                if self.hparams.jet_type == "all_one_pc":
-                    particle_data = particle_data.reshape(
-                        particle_data.shape[0], -1, particle_data.shape[-1]
-                    )
-                    mask = mask.reshape(mask.shape[0], -1, mask.shape[-1])
-                    if self.hparams.conditioning:
-                        raise ValueError("Conditioning does not make sense for one_pc")
-                elif self.hparams.jet_type == "all":
-                    jet_data = jet_data.reshape(-1, jet_data.shape[-1])
-                    particle_data = particle_data.reshape(
-                        -1, particle_data.shape[-2], particle_data.shape[-1]
-                    )
-                    mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
-                elif self.hparams.jet_type == "x":
-                    particle_data = particle_data[:, 0]
-                    mask = mask[:, 0]
-                    jet_data = jet_data[:, 0]
-                    # sr
-                    particle_data_sr = particle_data_sr[:, 0]
-                    mask_sr = mask_sr[:, 0]
-                    jet_data_sr = jet_data_sr[:, 0]
-                elif self.hparams.jet_type == "y":
-                    particle_data = particle_data[:, 1]
-                    mask = mask[:, 1]
-                    jet_data = jet_data[:, 1]
-                    # sr
-                    particle_data_sr = particle_data_sr[:, 1]
-                    mask_sr = mask_sr[:, 1]
-                    jet_data_sr = jet_data_sr[:, 1]
-                else:
-                    raise ValueError("Unknown jet type")
+            args_to_keep_sr = (mjj > 3300) & (mjj < 3700)
+            particle_data_sr = particle_data_sr[args_to_keep_sr]
+            mask_sr = mask_sr[args_to_keep_sr]
+            jet_data_sr = None
+            conditioning_data_sr = mjj.copy()[args_to_keep_sr].reshape(-1, 1)
 
             # reorder to eta, phi, pt to match the order of jetnet
             particle_data = particle_data[:, :, [1, 2, 0]]
             particle_data = np.concatenate([particle_data, mask], axis=-1)
             particle_data_sr = particle_data_sr[:, :, [1, 2, 0]]
             particle_data_sr = np.concatenate([particle_data_sr, mask_sr], axis=-1)
-
-            # shuffle data
-            if self.hparams.shuffle_data:
-                perm = np.random.permutation(len(particle_data))
-                if jet_data is not None and len(jet_data) == len(particle_data):
-                    jet_data = jet_data[perm]
-                particle_data = particle_data[perm]
-
-                perm_sr = np.random.permutation(len(particle_data_sr))
-                if jet_data_sr is not None and len(jet_data_sr) == len(particle_data_sr):
-                    jet_data_sr = jet_data_sr[perm_sr]
-                particle_data_sr = particle_data_sr[perm_sr]
 
             # mask and select number of particles, mainly relevant for smaller jet sizes
             x, mask, masked_particle_data, masked_jet_data = mask_data(
@@ -275,8 +210,6 @@ class LHCODataModule(LightningDataModule):
             )
 
             # conditioning
-            conditioning_data = self._handle_conditioning(jet_data)
-            conditioning_data_sr = jet_data_sr
             if conditioning_data is not None:
                 tensor_conditioning = torch.tensor(conditioning_data, dtype=torch.float32)
                 conditioning_train, conditioning_val, conditioning_test = np.split(
@@ -470,15 +403,6 @@ class LHCODataModule(LightningDataModule):
                 self.stds = None
 
             if self.hparams.verbose:
-                log.info(f"Data of jet types {self.hparams.jet_type} loaded.")
-                # log.info(
-                #    f"Conditioning on {tensor_conditioning_train.shape[-1] if len(tensor_conditioning_train.shape)==2 else 0} variables, consisting of jet_type: {len(self.hparams.jet_type) if self.hparams.conditioning_type else 0}, pt: {1 if self.hparams.conditioning_pt else 0}, eta: {1 if self.hparams.conditioning_eta else 0}, mass: {1 if self.hparams.conditioning_mass else 0}, num_particles: {1 if self.hparams.conditioning_num_particles else 0}"
-                # )
-                if self.hparams.conditioning:
-                    log.info(
-                        f"Conditioning on {tensor_conditioning_train.shape[-1]} jet variables (pt,"
-                        " eta, phi, mass)"
-                    )
                 if self.hparams.normalize:
                     log.info(f"{'Training data shape:':<23} {tensor_train.shape}")
                     log.info(f"{'Validation data shape:':<23} {tensor_val.shape}")
@@ -549,14 +473,6 @@ class LHCODataModule(LightningDataModule):
         """Things to do when loading checkpoint."""
         pass
 
-    def _handle_conditioning(self, jet_data: np.array):
-        """Select the conditioning variables and one-hot encode the type conditioning of jets."""
-
-        if self.hparams.conditioning:
-            return jet_data
-        else:
-            return None
-
 
 if __name__ == "__main__":
-    _ = LHCODataModule()
+    _ = LHCOBruteforceDataModule()

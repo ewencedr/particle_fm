@@ -12,4 +12,4 @@ scheduler:
   #warmup: 1000
   #max_iters: 10000
 
-features: 8
+features: 10

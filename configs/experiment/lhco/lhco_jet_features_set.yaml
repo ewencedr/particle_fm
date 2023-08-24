@@ -4,8 +4,8 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: lhco_jet_feature.yaml
-  - override /model: flow_matching_no_sets.yaml
+  - override /data: lhco_jet_features_set.yaml
+  - override /model: flow_matching.yaml
   - override /callbacks: /lhco/lhco_jet_feature.yaml
   - override /trainer: gpu.yaml
 
@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "LHCO", "jet_features"]
+tags: ["flow_matching", "LHCO", "jet_features", "set_data"]
 
 seed: 12345
 
@@ -23,10 +23,14 @@ trainer:
   max_epochs: 10000
   gradient_clip_val: 0.5
 
-#model:
-#  scheduler:
-#    warmup: ${trainer.min_epochs}
-#    max_iters: ${trainer.max_epochs}
+model:
+  features: 5
+  num_particles: 2
+  global_cond_dim: 1 # needs to be calculated when using conditioning
+  local_cond_dim: 1
+  scheduler:
+    warmup: ${trainer.min_epochs}
+    max_iters: ${trainer.max_epochs}
 
 data:
   val_fraction: 0.05
