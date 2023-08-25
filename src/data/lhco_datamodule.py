@@ -197,6 +197,16 @@ class LHCODataModule(LightningDataModule):
                         order="F",
                     )
                     mask = np.reshape(mask, (-1, mask.shape[-2], mask.shape[-1]), order="F")
+
+                    jet_data_sr = np.reshape(jet_data_sr, (-1, jet_data_sr.shape[-1]), order="F")
+                    particle_data_sr = np.reshape(
+                        particle_data_sr,
+                        (-1, particle_data_sr.shape[-2], particle_data_sr.shape[-1]),
+                        order="F",
+                    )
+                    mask_sr = np.reshape(
+                        mask_sr, (-1, mask_sr.shape[-2], mask_sr.shape[-1]), order="F"
+                    )
                 elif self.hparams.jet_type == "x":
                     particle_data = particle_data[:, 0]
                     mask = mask[:, 0]
