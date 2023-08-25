@@ -530,7 +530,9 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         loss = self.loss(x, mask, cond=cond)
 
         # if specified, calculate loss for each jet type
-        if hasattr(self.trainer.datamodule.hparams, "loss_per_jettype"):
+        if self.current_epoch % 20 == 0 and hasattr(
+            self.trainer.datamodule.hparams, "loss_per_jettype"
+        ):
             if self.trainer.datamodule.hparams.loss_per_jettype:
                 jet_type_cond_mapping = {
                     jet_type: list(self.trainer.datamodule.names_conditioning).index(
