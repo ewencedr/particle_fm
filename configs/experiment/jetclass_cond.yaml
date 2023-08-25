@@ -19,12 +19,15 @@ tags: ["flow_matching", "JetClass", "cond"]
 
 run_note: ""
 
-seed: 12345
+seed: 160397
 
 trainer:
   min_epochs: 1
   max_epochs: 1000
   gradient_clip_val: 0.5
+
+# setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
+# load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
 
 model:
   num_particles: 128
@@ -53,6 +56,7 @@ data:
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
+  conditioning_jet_type_all: True  # if true, all jet types are used for conditioning even if trained on only some of them (see `used_jet_types` above)
   additional_part_features:
     - part_d0val
     - part_d0err
