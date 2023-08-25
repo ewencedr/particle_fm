@@ -299,7 +299,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 jet_types_dict = {
                     var_name.split("_")[-1]: i
                     for i, var_name in enumerate(trainer.datamodule.names_conditioning)
-                    if "jet_type" in var_name
+                    if "jet_type" in var_name and np.sum(background_cond[:, i] == 1) > 0
                 }
             else:
                 jet_types_dict = {}

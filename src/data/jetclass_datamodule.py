@@ -91,6 +91,7 @@ class JetClassDataModule(LightningDataModule):
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
         conditioning_jet_type: bool = True,
+        conditioning_jet_type_all: bool = False,
         num_particles: int = 128,
         # preprocessing
         normalize: bool = True,
@@ -497,7 +498,13 @@ class JetClassDataModule(LightningDataModule):
             names_conditioning_data: np.array of shape (n_conditioning_features,) which
                 contains the names of the conditioning features
         """
-        categories = np.unique(jet_data[:, 0])
+        if self.hparams.conditioning_jet_type_all:
+            # use all jet types as conditioning variables
+            # for JetClass this should lead to 10 one-hot encoded values
+            categories = np.arange(len(names_labels))
+        else:
+            categories = np.unique(jet_data[:, 0])
+
         jet_data_one_hot = one_hot_encode(
             jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
         )
