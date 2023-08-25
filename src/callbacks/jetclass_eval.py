@@ -215,8 +215,6 @@ class JetClassEvaluationCallback(pl.Callback):
             # fix seed for better reproducibility and comparable results
             torch.manual_seed(9999)
 
-        time_eval_start = time.time()
-
         # Skip for all other epochs
         log_epoch = True
         if not self.log_epoch_zero and trainer.current_epoch == 0:
@@ -241,6 +239,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 log = True
 
         if log:
+            time_eval_start = time.time()
             pylogger.info(f"Evaluating model after epoch {trainer.current_epoch}.")
             # Get background data for plotting and calculating Wasserstein distances
             # fmt: off
@@ -570,22 +569,19 @@ class JetClassEvaluationCallback(pl.Callback):
             if self.wandb_logger is not None:
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
 
+            time_eval_end = time.time()
+            eval_time = time_eval_end - time_eval_start
             # Log jet generation time
             if self.log_times:
                 if self.comet_logger is not None:
                     self.comet_logger.log_metrics({"Jet generation time": generation_time})
+                    self.comet_logger.log_metrics({"Evaluation time": eval_time})
                 if self.wandb_logger is not None:
                     self.wandb_logger.log({"Jet generation time": generation_time})
+                    self.wandb_logger.log({"Evaluation time": eval_time})
 
         if self.fix_seed:
             torch.manual_seed(torch.seed())
-
-        time_eval_end = time.time()
-        eval_time = time_eval_end - time_eval_start
-        if self.comet_logger is not None:
-            self.comet_logger.log_metrics({"Evaluation time": eval_time})
-        if self.wandb_logger is not None:
-            self.wandb_logger.log({"Evaluation time": eval_time})
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
