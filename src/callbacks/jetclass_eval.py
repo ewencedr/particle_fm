@@ -1,5 +1,6 @@
 """Callback for evaluating the model on the JetClass dataset."""
 import os
+import time
 import warnings
 from typing import Callable, Mapping, Optional
 
@@ -213,6 +214,8 @@ class JetClassEvaluationCallback(pl.Callback):
         if self.fix_seed:
             # fix seed for better reproducibility and comparable results
             torch.manual_seed(9999)
+
+        time_eval_start = time.time()
 
         # Skip for all other epochs
         log_epoch = True
@@ -576,6 +579,13 @@ class JetClassEvaluationCallback(pl.Callback):
 
         if self.fix_seed:
             torch.manual_seed(torch.seed())
+
+        time_eval_end = time.time()
+        eval_time = time_eval_end - time_eval_start
+        if self.comet_logger is not None:
+            self.comet_logger.log_metrics({"Evaluation time": eval_time})
+        if self.wandb_logger is not None:
+            self.wandb_logger.log({"Evaluation time": eval_time})
 
     def _get_ema_callback(self, trainer: "pl.Trainer") -> Optional[EMA]:
         ema_callback = None
