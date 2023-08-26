@@ -21,7 +21,6 @@ from .components import (
 log = get_pylogger("JetNetDataModule")
 
 
-# TODO datadir
 class LHCODataModule(LightningDataModule):
     """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
     will be a tensor of zeros.
@@ -191,11 +190,23 @@ class LHCODataModule(LightningDataModule):
                     if self.hparams.conditioning:
                         raise ValueError("Conditioning does not make sense for one_pc")
                 elif self.hparams.jet_type == "all":
-                    jet_data = jet_data.reshape(-1, jet_data.shape[-1])
-                    particle_data = particle_data.reshape(
-                        -1, particle_data.shape[-2], particle_data.shape[-1]
+                    jet_data = np.reshape(jet_data, (-1, jet_data.shape[-1]), order="F")
+                    particle_data = np.reshape(
+                        particle_data,
+                        (-1, particle_data.shape[-2], particle_data.shape[-1]),
+                        order="F",
                     )
-                    mask = mask.reshape(-1, mask.shape[-2], mask.shape[-1])
+                    mask = np.reshape(mask, (-1, mask.shape[-2], mask.shape[-1]), order="F")
+
+                    jet_data_sr = np.reshape(jet_data_sr, (-1, jet_data_sr.shape[-1]), order="F")
+                    particle_data_sr = np.reshape(
+                        particle_data_sr,
+                        (-1, particle_data_sr.shape[-2], particle_data_sr.shape[-1]),
+                        order="F",
+                    )
+                    mask_sr = np.reshape(
+                        mask_sr, (-1, mask_sr.shape[-2], mask_sr.shape[-1]), order="F"
+                    )
                 elif self.hparams.jet_type == "x":
                     particle_data = particle_data[:, 0]
                     mask = mask[:, 0]
