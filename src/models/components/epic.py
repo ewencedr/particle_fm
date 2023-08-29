@@ -490,7 +490,7 @@ class EPiC_discriminator(nn.Module):
 
         self.fc_g3 = self.wrapper_func(nn.Linear(int(2 * self.hid_d + self.latent), self.hid_d))
         self.fc_g4 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
-        self.out = self.wrappe_func(nn.Linear(self.hid_d, 1))
+        self.out = self.wrapper_func(nn.Linear(self.hid_d, 1))
 
     def forward(
         self,
