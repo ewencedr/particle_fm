@@ -42,7 +42,6 @@ from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; pl
 # set up logging for jupyter notebook
 pylogger = logging.getLogger("eval_ckpt")
 logging.basicConfig(level=logging.INFO)
-logging.info("test")
 
 load_dotenv()
 os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")
@@ -59,6 +58,11 @@ parser.add_argument(
     "--n_samples",
     type=int,
     default=100_000,
+)
+parser.add_argument(
+    "--cond_gen_file",
+    type=str,
+    default=None,
 )
 
 
@@ -86,6 +90,8 @@ def main():
     print(OmegaConf.to_yaml(cfg))
     print(100 * "-")
 
+    cfg.data.conditioning_gen_filename = args.cond_gen_file
+
     datamodule = hydra.utils.instantiate(cfg.data)
     datamodule.setup()
 
@@ -107,12 +113,12 @@ def main():
         mask_sim = mask_sim[:n_samples]
         cond_sim = cond_sim[:n_samples]
 
-    means = np.array(datamodule.means)
-    stds = np.array(datamodule.stds)
-
-    # for now use the same mask/cond for the generated data
-    mask_gen = deepcopy(mask_sim)
-    cond_gen = deepcopy(cond_sim)
+    if args.cond_gen_file is not None:
+        mask_gen = np.array(datamodule.mask_gen)[:n_samples]
+        cond_gen = np.array(datamodule.tensor_conditioning_gen)[:n_samples]
+    else:
+        mask_gen = deepcopy(mask_sim)
+        cond_gen = deepcopy(cond_sim)
 
     # check if the output already exists
     # --> only generate new data if it does not exist yet
@@ -291,6 +297,8 @@ def main():
             jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
             jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
 
+        print(f"Sum of jet_type_mask_sim: {np.sum(jet_type_mask_sim)}")
+        print(f"Sum of jet_type_mask_gen: {np.sum(jet_type_mask_gen)}")
         # calculate metrics and add to dict
         metrics_this_type = calculate_all_wasserstein_metrics(
             data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen]
@@ -394,7 +402,7 @@ def main():
                 data_substructure_jetclass.append(np.array(f[key]))
         data_substructure_jetclass = np.array(data_substructure_jetclass)
 
-        w_dist_config = {"num_eval_samples": 50_000, "num_batches": 40}
+        w_dist_config = {"num_eval_samples": 50_000, "num_batches": 5}
         # calculate wasserstein distances
         w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
             tau21_jetclass, tau21, **w_dist_config

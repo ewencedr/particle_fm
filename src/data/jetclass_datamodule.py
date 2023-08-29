@@ -97,6 +97,7 @@ class JetClassDataModule(LightningDataModule):
         normalize: bool = True,
         normalize_sigma: int = 5,
         loss_per_jettype: bool = False,
+        conditioning_gen_filename: str = None,
         # spectator_jet_features: list = None,
     ):
         super().__init__()
@@ -308,6 +309,16 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)  # noqa: E501
                 self.tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
                 self.tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)  # noqa: E501
+
+                if self.hparams.conditioning_gen_filename is not None:
+                    pylogger.info("Using conditioning data from generator.")
+                    with h5py.File(self.hparams.conditioning_gen_filename, "r") as f:
+                        conditioning_gen, _ = self._handle_conditioning(
+                            f["jet_features"][:], f["jet_features"].attrs["names_jet_features"], names_labels
+                        )
+                        self.mask_gen = torch.tensor(f["part_mask"][:], dtype=torch.float32)
+                        self.tensor_conditioning_gen = torch.tensor(conditioning_gen, dtype=torch.float32)
+
                 # fmt: on
 
             # invert the masks from the masked arrays (numpy ma masks are True for masked values)
