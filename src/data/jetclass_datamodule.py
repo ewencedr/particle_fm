@@ -313,10 +313,13 @@ class JetClassDataModule(LightningDataModule):
                 if self.hparams.conditioning_gen_filename is not None:
                     pylogger.info("Using conditioning data from generator.")
                     with h5py.File(self.hparams.conditioning_gen_filename, "r") as f:
+                        jet_features_gen = f["jet_features"][:]
+                        index_jet_type = get_feat_index(f["jet_features"].attrs["names_jet_features"], "jet_type")
+                        jet_types_mask = np.isin(jet_features_gen[:, index_jet_type], used_jet_types_values)  # noqa: E501
                         conditioning_gen, _ = self._handle_conditioning(
-                            f["jet_features"][:], f["jet_features"].attrs["names_jet_features"], names_labels
+                            f["jet_features"][jet_types_mask], f["jet_features"].attrs["names_jet_features"], names_labels
                         )
-                        self.mask_gen = torch.tensor(f["part_mask"][:], dtype=torch.float32)
+                        self.mask_gen = torch.tensor(f["part_mask"][jet_types_mask], dtype=torch.float32)
                         self.tensor_conditioning_gen = torch.tensor(conditioning_gen, dtype=torch.float32)
 
                 # fmt: on
