@@ -31,7 +31,7 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 11 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
   features: 13  # = 3 + number of `additional_part_features` (see below)
   layers: 13 # default is 6
@@ -53,7 +53,7 @@ data:
   # conditioning
   conditioning_pt: False
   conditioning_eta: False
-  conditioning_mass: True
+  conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
   conditioning_jet_type_all: True  # if true, all jet types are used for conditioning even if trained on only some of them (see `used_jet_types` above)
