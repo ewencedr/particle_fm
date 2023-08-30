@@ -31,11 +31,11 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 11 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
   features: 13  # = 3 + number of `additional_part_features` (see below)
-  layers: 10 # default is 6
-  hidden_dim: 200 # default is 128
+  layers: 13 # default is 6
+  hidden_dim: 250 # default is 128
   latent: 15 # default is 10
   scheduler:
     warmup: 50
@@ -46,14 +46,14 @@ data:
   # preprocessing
   # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
   # used_jet_types: [Tbqq] # null means all jet types
-  number_of_used_jets: 3_000_000  # training jets
+  number_of_used_jets: 5_000_000  # training jets
   number_of_used_jets_val: 80_000  # validation jets
   normalize: True
   normalize_sigma: 5
   # conditioning
   conditioning_pt: False
   conditioning_eta: False
-  conditioning_mass: False
+  conditioning_mass: True
   conditioning_num_particles: False
   conditioning_jet_type: True
   conditioning_jet_type_all: True  # if true, all jet types are used for conditioning even if trained on only some of them (see `used_jet_types` above)
