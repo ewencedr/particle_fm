@@ -101,8 +101,8 @@ class JetNetEvaluationCallbackSR(pl.Callback):
 
     def on_train_start(self, trainer, pl_module) -> None:
         # log something, so that metrics exists and the checkpoint callback doesn't crash
-        self.log("w1m_mean", 0.005)
-        self.log("w1p_mean", 0.005)
+        self.log("w1m_mean", 0.005, sync_dist=True)
+        self.log("w1p_mean", 0.005, sync_dist=True)
 
         # set number of jet samples if negative
         if self.num_jet_samples < 0:
@@ -224,10 +224,10 @@ class JetNetEvaluationCallbackSR(pl.Callback):
                 background_data, data, **self.w_dist_config
             )
 
-            self.log("w1m_mean_sr", w_dists["w1m_mean"])
-            self.log("w1p_mean_sr", w_dists["w1p_mean"])
-            self.log("w1m_std_sr", w_dists["w1m_std"])
-            self.log("w1p_std_sr", w_dists["w1p_std"])
+            self.log("w1m_mean_sr", w_dists["w1m_mean"], sync_dist=True)
+            self.log("w1p_mean_sr", w_dists["w1p_mean"], sync_dist=True)
+            self.log("w1m_std_sr", w_dists["w1m_std"], sync_dist=True)
+            self.log("w1p_std_sr", w_dists["w1p_std"], sync_dist=True)
 
             if self.comet_logger is not None:
                 text = (
