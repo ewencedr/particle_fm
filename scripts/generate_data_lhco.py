@@ -117,6 +117,10 @@ def main(params):
         ode_steps=params.ode_steps,
     )
 
+    data_x_raw = np.copy(data_x)
+    data_y_raw = np.copy(data_y)
+    data_raw = np.stack([data_x_raw, data_y_raw], axis=1)
+
     print("Preparing data for saving")
     # remove unphysical values
     data_x[data_x[:, :, 2] < 0] = np.min(
@@ -200,18 +204,21 @@ def main(params):
     args = np.argsort(pt, axis=1)[:, ::-1]
     perm = np.random.permutation(args.shape[0])
     args = args[perm]
-    pt_sorted = np.take_along_axis(pt, args, axis=1)
+    # pt_sorted = np.take_along_axis(pt, args, axis=1)
 
     sorted_jets = np.take_along_axis(jet_features, args[..., None], axis=1)
     sorted_consts = np.take_along_axis(particle_data, args[..., None, None], axis=1)
+    sorted_consts_nonrel = np.take_along_axis(particle_data_nonrel, args[..., None, None], axis=1)
 
     save_file = join(
         data_folder, "lhco", "generated", f"{save_file}-{params.ode_solver}-{params.ode_steps}.h5"
     )
     with h5py.File(save_file, "w") as f:
-        f.create_dataset("particle_features", data=sorted_consts)
+        f.create_dataset("particle_features", data=sorted_consts[..., [2, 0, 1]])
         f.create_dataset("jet_features", data=sorted_jets)
-        f.create_dataset("jet_pt", data=pt_sorted)
+        f.create_dataset("particle_features_nonrel", data=sorted_consts_nonrel[..., [2, 0, 1]])
+        f.create_dataset("data_raw", data=data_raw[..., [2, 0, 1]])
+
     print(f"Saved data to {save_file}")
 
     print(f"ODE solver: {params.ode_solver}")
