@@ -43,7 +43,6 @@ class EPiCClassifierLitModule(LightningModule):
 
     def __init__(
         self,
-        net: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
     ) -> None:
@@ -77,13 +76,13 @@ class EPiCClassifierLitModule(LightningModule):
         # for tracking best so far validation accuracy
         self.val_acc_best = MaxMetric()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass through the model `self.net`.
 
         :param x: A tensor of images.
         :return: A tensor of logits.
         """
-        return self.net(x)
+        return self.net(x_local=x, mask=mask)
 
     def on_train_start(self) -> None:
         """Lightning hook that is called when training begins."""
@@ -105,8 +104,8 @@ class EPiCClassifierLitModule(LightningModule):
             - A tensor of predictions.
             - A tensor of target labels.
         """
-        x, y = batch
-        logits = self.forward(x)
+        x, mask, y = batch
+        logits = self.forward(x, mask=mask)
         loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
