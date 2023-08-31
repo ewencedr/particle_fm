@@ -321,6 +321,9 @@ class JetClassDataModule(LightningDataModule):
                         )
                         self.mask_gen = torch.tensor(f["part_mask"][jet_types_mask], dtype=torch.float32)
                         self.tensor_conditioning_gen = torch.tensor(conditioning_gen, dtype=torch.float32)
+                else:
+                    self.mask_gen = None
+                    self.tensor_conditioning_gen = None
 
                 # fmt: on
 

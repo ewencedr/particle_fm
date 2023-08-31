@@ -259,15 +259,18 @@ class JetClassEvaluationCallback(pl.Callback):
                 ]
             # fmt: on
 
-            mask = background_mask
-            cond = background_cond
+            if trainer.datamodule.mask_gen is None:
+                pylogger.info(
+                    "No mask for generated data found. Using the same mask as for simulated data."
+                )
+                mask = background_mask
+                cond = background_cond
+            else:
+                mask = trainer.datamodule.mask_gen
+                cond = trainer.datamodule.tensor_conditioning_gen
 
             # maximum number of samples to plot is the number of samples in the dataset
             num_plot_samples = len(background_data)
-
-            if self.datasets_multiplier > 1:
-                mask = np.repeat(mask, self.datasets_multiplier, axis=0)
-                cond = np.repeat(cond, self.datasets_multiplier, axis=0)
 
             # Get EMA weights if available
             if (
