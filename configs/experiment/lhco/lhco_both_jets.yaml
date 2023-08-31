@@ -44,6 +44,7 @@ data:
   test_fraction: 0.35
   use_all_data: False
   shuffle_data: False
+  file_suffix_processed_data: ""
 
 callbacks:
   ema:

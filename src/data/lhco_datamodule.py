@@ -69,6 +69,7 @@ class LHCODataModule(LightningDataModule):
         drop_last: bool = False,
         verbose: bool = True,
         # data
+        file_suffix_processed_data: str = "",
         num_particles: int = 279,
         variable_jet_sizes: bool = True,
         conditioning: bool = False,
@@ -150,11 +151,9 @@ class LHCODataModule(LightningDataModule):
                 jet_data = None
             else:
                 if self.hparams.relative_coords:
-                    path = (
-                        f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
-                    )
+                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel{self.hparams.file_suffix_processed_data}.h5"
                 else:
-                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background.h5"
+                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background{self.hparams.file_suffix_processed_data}.h5"
                 with h5py.File(path, "r") as f:
                     jet_data = f["jet_data"][:]
                     particle_data = f["constituents"][:]
