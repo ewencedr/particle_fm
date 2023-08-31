@@ -1,0 +1,5 @@
+_target_: src.data.classifier_datamodule.ClassifierDataModule
+data_dir: ${paths.data_dir}
+batch_size: 1024
+num_workers: 32
+pin_memory: False
