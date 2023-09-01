@@ -240,13 +240,13 @@ def main(params):
     # print(jet_features_id.shape)
     # print(particle_data_id.shape)
     # print(mjj_id.shape)
-    consts_wdist = sorted_consts[..., [2, 0, 1]]
+    id_etaphipt = particle_data_id[..., [1, 2, 0]]
     w_dists = calculate_all_wasserstein_metrics(
-        consts_wdist.reshape(-1, consts_wdist.shape[-2], consts_wdist.shape[-1]),
-        particle_data_id.reshape(-1, particle_data_id.shape[-2], particle_data_id.shape[-1]),
+        sorted_consts.reshape(-1, sorted_consts.shape[-2], sorted_consts.shape[-1]),
+        id_etaphipt.reshape(-1, id_etaphipt.shape[-2], id_etaphipt.shape[-1]),
         num_eval_samples=50_000,
         num_batches=40,
-        calculate_efps=False,
+        calculate_efps=True,
     )
     print(w_dists)
 
