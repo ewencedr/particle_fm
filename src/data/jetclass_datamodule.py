@@ -349,10 +349,17 @@ class JetClassDataModule(LightningDataModule):
             self.tensor_val = torch.clone(tensor_val)
 
             # revert standardization for those tensors
+            self.min_max_train_dict = {}
             for i in range(len(indices_part_features)):
                 self.tensor_train[:, :, i] = (
                     (self.tensor_train[:, :, i] * part_stds_train[i]) + part_means_train[i]
                 ) * mask_train[..., 0]
+                # calculate min and max for each feature in the training data
+                # (to shift generated data back to the original range later on)
+                self.min_max_train_dict[names_particle_features[i]] = {
+                    "min": self.tensor_train[:, :, i][mask_train[..., 0] != 0].min(),
+                    "max": self.tensor_train[:, :, i][mask_train[..., 0] != 0].max(),
+                }
                 self.tensor_test[:, :, i] = (
                     (self.tensor_test[:, :, i] * part_stds_train[i]) + part_means_train[i]
                 ) * mask_test[..., 0]
