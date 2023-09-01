@@ -46,7 +46,7 @@ data:
   # preprocessing
   # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
   # used_jet_types: [Tbqq] # null means all jet types
-  number_of_used_jets: 5_000_000  # training jets
+  number_of_used_jets: 3_000_000  # training jets
   number_of_used_jets_val: 80_000  # validation jets
   normalize: True
   normalize_sigma: 5
