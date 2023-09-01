@@ -90,7 +90,7 @@ def main(params):
     data_x, generation_time_x = generate_data(
         model,
         num_jet_samples=len(mask_x),
-        batch_size=2048,
+        batch_size=1024,
         cond=torch.Tensor(normalized_cond_x),
         variable_set_sizes=datamodule.hparams.variable_jet_sizes,
         mask=torch.Tensor(mask_x),
@@ -106,7 +106,7 @@ def main(params):
     data_y, generation_time_y = generate_data(
         model,
         num_jet_samples=len(mask_y),
-        batch_size=2048,
+        batch_size=1024,
         cond=torch.Tensor(normalized_cond_y),
         variable_set_sizes=datamodule.hparams.variable_jet_sizes,
         mask=torch.Tensor(mask_y),
@@ -227,6 +227,26 @@ def main(params):
     print(f"Number of generated samples: {len(particle_data)}")
 
     # TODO Wasserstein metrics
+    print("Calculating Wasserstein metrics")
+    # Load idealized data
+    path_id = f"{data_folder}/lhco/generated/idealized_LHCO.h5"
+    with h5py.File(path_id, "r") as f:
+        print(f.keys())
+        jet_features_id = f["jet_features"][:]
+        particle_data_id = f["particle_features"][:]
+        mjj_id = f["mjj"][:]
+    # print(jet_features_id.shape)
+    # print(particle_data_id.shape)
+    # print(mjj_id.shape)
+    consts_wdist = sorted_consts[..., [2, 0, 1]]
+    w_dists = calculate_all_wasserstein_metrics(
+        consts_wdist.reshape(-1, consts_wdist.shape[-2], consts_wdist.shape[-1]),
+        particle_data_id.reshape(-1, particle_data_id.shape[-2], particle_data_id.shape[-1]),
+        num_eval_samples=50_000,
+        num_batches=40,
+        calculate_efps=False,
+    )
+    print(w_dists)
 
 
 if __name__ == "__main__":
