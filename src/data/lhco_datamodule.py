@@ -69,6 +69,7 @@ class LHCODataModule(LightningDataModule):
         drop_last: bool = False,
         verbose: bool = True,
         # data
+        file_suffix_processed_data: str = "",
         num_particles: int = 279,
         variable_jet_sizes: bool = True,
         conditioning: bool = False,
@@ -118,6 +119,10 @@ class LHCODataModule(LightningDataModule):
         self.tensor_conditioning_val_sr: Optional[torch.Tensor] = None
         self.tensor_conditioning_test_sr: Optional[torch.Tensor] = None
 
+        self.jet_data_sr_raw: Optional[np.array] = None
+        self.particle_data_sr_raw: Optional[np.array] = None
+        self.mask_sr_raw: Optional[np.array] = None
+
     def prepare_data(self):
         """Download data if needed.
 
@@ -146,11 +151,9 @@ class LHCODataModule(LightningDataModule):
                 jet_data = None
             else:
                 if self.hparams.relative_coords:
-                    path = (
-                        f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
-                    )
+                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel{self.hparams.file_suffix_processed_data}.h5"
                 else:
-                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background.h5"
+                    path = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background{self.hparams.file_suffix_processed_data}.h5"
                 with h5py.File(path, "r") as f:
                     jet_data = f["jet_data"][:]
                     particle_data = f["constituents"][:]
@@ -197,6 +200,10 @@ class LHCODataModule(LightningDataModule):
                         order="F",
                     )
                     mask = np.reshape(mask, (-1, mask.shape[-2], mask.shape[-1]), order="F")
+
+                    self.jet_data_sr_raw = jet_data_sr.copy()
+                    self.particle_data_sr_raw = particle_data_sr.copy()
+                    self.mask_sr_raw = mask_sr.copy()
 
                     jet_data_sr = np.reshape(jet_data_sr, (-1, jet_data_sr.shape[-1]), order="F")
                     particle_data_sr = np.reshape(
