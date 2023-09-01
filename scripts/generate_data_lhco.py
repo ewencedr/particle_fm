@@ -70,6 +70,7 @@ def main(params):
     mask_x = datamodule.mask_sr_raw[:, 0]
     cond_y = datamodule.jet_data_sr_raw[:, 1]
     mask_y = datamodule.mask_sr_raw[:, 1]
+    mjj = datamodule.mjj_sr
 
     normalized_cond_x = normalize_tensor(
         torch.Tensor(cond_x).clone(),
@@ -218,6 +219,7 @@ def main(params):
         f.create_dataset("jet_features", data=sorted_jets)
         f.create_dataset("particle_features_nonrel", data=sorted_consts_nonrel[..., [2, 0, 1]])
         f.create_dataset("data_raw", data=data_raw[..., [2, 0, 1]])
+        f.create_dataset("mjj", data=mjj)
 
     print(f"Saved data to {save_file}")
 

@@ -524,6 +524,7 @@ class LHCODataModule(LightningDataModule):
             self.tensor_conditioning_train_sr = tensor_conditioning_train_sr
             self.tensor_conditioning_val_sr = tensor_conditioning_val_sr
             self.tensor_conditioning_test_sr = tensor_conditioning_test_sr
+            self.mjj_sr = mjj[args_to_keep_sr]
 
     def train_dataloader(self):
         return DataLoader(
