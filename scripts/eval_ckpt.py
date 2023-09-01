@@ -402,7 +402,7 @@ def main():
 
     if EVALUATE_SUBSTRUCTURE:
         substructure_path = output_dir
-        substr_filename_gen = f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}"
+        substr_filename_gen = f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{len(data_gen)}"
         substructure_full_path = substructure_path / substr_filename_gen
         substr_filename_jetclass = (
             f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}"
