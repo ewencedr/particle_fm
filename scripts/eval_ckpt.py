@@ -65,6 +65,8 @@ parser.add_argument(
     default=None,
 )
 
+VARIABLES_TO_CLIP = ["part_ptrel"]
+
 
 def main():
     args = parser.parse_args()
@@ -105,17 +107,28 @@ def main():
     mask_sim = np.array(datamodule.mask_test)
     cond_sim = np.array(datamodule.tensor_conditioning_test)
 
+    n_samples_sim = n_samples
+    n_samples_gen = n_samples
+
     if len(data_sim) < n_samples:
-        pylogger.info(f"Only {len(data_sim)} samples available, generating {n_samples} samples.")
-        n_samples = len(data_sim)
+        n_samples_sim = len(data_sim)
+        pylogger.info(f"Only {len(data_sim)} samples available, using {n_samples_sim} samples.")
     else:
-        data_sim = data_sim[:n_samples]
-        mask_sim = mask_sim[:n_samples]
-        cond_sim = cond_sim[:n_samples]
+        data_sim = data_sim[:n_samples_sim]
+        mask_sim = mask_sim[:n_samples_sim]
+        cond_sim = cond_sim[:n_samples_sim]
 
     if args.cond_gen_file is not None:
-        mask_gen = np.array(datamodule.mask_gen)[:n_samples]
-        cond_gen = np.array(datamodule.tensor_conditioning_gen)[:n_samples]
+        mask_gen = np.array(datamodule.mask_gen)
+        cond_gen = np.array(datamodule.tensor_conditioning_gen)
+        if len(cond_gen) < n_samples:
+            n_samples_gen = len(cond_gen)
+            pylogger.info(
+                f"Only {len(cond_gen)} generated masks available, using {n_samples_gen} samples."
+            )
+        mask_gen = mask_gen[:n_samples_gen]
+        cond_gen = cond_gen[:n_samples_gen]
+
     else:
         mask_gen = deepcopy(mask_sim)
         cond_gen = deepcopy(cond_sim)
@@ -149,6 +162,9 @@ def main():
     else:
         pylogger.info(f"Output file {h5data_output_path} doesn't exist.")
         pylogger.info("--> Generating data.")
+        # set seed for reproducibility
+        torch.manual_seed(42)
+        np.random.seed(42)
         data_gen, generation_time = generate_data(
             model=model,
             num_jet_samples=len(mask_gen),
@@ -161,6 +177,55 @@ def main():
             # device="cpu",
         )
         pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
+
+        # ------------------------------------------------
+        # Correcting the generated data
+        # Clipping
+        for i, var_name in enumerate(datamodule.names_particle_features):
+            if var_name not in VARIABLES_TO_CLIP:
+                continue
+            pylogger.info(f"Clipping outliers of generated {var_name} to original range.")
+            data_gen[mask_gen[..., 0] != 0, i] = np.clip(
+                data_gen[mask_gen[..., 0] != 0, i],
+                a_min=datamodule.min_max_train_dict[var_name]["min"],
+                a_max=datamodule.min_max_train_dict[var_name]["max"],
+            )
+        # Argmax for particle-id features:
+        # for the particle-id features, set the maximum value to 1 and the
+        # others to 0 (a particle can only be one type, i.e. if isElectron=0,
+        # isMuon=0, ...)
+
+        names_part_features = list(datamodule.names_particle_features)
+        indices_is_features = [
+            names_part_features.index(name)
+            for name in names_part_features
+            if name.startswith("part_is")
+        ]
+
+        if len(indices_is_features) > 0:
+            pylogger.info("Setting maximum value of particle-id features to 1, others to 0.")
+            part_id_features = data_gen[:, :, indices_is_features]
+            # find the index of the maximum value in the last axis
+            max_indices = np.argmax(part_id_features, axis=-1)
+
+            result = np.zeros_like(part_id_features)
+            result[
+                np.arange(part_id_features.shape[0])[:, None],
+                np.arange(part_id_features.shape[1]),
+                max_indices,
+            ] = 1
+
+            data_gen[:, :, indices_is_features] = result
+            # correct masked values
+            data_gen[mask_gen[..., 0] == 0, :] = 0
+
+        # Round part_charge to nearest integer
+        if "part_charge" in names_part_features:
+            pylogger.info("Rounding part_charge to nearest integer.")
+            idx_charge = names_part_features.index("part_charge")
+            data_gen[:, :, idx_charge] = np.round(data_gen[:, :, idx_charge])
+
+        # # ------------------------------------------------
 
         pylogger.info("Calculating jet features")
         plot_prep_config = {"calculate_efps": True}
