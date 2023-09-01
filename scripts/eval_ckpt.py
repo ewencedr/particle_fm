@@ -412,11 +412,11 @@ def main():
         # calculate substructure for generated data
         if not os.path.isfile(str(substructure_full_path) + ".h5"):
             pylogger.info("Calculating substructure.")
-            dump_hlvs(data_gen[:, :, :3], str(substructure_full_path), plot=False)
+            dump_hlvs(data_gen, str(substructure_full_path), plot=False)
         # calculate substructure for reference data
         if not os.path.isfile(str(substructure_full_path_jetclass) + ".h5"):
             pylogger.info("Calculating substructure.")
-            dump_hlvs(data_sim[:, :, :3], str(substructure_full_path_jetclass), plot=False)
+            dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
 
         # load substructure for model generated data
         keys = []
