@@ -160,8 +160,8 @@ class JetClassEvaluationCallback(pl.Callback):
 
     def on_train_start(self, trainer, pl_module) -> None:
         # log something, so that metrics exists and the checkpoint callback doesn't crash
-        self.log("w1m_mean", 0.005)
-        self.log("w1p_mean", 0.005)
+        self.log("w1m_mean", 0.005, sync_dist=True)
+        self.log("w1p_mean", 0.005, sync_dist=True)
 
         if self.image_path is None:
             self.image_path = f"{trainer.default_root_dir}/plots/"
@@ -375,14 +375,14 @@ class JetClassEvaluationCallback(pl.Callback):
             w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
                 d2_jetclass, d2, **w_dist_config
             )
-            self.log("w_dist_tau21_mean", w_dist_tau21_mean)
-            self.log("w_dist_tau21_std", w_dist_tau21_std)
-            self.log("w_dist_tau32_mean", w_dist_tau32_mean)
-            self.log("w_dist_tau32_std", w_dist_tau32_std)
-            self.log("w1m_mean", w_dists["w1m_mean"])
-            self.log("w1p_mean", w_dists["w1p_mean"])
-            self.log("w1m_std", w_dists["w1m_std"])
-            self.log("w1p_std", w_dists["w1p_std"])
+            self.log("w_dist_tau21_mean", w_dist_tau21_mean, sync_dist=True)
+            self.log("w_dist_tau21_std", w_dist_tau21_std, sync_dist=True)
+            self.log("w_dist_tau32_mean", w_dist_tau32_mean, sync_dist=True)
+            self.log("w_dist_tau32_std", w_dist_tau32_std, sync_dist=True)
+            self.log("w1m_mean", w_dists["w1m_mean"], sync_dist=True)
+            self.log("w1p_mean", w_dists["w1p_mean"], sync_dist=True)
+            self.log("w1m_std", w_dists["w1m_std"], sync_dist=True)
+            self.log("w1p_std", w_dists["w1p_std"], sync_dist=True)
 
             if self.comet_logger is not None:
                 text = (
@@ -446,14 +446,14 @@ class JetClassEvaluationCallback(pl.Callback):
                     d2[jet_type_mask_gen],
                     **w_dist_config,
                 )
-                self.log(f"w_dist_tau21_mean_{jet_type}", w_dist_tau21_mean_tt)
-                self.log(f"w_dist_tau21_std_{jet_type}", w_dist_tau21_std_tt)
-                self.log(f"w_dist_tau32_mean_{jet_type}", w_dist_tau32_mean_tt)
-                self.log(f"w_dist_tau32_std_{jet_type}", w_dist_tau32_std_tt)
-                self.log(f"w1m_mean_{jet_type}", w_dists_tt["w1m_mean"])
-                self.log(f"w1p_mean_{jet_type}", w_dists_tt["w1p_mean"])
-                self.log(f"w1m_std_{jet_type}", w_dists_tt["w1m_std"])
-                self.log(f"w1p_std_{jet_type}", w_dists_tt["w1p_std"])
+                self.log(f"w_dist_tau21_mean_{jet_type}", w_dist_tau21_mean_tt, sync_dist=True)
+                self.log(f"w_dist_tau21_std_{jet_type}", w_dist_tau21_std_tt, sync_dist=True)
+                self.log(f"w_dist_tau32_mean_{jet_type}", w_dist_tau32_mean_tt, sync_dist=True)
+                self.log(f"w_dist_tau32_std_{jet_type}", w_dist_tau32_std_tt, sync_dist=True)
+                self.log(f"w1m_mean_{jet_type}", w_dists_tt["w1m_mean"], sync_dist=True)
+                self.log(f"w1p_mean_{jet_type}", w_dists_tt["w1p_mean"], sync_dist=True)
+                self.log(f"w1m_std_{jet_type}", w_dists_tt["w1m_std"], sync_dist=True)
+                self.log(f"w1p_std_{jet_type}", w_dists_tt["w1p_std"], sync_dist=True)
 
                 # todo: plot substructure for different jet types and log them
                 # plot substructure
