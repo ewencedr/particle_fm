@@ -312,6 +312,7 @@ class JetClassDataModule(LightningDataModule):
 
                 if self.hparams.conditioning_gen_filename is not None:
                     pylogger.info("Using conditioning data from generator.")
+                    pylogger.info("From file: %s", self.hparams.conditioning_gen_filename)
                     with h5py.File(self.hparams.conditioning_gen_filename, "r") as f:
                         jet_features_gen = f["jet_features"][:]
                         index_jet_type = get_feat_index(f["jet_features"].attrs["names_jet_features"], "jet_type")
