@@ -326,9 +326,23 @@ def main(params):
         d2_jetnet, d2, num_eval_samples=50_000, num_batches=40
     )
 
+    w_dist_tau21_mean_true, w_dist_tau21_std_true = wasserstein_distance_batched(
+        tau21_jetnet, tau21_jetnet, num_eval_samples=50_000, num_batches=40
+    )
+    w_dist_tau32_mean_true, w_dist_tau32_std_true = wasserstein_distance_batched(
+        tau32_jetnet, tau32_jetnet, num_eval_samples=50_000, num_batches=40
+    )
+    w_dist_d2_mean_true, w_dist_d2_std_true = wasserstein_distance_batched(
+        d2_jetnet, d2_jetnet, num_eval_samples=50_000, num_batches=40
+    )
+
     print(f"Wasserstein distance tau21: {w_dist_tau21_mean} +- {w_dist_tau21_std}")
     print(f"Wasserstein distance tau32: {w_dist_tau32_mean} +- {w_dist_tau32_std}")
     print(f"Wasserstein distance d2: {w_dist_d2_mean} +- {w_dist_d2_std}")
+    print()
+    print(f"Wasserstein distance tau21: {w_dist_tau21_mean_true} +- {w_dist_tau21_std_true}")
+    print(f"Wasserstein distance tau32: {w_dist_tau32_mean_true} +- {w_dist_tau32_std_true}")
+    print(f"Wasserstein distance d2: {w_dist_d2_mean_true} +- {w_dist_d2_std_true}")
 
     save_file_substr_img = join(
         data_folder,
