@@ -84,6 +84,7 @@ class LHCODataModule(LightningDataModule):
         normalize: bool = False,
         normalize_sigma: int = 5,
         use_calculated_base_distribution: bool = True,
+        log_pt: bool = False,
     ):
         super().__init__()
 
@@ -336,11 +337,27 @@ class LHCODataModule(LightningDataModule):
                 tensor_conditioning_test_sr = torch.zeros(len(dataset_test_sr))
 
             if self.hparams.normalize:
-                means = np.ma.mean(dataset_train, axis=(0, 1))
-                stds = np.ma.std(dataset_train, axis=(0, 1))
+                pt_dataset_train = dataset_train.copy()
+                pt_dataset_val = dataset_val.copy()
+                pt_dataset_train_sr = dataset_train_sr.copy()
+                pt_dataset_val_sr = dataset_val_sr.copy()
+                if self.hparams.log_pt:
+                    pt_dataset_train[:, :, 0] = np.ma.log(1.0 - pt_dataset_train[:, :, 0]).filled(
+                        0
+                    )
+                    pt_dataset_val[:, :, 0] = np.ma.log(1.0 - pt_dataset_val[:, :, 0]).filled(0)
+                    pt_dataset_train_sr[:, :, 0] = np.ma.log(
+                        1.0 - pt_dataset_train_sr[:, :, 0]
+                    ).filled(0)
+                    pt_dataset_val_sr[:, :, 0] = np.ma.log(
+                        1.0 - pt_dataset_val_sr[:, :, 0]
+                    ).filled(0)
+
+                means = np.ma.mean(pt_dataset_train, axis=(0, 1))
+                stds = np.ma.std(pt_dataset_train, axis=(0, 1))
 
                 normalized_dataset_train = normalize_tensor(
-                    np.ma.copy(dataset_train), means, stds, sigma=self.hparams.normalize_sigma
+                    np.ma.copy(pt_dataset_train), means, stds, sigma=self.hparams.normalize_sigma
                 )
                 mask_train = np.ma.getmask(normalized_dataset_train) == 0
                 mask_train = mask_train.astype(int)
@@ -348,7 +365,10 @@ class LHCODataModule(LightningDataModule):
                 tensor_train = torch.tensor(normalized_dataset_train)
 
                 normalized_dataset_train_sr = normalize_tensor(
-                    np.ma.copy(dataset_train_sr), means, stds, sigma=self.hparams.normalize_sigma
+                    np.ma.copy(pt_dataset_train_sr),
+                    means,
+                    stds,
+                    sigma=self.hparams.normalize_sigma,
                 )
                 mask_train_sr = np.ma.getmask(normalized_dataset_train_sr) == 0
                 mask_train_sr = mask_train_sr.astype(int)
@@ -357,7 +377,7 @@ class LHCODataModule(LightningDataModule):
 
                 # Validation
                 normalized_dataset_val = normalize_tensor(
-                    np.ma.copy(dataset_val),
+                    np.ma.copy(pt_dataset_val),
                     means,
                     stds,
                     sigma=self.hparams.normalize_sigma,
@@ -368,7 +388,7 @@ class LHCODataModule(LightningDataModule):
                 tensor_val = torch.tensor(normalized_dataset_val)
 
                 normalized_dataset_val_sr = normalize_tensor(
-                    np.ma.copy(dataset_val_sr),
+                    np.ma.copy(pt_dataset_val_sr),
                     means,
                     stds,
                     sigma=self.hparams.normalize_sigma,

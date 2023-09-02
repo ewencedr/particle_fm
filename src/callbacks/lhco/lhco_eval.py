@@ -204,6 +204,7 @@ class JetNetEvaluationCallback(pl.Callback):
                 normalized_data=trainer.datamodule.hparams.normalize,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
+                log_pt=trainer.datamodule.hparams.log_pt,
                 **self.generation_config,
             )
 

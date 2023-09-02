@@ -16,3 +16,4 @@ jet_type: "x"
 shuffle_data: True
 use_calculated_base_distribution: True
 file_suffix_processed_data: ""
+log_pt: True

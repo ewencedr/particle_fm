@@ -107,6 +107,7 @@ def main(params):
         normalized_data=datamodule.hparams.normalize,
         means=datamodule.means,
         stds=datamodule.stds,
+        log_pt=datamodule.hparams.log_pt,
         ode_solver=params.ode_solver,
         ode_steps=params.ode_steps,
     )
@@ -123,6 +124,7 @@ def main(params):
         normalized_data=datamodule.hparams.normalize,
         means=datamodule.means,
         stds=datamodule.stds,
+        log_pt=datamodule.hparams.log_pt,
         ode_solver=params.ode_solver,
         ode_steps=params.ode_steps,
     )
