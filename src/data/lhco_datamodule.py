@@ -342,15 +342,15 @@ class LHCODataModule(LightningDataModule):
                 pt_dataset_train_sr = dataset_train_sr.copy()
                 pt_dataset_val_sr = dataset_val_sr.copy()
                 if self.hparams.log_pt:
-                    pt_dataset_train[:, :, 0] = np.ma.log(1.0 - pt_dataset_train[:, :, 0]).filled(
+                    pt_dataset_train[:, :, 2] = np.ma.log(1.0 - pt_dataset_train[:, :, 2]).filled(
                         0
                     )
-                    pt_dataset_val[:, :, 0] = np.ma.log(1.0 - pt_dataset_val[:, :, 0]).filled(0)
-                    pt_dataset_train_sr[:, :, 0] = np.ma.log(
-                        1.0 - pt_dataset_train_sr[:, :, 0]
+                    pt_dataset_val[:, :, 2] = np.ma.log(1.0 - pt_dataset_val[:, :, 2]).filled(0)
+                    pt_dataset_train_sr[:, :, 2] = np.ma.log(
+                        1.0 - pt_dataset_train_sr[:, :, 2]
                     ).filled(0)
-                    pt_dataset_val_sr[:, :, 0] = np.ma.log(
-                        1.0 - pt_dataset_val_sr[:, :, 0]
+                    pt_dataset_val_sr[:, :, 2] = np.ma.log(
+                        1.0 - pt_dataset_val_sr[:, :, 2]
                     ).filled(0)
 
                 means = np.ma.mean(pt_dataset_train, axis=(0, 1))

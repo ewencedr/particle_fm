@@ -105,7 +105,7 @@ def generate_data(
                 jet_samples_batch, means, stds, sigma=normalize_sigma
             )
             if log_pt:
-                jet_samples_batch[..., 0] = 1.0 - np.exp(jet_samples_batch[..., 0])
+                jet_samples_batch[..., 2] = 1.0 - np.exp(jet_samples_batch[..., 2])
         if variable_set_sizes:
             jet_samples_batch = jet_samples_batch * mask_batch
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
@@ -144,7 +144,7 @@ def generate_data(
                 jet_samples_batch, means, stds, sigma=normalize_sigma
             )
             if log_pt:
-                jet_samples_batch[..., 0] = 1.0 - np.exp(jet_samples_batch[..., 0])
+                jet_samples_batch[..., 2] = 1.0 - np.exp(jet_samples_batch[..., 2])
         if variable_set_sizes:
             jet_samples_batch = jet_samples_batch * mask_batch
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
