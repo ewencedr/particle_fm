@@ -9,6 +9,7 @@ num_particles: 279
 variable_jet_sizes: True
 centering: False
 normalize: True
+normalize_sigma: 5
 conditioning: True
 use_all_data: True
 relative_coords: True
