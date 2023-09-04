@@ -64,11 +64,11 @@ parser.add_argument(
     type=str,
     default=None,
 )
-# parser.add_argument(
-#     "--suffix",
-#     type=str,
-#     default=None,
-# )
+parser.add_argument(
+    "--suffix",
+    type=str,
+    default=None,
+)
 
 VARIABLES_TO_CLIP = ["part_ptrel"]
 
@@ -77,6 +77,7 @@ def main():
     args = parser.parse_args()
     ckpt = args.ckpt
     n_samples_gen = args.n_samples
+    suffix = f"-{args.suffix}" if args.suffix is not None else ""
 
     pylogger.info(f"ckpt: {ckpt}")
     pylogger.info(f"n_samples: {n_samples_gen}")
@@ -115,7 +116,7 @@ def main():
     n_samples_sim = n_samples_gen
     n_samples_gen = n_samples_gen
 
-    if len(data_sim) < n_samples_gen:
+    if len(data_sim) < n_samples_sim:
         n_samples_sim = len(data_sim)
         pylogger.info(f"Only {len(data_sim)} samples available, using {n_samples_sim} samples.")
     else:
@@ -158,7 +159,7 @@ def main():
         shutil.copyfile(ckpt, output_dir / f"epoch_{ckpt_epoch}.ckpt")
 
     h5data_output_path = (
-        output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}.h5"
+        output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}.h5"
     )
 
     if h5data_output_path.exists():
@@ -407,10 +408,12 @@ def main():
 
     if EVALUATE_SUBSTRUCTURE:
         substructure_path = output_dir
-        substr_filename_gen = f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}"
+        substr_filename_gen = (
+            f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
+        )
         substructure_full_path = substructure_path / substr_filename_gen
         substr_filename_jetclass = (
-            f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}"
+            f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
         )
         substructure_full_path_jetclass = substructure_path / substr_filename_jetclass
 
@@ -577,7 +580,7 @@ def main():
                 model_name="Generated",
             )
 
-    yaml_path = output_dir / f"eval_metrics_{n_samples_gen}.yml"
+    yaml_path = output_dir / f"eval_metrics_{n_samples_gen}{suffix}.yml"
     pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
 
     # transform numpy.float64 for better readability in yaml file
@@ -587,23 +590,6 @@ def main():
         yaml.dump(metrics, outfile, default_flow_style=False)
     # also print to terminal
     print(pd.DataFrame.from_dict(metrics, orient="index"))
-
-    # write to tex file (already formatted as table)
-    tex_table_metrics = ["w1m", "w1p", "w1efp", "w_dist_tau21", "w_dist_tau32", "w_dist_d2"]
-    with open(output_dir / "eval_metrics.tex", "w") as f:
-        header = ""
-        for metric_name in tex_table_metrics:
-            header += f"{metric_name} & "
-        header = header[:-2] + "\\\\\n"
-        f.write(header)
-        numbers = ""
-        for metric_name in tex_table_metrics:
-            numbers += (
-                f"\\num{{{metrics[metric_name+'_mean']:.6f} \\pm"
-                f" {metrics[metric_name+'_std']:.6f}}} & "
-            )
-        numbers = numbers[:-2] + "\\\\\n"
-        f.write(numbers)
 
 
 if __name__ == "__main__":
