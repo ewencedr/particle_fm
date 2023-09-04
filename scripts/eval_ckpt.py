@@ -69,6 +69,11 @@ parser.add_argument(
     type=str,
     default=None,
 )
+parser.add_argument(
+    "--ode_steps",
+    type=int,
+    default=100,
+)
 
 VARIABLES_TO_CLIP = ["part_ptrel"]
 
@@ -181,6 +186,7 @@ def main():
             means=datamodule.means,
             stds=datamodule.stds,
             # device="cpu",
+            ode_steps=args.ode_steps,
         )
         pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
 
@@ -378,7 +384,7 @@ def main():
             metrics[f"{key}_{jet_type}"] = value
 
         for i, part_feature_name in enumerate(part_names_sim):
-            w_dist_config = {"num_eval_samples": 50_000, "num_batches": 40}
+            w_dist_config = {"num_eval_samples": 50_000, "num_batches": 10}
             w1_mean, w1_std = wasserstein_distance_batched(
                 data_sim[jet_type_mask_sim, :, i][mask_sim[jet_type_mask_sim, :, 0] == 1],
                 data_gen[jet_type_mask_gen, :, i][mask_gen[jet_type_mask_gen, :, 0] == 1],
@@ -475,7 +481,7 @@ def main():
                 data_substructure_jetclass.append(np.array(f[key]))
         data_substructure_jetclass = np.array(data_substructure_jetclass)
 
-        w_dist_config = {"num_eval_samples": 50_000, "num_batches": 5}
+        w_dist_config = {"num_eval_samples": 50_000, "num_batches": 10}
         # calculate wasserstein distances
         w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
             tau21_jetclass, tau21, **w_dist_config
