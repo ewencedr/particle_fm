@@ -18,3 +18,5 @@ shuffle_data: True
 use_calculated_base_distribution: True
 file_suffix_processed_data: ""
 log_pt: False
+pt_standardization: False
+multiplicity_conditioning: False
