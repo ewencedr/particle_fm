@@ -64,6 +64,11 @@ parser.add_argument(
     type=str,
     default=None,
 )
+# parser.add_argument(
+#     "--suffix",
+#     type=str,
+#     default=None,
+# )
 
 VARIABLES_TO_CLIP = ["part_ptrel"]
 
@@ -71,10 +76,10 @@ VARIABLES_TO_CLIP = ["part_ptrel"]
 def main():
     args = parser.parse_args()
     ckpt = args.ckpt
-    n_samples = args.n_samples
+    n_samples_gen = args.n_samples
 
     pylogger.info(f"ckpt: {ckpt}")
-    pylogger.info(f"n_samples: {n_samples}")
+    pylogger.info(f"n_samples: {n_samples_gen}")
 
     EVALUATE_SUBSTRUCTURE = True
 
@@ -107,10 +112,10 @@ def main():
     mask_sim = np.array(datamodule.mask_test)
     cond_sim = np.array(datamodule.tensor_conditioning_test)
 
-    n_samples_sim = n_samples
-    n_samples_gen = n_samples
+    n_samples_sim = n_samples_gen
+    n_samples_gen = n_samples_gen
 
-    if len(data_sim) < n_samples:
+    if len(data_sim) < n_samples_gen:
         n_samples_sim = len(data_sim)
         pylogger.info(f"Only {len(data_sim)} samples available, using {n_samples_sim} samples.")
     else:
@@ -121,7 +126,7 @@ def main():
     if args.cond_gen_file is not None:
         mask_gen = np.array(datamodule.mask_gen)
         cond_gen = np.array(datamodule.tensor_conditioning_gen)
-        if len(cond_gen) < n_samples:
+        if len(cond_gen) < n_samples_gen:
             n_samples_gen = len(cond_gen)
             pylogger.info(
                 f"Only {len(cond_gen)} generated masks available, using {n_samples_gen} samples."
@@ -153,7 +158,7 @@ def main():
         shutil.copyfile(ckpt, output_dir / f"epoch_{ckpt_epoch}.ckpt")
 
     h5data_output_path = (
-        output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{len(mask_gen)}.h5"
+        output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}.h5"
     )
 
     if h5data_output_path.exists():
@@ -402,10 +407,10 @@ def main():
 
     if EVALUATE_SUBSTRUCTURE:
         substructure_path = output_dir
-        substr_filename_gen = f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{len(data_gen)}"
+        substr_filename_gen = f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}"
         substructure_full_path = substructure_path / substr_filename_gen
         substr_filename_jetclass = (
-            f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{len(data_sim)}"
+            f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}"
         )
         substructure_full_path_jetclass = substructure_path / substr_filename_jetclass
 
@@ -572,7 +577,7 @@ def main():
                 model_name="Generated",
             )
 
-    yaml_path = output_dir / f"eval_metrics_{n_samples}.yml"
+    yaml_path = output_dir / f"eval_metrics_{n_samples_gen}.yml"
     pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
 
     # transform numpy.float64 for better readability in yaml file
