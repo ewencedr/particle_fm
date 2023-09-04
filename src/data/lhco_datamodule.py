@@ -186,6 +186,19 @@ class LHCODataModule(LightningDataModule):
                 particle_data_sr = particle_data2[args_to_keep_sr]
                 mask_sr = mask2[args_to_keep_sr]
 
+                # add particle multiplicity to jet data
+                print(f"jet_data.shape: {jet_data.shape}")
+                print(f"mask.shape: {mask.shape}")
+                pm = np.sum(mask, axis=-2)
+                jet_data = np.concatenate((jet_data, pm), axis=-1)
+
+                print(f"pm.shape: {pm.shape}")
+                print(f"pm: {pm}")
+                print(f"jet_data.shape: {jet_data.shape}")
+
+                pm_sr = np.sum(mask_sr, axis=-2)
+                jet_data_sr = np.concatenate((jet_data_sr, pm_sr), axis=-1)
+
                 if self.hparams.jet_type == "all_one_pc":
                     particle_data = particle_data.reshape(
                         particle_data.shape[0], -1, particle_data.shape[-1]
