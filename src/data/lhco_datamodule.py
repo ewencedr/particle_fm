@@ -79,6 +79,7 @@ class LHCODataModule(LightningDataModule):
         shuffle_data: bool = True,
         window_left: float = 3.3e3,
         window_right: float = 3.7e3,
+        multiplicity_conditioning: bool = False,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
@@ -188,11 +189,12 @@ class LHCODataModule(LightningDataModule):
                 mask_sr = mask2[args_to_keep_sr]
 
                 # add particle multiplicity to jet data
-                pm = np.sum(mask, axis=-2)
-                jet_data = np.concatenate((jet_data, pm), axis=-1)
+                if self.hparams.multiplicity_conditioning:
+                    pm = np.sum(mask, axis=-2)
+                    jet_data = np.concatenate((jet_data, pm), axis=-1)
 
-                pm_sr = np.sum(mask_sr, axis=-2)
-                jet_data_sr = np.concatenate((jet_data_sr, pm_sr), axis=-1)
+                    pm_sr = np.sum(mask_sr, axis=-2)
+                    jet_data_sr = np.concatenate((jet_data_sr, pm_sr), axis=-1)
 
                 if self.hparams.jet_type == "all_one_pc":
                     particle_data = particle_data.reshape(
