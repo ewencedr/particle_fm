@@ -15,6 +15,8 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
+# add here checkpoint to continue training
+# ckpt_path: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-36-26/checkpoints/last-EMA.ckpt
 
 
 tags: ["flow_matching", "JetClass", "dev", "debug"]
@@ -38,7 +40,7 @@ model:
 
 data:
   # preprocessing
-  used_jet_types: [Tbqq] # null means all jet types
+  # used_jet_types: [Tbqq] # null means all jet types
   loss_per_jettype: true
   number_of_used_jets: 30_000
   number_of_used_jets_val: 10_000
