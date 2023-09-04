@@ -85,6 +85,7 @@ class LHCODataModule(LightningDataModule):
         normalize_sigma: int = 5,
         use_calculated_base_distribution: bool = True,
         log_pt: bool = False,
+        pt_standardization: bool = False,
     ):
         super().__init__()
 
@@ -363,43 +364,94 @@ class LHCODataModule(LightningDataModule):
                 means = np.ma.mean(pt_dataset_train, axis=(0, 1))
                 stds = np.ma.std(pt_dataset_train, axis=(0, 1))
 
-                normalized_dataset_train = normalize_tensor(
-                    np.ma.copy(pt_dataset_train), means, stds, sigma=self.hparams.normalize_sigma
-                )
+                if self.hparams.pt_standardization:
+                    normalized_dataset_train = np.ma.copy(pt_dataset_train)
+                    normalized_dataset_train[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_train[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        1,
+                    )
+                    normalized_dataset_train_sr = np.ma.copy(pt_dataset_train_sr)
+                    normalized_dataset_train_sr[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train_sr[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_train_sr[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train_sr[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        1,
+                    )
+                else:
+                    normalized_dataset_train = normalize_tensor(
+                        np.ma.copy(pt_dataset_train),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+                    normalized_dataset_train_sr = normalize_tensor(
+                        np.ma.copy(pt_dataset_train_sr),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
                 mask_train = np.ma.getmask(normalized_dataset_train) == 0
                 mask_train = mask_train.astype(int)
                 mask_train = torch.tensor(np.expand_dims(mask_train[..., 0], axis=-1))
                 tensor_train = torch.tensor(normalized_dataset_train)
 
-                normalized_dataset_train_sr = normalize_tensor(
-                    np.ma.copy(pt_dataset_train_sr),
-                    means,
-                    stds,
-                    sigma=self.hparams.normalize_sigma,
-                )
                 mask_train_sr = np.ma.getmask(normalized_dataset_train_sr) == 0
                 mask_train_sr = mask_train_sr.astype(int)
                 mask_train_sr = torch.tensor(np.expand_dims(mask_train_sr[..., 0], axis=-1))
                 tensor_train_sr = torch.tensor(normalized_dataset_train_sr)
 
                 # Validation
-                normalized_dataset_val = normalize_tensor(
-                    np.ma.copy(pt_dataset_val),
-                    means,
-                    stds,
-                    sigma=self.hparams.normalize_sigma,
-                )
+                if self.hparams.pt_standardization:
+                    normalized_dataset_val = np.ma.copy(pt_dataset_val)
+                    normalized_dataset_val[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_val[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        1,
+                    )
+                    normalized_dataset_val_sr = np.ma.copy(pt_dataset_val_sr)
+                    normalized_dataset_val_sr[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val_sr[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_val_sr[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val_sr[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        1,
+                    )
+
+                else:
+                    normalized_dataset_val = normalize_tensor(
+                        np.ma.copy(pt_dataset_val),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    normalized_dataset_val_sr = normalize_tensor(
+                        np.ma.copy(pt_dataset_val_sr),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
                 mask_val = np.ma.getmask(normalized_dataset_val) == 0
                 mask_val = mask_val.astype(int)
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
 
-                normalized_dataset_val_sr = normalize_tensor(
-                    np.ma.copy(pt_dataset_val_sr),
-                    means,
-                    stds,
-                    sigma=self.hparams.normalize_sigma,
-                )
                 mask_val_sr = np.ma.getmask(normalized_dataset_val_sr) == 0
                 mask_val_sr = mask_val_sr.astype(int)
                 mask_val_sr = torch.tensor(np.expand_dims(mask_val_sr[..., 0], axis=-1))
