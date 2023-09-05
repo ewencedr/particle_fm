@@ -76,6 +76,7 @@ parser.add_argument(
 )
 
 VARIABLES_TO_CLIP = ["part_ptrel"]
+W_DIST_CFG = {"num_eval_samples": 50_000, "num_batches": 10}
 
 
 def main():
@@ -356,7 +357,7 @@ def main():
             datamodule.names_conditioning = []
 
     pylogger.info("Calculating Wasserstein distances.")
-    metrics = calculate_all_wasserstein_metrics(data_sim, data_gen)
+    metrics = calculate_all_wasserstein_metrics(data_sim, data_gen, **W_DIST_CFG)
     # metrics = {}
 
     # If there are multiple jet types, plot them separately
@@ -381,17 +382,16 @@ def main():
         print(f"Sum of jet_type_mask_gen: {np.sum(jet_type_mask_gen)}")
         # calculate metrics and add to dict
         metrics_this_type = calculate_all_wasserstein_metrics(
-            data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen]
+            data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen], **W_DIST_CFG
         )
         for key, value in metrics_this_type.items():
             metrics[f"{key}_{jet_type}"] = value
 
         for i, part_feature_name in enumerate(part_names_sim):
-            w_dist_config = {"num_eval_samples": 50_000, "num_batches": 10}
             w1_mean, w1_std = wasserstein_distance_batched(
                 data_sim[jet_type_mask_sim, :, i][mask_sim[jet_type_mask_sim, :, 0] == 1],
                 data_gen[jet_type_mask_gen, :, i][mask_gen[jet_type_mask_gen, :, 0] == 1],
-                **w_dist_config,
+                **W_DIST_CFG,
             )
             metrics[f"w_dist_{part_feature_name}_mean_{jet_type}"] = w1_mean
             metrics[f"w_dist_{part_feature_name}_std_{jet_type}"] = w1_std
@@ -485,17 +485,14 @@ def main():
                 data_substructure_jetclass.append(np.array(f[key]))
         data_substructure_jetclass = np.array(data_substructure_jetclass)
 
-        w_dist_config = {"num_eval_samples": 50_000, "num_batches": 10}
         # calculate wasserstein distances
         w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
-            tau21_jetclass, tau21, **w_dist_config
+            tau21_jetclass, tau21, **W_DIST_CFG
         )
         w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
-            tau32_jetclass, tau32, **w_dist_config
+            tau32_jetclass, tau32, **W_DIST_CFG
         )
-        w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
-            d2_jetclass, d2, **w_dist_config
-        )
+        w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(d2_jetclass, d2, **W_DIST_CFG)
 
         # add to metrics
         metrics["w_dist_tau21_mean"] = w_dist_tau21_mean
@@ -543,13 +540,13 @@ def main():
                 jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
                 jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
             w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
-                tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **w_dist_config
+                tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **W_DIST_CFG
             )
             w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
-                tau32_jetclass[jet_type_mask_sim], tau32[jet_type_mask_gen], **w_dist_config
+                tau32_jetclass[jet_type_mask_sim], tau32[jet_type_mask_gen], **W_DIST_CFG
             )
             w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
-                d2_jetclass[jet_type_mask_sim], d2[jet_type_mask_gen], **w_dist_config
+                d2_jetclass[jet_type_mask_sim], d2[jet_type_mask_gen], **W_DIST_CFG
             )
             # add to metrics
             metrics[f"w_dist_tau21_mean_{jet_type}"] = w_dist_tau21_mean
@@ -595,6 +592,8 @@ def main():
 
     # transform numpy.float64 for better readability in yaml file
     metrics = {k: float(v) for k, v in metrics.items()}
+    metrics["num_eval_samples"] = W_DIST_CFG["num_eval_samples"]
+    metrics["num_batches"] = W_DIST_CFG["num_batches"]
     # write to yaml file
     with open(yaml_path, "w") as outfile:
         yaml.dump(metrics, outfile, default_flow_style=False)
