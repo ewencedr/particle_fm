@@ -233,6 +233,10 @@ class LHCODataModule(LightningDataModule):
                     particle_data_sr = particle_data_sr[:, 0]
                     mask_sr = mask_sr[:, 0]
                     jet_data_sr = jet_data_sr[:, 0]
+
+                    self.jet_data_sr_raw = jet_data_sr.copy()
+                    self.particle_data_sr_raw = particle_data_sr.copy()
+                    self.mask_sr_raw = mask_sr.copy()
                 elif self.hparams.jet_type == "y":
                     particle_data = particle_data[:, 1]
                     mask = mask[:, 1]
@@ -241,6 +245,10 @@ class LHCODataModule(LightningDataModule):
                     particle_data_sr = particle_data_sr[:, 1]
                     mask_sr = mask_sr[:, 1]
                     jet_data_sr = jet_data_sr[:, 1]
+
+                    self.jet_data_sr_raw = jet_data_sr.copy()
+                    self.particle_data_sr_raw = particle_data_sr.copy()
+                    self.mask_sr_raw = mask_sr.copy()
                 else:
                     raise ValueError("Unknown jet type")
 
