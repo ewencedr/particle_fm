@@ -284,7 +284,6 @@ def main(params):
     print(f"Generation time: {generation_time_x + generation_time_y} s")
     print(f"Number of generated samples: {len(particle_data)}")
 
-    # TODO Wasserstein metrics
     print("Calculating Wasserstein metrics")
     # Load idealized data
     path_id = f"{data_folder}/lhco/generated/idealized_LHCO.h5"
@@ -304,7 +303,26 @@ def main(params):
         num_batches=40,
         calculate_efps=True,
     )
+    w_dists_np = calculate_all_wasserstein_metrics(
+        data_raw.reshape(-1, data_raw.shape[-2], data_raw.shape[-1]),
+        id_etaphipt.reshape(-1, id_etaphipt.shape[-2], id_etaphipt.shape[-1]),
+        num_eval_samples=50_000,
+        num_batches=40,
+        calculate_efps=True,
+    )
+    w_dists_id = calculate_all_wasserstein_metrics(
+        id_etaphipt.reshape(-1, id_etaphipt.shape[-2], id_etaphipt.shape[-1]),
+        id_etaphipt.reshape(-1, id_etaphipt.shape[-2], id_etaphipt.shape[-1]),
+        num_eval_samples=50_000,
+        num_batches=40,
+        calculate_efps=True,
+    )
+    print("Wasserstein distances with post-processing:")
     print(w_dists)
+    print("Wasserstein distances without post-processing:")
+    print(w_dists_np)
+    print("Wasserstein distances for idealized data:")
+    print(w_dists_id)
 
     # substructure
     # take only a subset of the data because calculating the substructure takes a long time
