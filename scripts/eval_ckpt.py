@@ -156,7 +156,10 @@ def main():
         if f"evaluated_ckpts/epoch_{ckpt_epoch}" in str(ckpt_path)
         else ckpt_path.parent.parent / "evaluated_ckpts" / f"epoch_{ckpt_epoch}"
     )
+    plots_dir = output_dir / f"plots{suffix}"
+    plots_dir.mkdir(parents=True, exist_ok=True)
     pylogger.info(f"Output directory: {output_dir}")
+    pylogger.info(f"Plots directory: {plots_dir}")
 
     os.makedirs(output_dir, exist_ok=True)
     if not (output_dir / f"epoch_{ckpt_epoch}.ckpt").exists():
@@ -330,7 +333,7 @@ def main():
         feature_names=datamodule.names_particle_features,
         legend_label_sim="JetClass",
         legend_label_gen="Generated",
-        plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
+        plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
     )
     pylogger.info("Plotting jet features")
     plot_jet_features(
@@ -339,7 +342,7 @@ def main():
         jet_feature_names=["jet_pt", "jet_y", "jet_phi", "jet_mrel"],
         legend_label_sim="JetClass",
         legend_label_gen="Generated",
-        plot_path=output_dir / f"epoch_{ckpt_epoch}_jet_features.pdf",
+        plot_path=plots_dir / f"epoch_{ckpt_epoch}_jet_features.pdf",
     )
 
     # for jetnet compatibility
@@ -401,7 +404,7 @@ def main():
             feature_names=datamodule.names_particle_features,
             legend_label_sim="JetClass",
             legend_label_gen="Generated",
-            plot_path=output_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
+            plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
         )
         plot_jet_features(
             jet_data_gen=jet_data_gen[jet_type_mask_gen],
@@ -409,7 +412,7 @@ def main():
             jet_feature_names=["jet_pt", "jet_y", "jet_phi", "jet_mrel"],
             legend_label_sim="JetClass",
             legend_label_gen="Generated",
-            plot_path=output_dir / f"epoch_{ckpt_epoch}_jet_features_{jet_type}.pdf",
+            plot_path=plots_dir / f"epoch_{ckpt_epoch}_jet_features_{jet_type}.pdf",
         )
 
     if EVALUATE_SUBSTRUCTURE:
@@ -417,6 +420,7 @@ def main():
         substr_filename_gen = (
             f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
         )
+        print(f"Saving substructure to {substructure_path / substr_filename_gen}")
         substructure_full_path = substructure_path / substr_filename_gen
         substr_filename_jetclass = (
             f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
@@ -504,7 +508,7 @@ def main():
         # plot substructure
         file_name_substructure = "substructure_3plots"
         file_name_full_substructure = "substructure_full"
-        img_path = str(output_dir) + "/"
+        img_path = str(plots_dir) + "/"
         plot_substructure(
             tau21=tau21,
             tau32=tau32,
