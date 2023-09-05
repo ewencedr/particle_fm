@@ -8,7 +8,7 @@ defaults:
   # - device_stats_monitor.yaml
   - rich_progress_bar.yaml
   - ema.yaml
-  - lhco_eval.yaml
+  #- lhco_eval.yaml
   - lhco_eval_sr.yaml
   #- jetnet_final_eval.yaml
   - _self_
@@ -27,7 +27,7 @@ model_checkpoint:
 
 early_stopping:
   monitor: "val/loss"
-  patience: 100
+  patience: 200
   mode: "min"
 
 model_summary:

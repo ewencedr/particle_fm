@@ -480,7 +480,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
         loss = self.loss(x, mask=mask, cond=cond)
 
-        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
 
         if self.current_epoch % 20 == 0 and hasattr(
             self.trainer.datamodule.hparams, "loss_per_jettype"
@@ -506,6 +506,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         on_step=False,
                         on_epoch=True,
                         prog_bar=True,
+                        sync_dist=True,
                     )
 
         return {"loss": loss}
@@ -554,9 +555,10 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                         on_step=False,
                         on_epoch=True,
                         prog_bar=True,
+                        sync_dist=True,
                     )
 
-        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
         return {"loss": loss}
 
     # def on_validation_epoch_end(self, outputs: List[Any]):

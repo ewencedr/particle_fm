@@ -6,7 +6,12 @@ from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
 from .components.losses import FlowMatchingLoss
-from .components.mlp import MLP, small_cond_MLP_model, very_small_cond_MLP_model
+from .components.mlp import (
+    MLP,
+    small_cond_MLP_model,
+    small_cond_ResNet_model,
+    very_small_cond_MLP_model,
+)
 
 
 class ode_wrapper(torch.nn.Module):
@@ -41,7 +46,7 @@ class CNF(nn.Module):
         activation: str = "Tanh",
     ):
         super().__init__()
-        self.net = small_cond_MLP_model(
+        self.net = small_cond_ResNet_model(
             features, features, dim_t=2 * freqs, dim_cond=1, activation=activation
         )
 
