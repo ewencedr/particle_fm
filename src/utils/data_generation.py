@@ -105,10 +105,10 @@ def generate_data(
         if normalized_data:
             if pt_standardization:
                 jet_samples_batch[..., :2] = inverse_normalize_tensor(
-                    jet_samples_batch[..., :2], means, stds, sigma=10
+                    jet_samples_batch[..., :2], means[:2], stds[:2], sigma=10
                 )
                 jet_samples_batch[..., 2] = inverse_normalize_tensor(
-                    jet_samples_batch[..., 2], means, stds, sigma=1
+                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=2
                 )
             else:
                 jet_samples_batch = inverse_normalize_tensor(
@@ -152,10 +152,10 @@ def generate_data(
         if normalized_data:
             if pt_standardization:
                 jet_samples_batch[..., :2] = inverse_normalize_tensor(
-                    jet_samples_batch[..., :2], means, stds, sigma=10
+                    jet_samples_batch[..., :2], means[:2], stds[:2], sigma=10
                 )
                 jet_samples_batch[..., 2] = inverse_normalize_tensor(
-                    jet_samples_batch[..., 2], means, stds, sigma=1
+                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=2
                 )
             else:
                 jet_samples_batch = inverse_normalize_tensor(

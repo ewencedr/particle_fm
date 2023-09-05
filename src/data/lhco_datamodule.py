@@ -375,7 +375,7 @@ class LHCODataModule(LightningDataModule):
                         np.ma.copy(normalized_dataset_train[..., 2]),
                         [means[2]],
                         [stds[2]],
-                        1,
+                        2,
                     )
                     normalized_dataset_train_sr = np.ma.copy(pt_dataset_train_sr)
                     normalized_dataset_train_sr[..., :2] = normalize_tensor(
@@ -385,7 +385,7 @@ class LHCODataModule(LightningDataModule):
                         np.ma.copy(normalized_dataset_train_sr[..., 2]),
                         [means[2]],
                         [stds[2]],
-                        1,
+                        2,
                     )
                 else:
                     normalized_dataset_train = normalize_tensor(
@@ -421,7 +421,7 @@ class LHCODataModule(LightningDataModule):
                         np.ma.copy(normalized_dataset_val[..., 2]),
                         [means[2]],
                         [stds[2]],
-                        1,
+                        2,
                     )
                     normalized_dataset_val_sr = np.ma.copy(pt_dataset_val_sr)
                     normalized_dataset_val_sr[..., :2] = normalize_tensor(
@@ -431,7 +431,7 @@ class LHCODataModule(LightningDataModule):
                         np.ma.copy(normalized_dataset_val_sr[..., 2]),
                         [means[2]],
                         [stds[2]],
-                        1,
+                        2,
                     )
 
                 else:
