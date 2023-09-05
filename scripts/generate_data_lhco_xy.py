@@ -155,26 +155,43 @@ def main(params):
 
     print("Preparing data for saving")
     # remove unphysical values
-    data_x[data_x[:, :, 2] < 0] = np.min(
-        datamodule_x.tensor_train.numpy()[:, :, 2][
-            datamodule_x.tensor_train.numpy()[:, :, 2] > 0.0
-        ]
+
+    data_x[..., 0][data_x[..., 0] > np.max(datamodule_x.tensor_train.numpy()[..., 0])] = np.max(
+        datamodule_x.tensor_train.numpy()[..., 0]
     )
-    data_x[data_x[:, :, 2] > 1] = np.max(
-        datamodule_x.tensor_train.numpy()[:, :, 2][
-            datamodule_x.tensor_train.numpy()[:, :, 2] < 1.0
-        ]
+    data_x[..., 1][data_x[..., 1] > np.max(datamodule_x.tensor_train.numpy()[..., 1])] = np.max(
+        datamodule_x.tensor_train.numpy()[..., 1]
+    )
+    data_x[..., 2][data_x[..., 2] > np.max(datamodule_x.tensor_train.numpy()[..., 2])] = np.max(
+        datamodule_x.tensor_train.numpy()[..., 2]
+    )
+    data_x[..., 0][data_x[..., 0] < np.min(datamodule_x.tensor_train.numpy()[..., 0])] = np.min(
+        datamodule_x.tensor_train.numpy()[..., 0]
+    )
+    data_x[..., 1][data_x[..., 1] < np.min(datamodule_x.tensor_train.numpy()[..., 1])] = np.min(
+        datamodule_x.tensor_train.numpy()[..., 1]
+    )
+    data_x[..., 2][data_x[..., 2] < np.min(datamodule_x.tensor_train.numpy()[..., 2])] = np.min(
+        datamodule_x.tensor_train.numpy()[..., 2]
     )
 
-    data_y[data_y[:, :, 2] < 0] = np.min(
-        datamodule_y.tensor_train.numpy()[:, :, 2][
-            datamodule_y.tensor_train.numpy()[:, :, 2] > 0.0
-        ]
+    data_y[..., 0][data_y[..., 0] > np.max(datamodule_y.tensor_train.numpy()[..., 0])] = np.max(
+        datamodule_y.tensor_train.numpy()[..., 0]
     )
-    data_y[data_y[:, :, 2] > 1] = np.max(
-        datamodule_y.tensor_train.numpy()[:, :, 2][
-            datamodule_y.tensor_train.numpy()[:, :, 2] < 1.0
-        ]
+    data_y[..., 1][data_y[..., 1] > np.max(datamodule_y.tensor_train.numpy()[..., 1])] = np.max(
+        datamodule_y.tensor_train.numpy()[..., 1]
+    )
+    data_y[..., 2][data_y[..., 2] > np.max(datamodule_y.tensor_train.numpy()[..., 2])] = np.max(
+        datamodule_y.tensor_train.numpy()[..., 2]
+    )
+    data_y[..., 0][data_y[..., 0] < np.min(datamodule_y.tensor_train.numpy()[..., 0])] = np.min(
+        datamodule_y.tensor_train.numpy()[..., 0]
+    )
+    data_y[..., 1][data_y[..., 1] < np.min(datamodule_y.tensor_train.numpy()[..., 1])] = np.min(
+        datamodule_y.tensor_train.numpy()[..., 1]
+    )
+    data_y[..., 2][data_y[..., 2] < np.min(datamodule_y.tensor_train.numpy()[..., 2])] = np.min(
+        datamodule_y.tensor_train.numpy()[..., 2]
     )
 
     # back to non-rel coordinates
