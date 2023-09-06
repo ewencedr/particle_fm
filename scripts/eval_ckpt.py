@@ -380,6 +380,10 @@ def main():
 
         print(f"Sum of jet_type_mask_sim: {np.sum(jet_type_mask_sim)}")
         print(f"Sum of jet_type_mask_gen: {np.sum(jet_type_mask_gen)}")
+
+        metrics[f"n_samples_sim_{jet_type}"] = np.sum(jet_type_mask_sim)
+        metrics[f"n_samples_gen_{jet_type}"] = np.sum(jet_type_mask_gen)
+
         # calculate metrics and add to dict
         metrics_this_type = calculate_all_wasserstein_metrics(
             data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen], **W_DIST_CFG
