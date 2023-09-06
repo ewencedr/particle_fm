@@ -15,6 +15,8 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
+# add here checkpoint to continue training
+# ckpt_path: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-36-26/checkpoints/last-EMA.ckpt
 
 
 tags: ["flow_matching", "JetClass", "dev", "debug"]
@@ -28,14 +30,17 @@ trainer:
   max_epochs: 4
   gradient_clip_val: 0.5
 
+load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-23_23-53-11/checkpoints/last-EMA.ckpt
+
 model:
   num_particles: 128
   global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
-  features: 4
+  features: 3
 
 data:
   # preprocessing
+  # used_jet_types: [Tbqq] # null means all jet types
   loss_per_jettype: true
   number_of_used_jets: 30_000
   number_of_used_jets_val: 10_000
@@ -47,9 +52,10 @@ data:
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
-  additional_part_features:
+  conditioning_jet_type_all: true
+  # additional_part_features:
     # - part_energy
-    - part_d0val
+    # - part_d0val
     # - part_d0err
     # - part_dzval
     # - part_dzerr
@@ -81,5 +87,5 @@ logger:
     group: "jetclass_flow_matching_dev"
     name: ${task_name}
   comet:
-    experiment_name: null
+    experiment_name: ${task_name}
     project_name: "flow-matching"

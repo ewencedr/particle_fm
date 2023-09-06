@@ -1,5 +1,6 @@
 """Callback for evaluating the model on the JetClass dataset."""
 import os
+import time
 import warnings
 from typing import Callable, Mapping, Optional
 
@@ -159,8 +160,8 @@ class JetClassEvaluationCallback(pl.Callback):
 
     def on_train_start(self, trainer, pl_module) -> None:
         # log something, so that metrics exists and the checkpoint callback doesn't crash
-        self.log("w1m_mean", 0.005)
-        self.log("w1p_mean", 0.005)
+        self.log("w1m_mean", 0.005, sync_dist=True)
+        self.log("w1p_mean", 0.005, sync_dist=True)
 
         if self.image_path is None:
             self.image_path = f"{trainer.default_root_dir}/plots/"
@@ -238,6 +239,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 log = True
 
         if log:
+            time_eval_start = time.time()
             pylogger.info(f"Evaluating model after epoch {trainer.current_epoch}.")
             # Get background data for plotting and calculating Wasserstein distances
             # fmt: off
@@ -257,15 +259,18 @@ class JetClassEvaluationCallback(pl.Callback):
                 ]
             # fmt: on
 
-            mask = background_mask
-            cond = background_cond
+            if trainer.datamodule.mask_gen is None:
+                pylogger.info(
+                    "No mask for generated data found. Using the same mask as for simulated data."
+                )
+                mask = background_mask
+                cond = background_cond
+            else:
+                mask = trainer.datamodule.mask_gen[: self.num_jet_samples]
+                cond = trainer.datamodule.tensor_conditioning_gen[: self.num_jet_samples]
 
             # maximum number of samples to plot is the number of samples in the dataset
             num_plot_samples = len(background_data)
-
-            if self.datasets_multiplier > 1:
-                mask = np.repeat(mask, self.datasets_multiplier, axis=0)
-                cond = np.repeat(cond, self.datasets_multiplier, axis=0)
 
             # Get EMA weights if available
             if (
@@ -296,7 +301,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 jet_types_dict = {
                     var_name.split("_")[-1]: i
                     for i, var_name in enumerate(trainer.datamodule.names_conditioning)
-                    if "jet_type" in var_name
+                    if "jet_type" in var_name and np.sum(background_cond[:, i] == 1) > 0
                 }
             else:
                 jet_types_dict = {}
@@ -370,14 +375,14 @@ class JetClassEvaluationCallback(pl.Callback):
             w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
                 d2_jetclass, d2, **w_dist_config
             )
-            self.log("w_dist_tau21_mean", w_dist_tau21_mean)
-            self.log("w_dist_tau21_std", w_dist_tau21_std)
-            self.log("w_dist_tau32_mean", w_dist_tau32_mean)
-            self.log("w_dist_tau32_std", w_dist_tau32_std)
-            self.log("w1m_mean", w_dists["w1m_mean"])
-            self.log("w1p_mean", w_dists["w1p_mean"])
-            self.log("w1m_std", w_dists["w1m_std"])
-            self.log("w1p_std", w_dists["w1p_std"])
+            self.log("w_dist_tau21_mean", w_dist_tau21_mean, sync_dist=True)
+            self.log("w_dist_tau21_std", w_dist_tau21_std, sync_dist=True)
+            self.log("w_dist_tau32_mean", w_dist_tau32_mean, sync_dist=True)
+            self.log("w_dist_tau32_std", w_dist_tau32_std, sync_dist=True)
+            self.log("w1m_mean", w_dists["w1m_mean"], sync_dist=True)
+            self.log("w1p_mean", w_dists["w1p_mean"], sync_dist=True)
+            self.log("w1m_std", w_dists["w1m_std"], sync_dist=True)
+            self.log("w1p_std", w_dists["w1p_std"], sync_dist=True)
 
             if self.comet_logger is not None:
                 text = (
@@ -441,14 +446,14 @@ class JetClassEvaluationCallback(pl.Callback):
                     d2[jet_type_mask_gen],
                     **w_dist_config,
                 )
-                self.log(f"w_dist_tau21_mean_{jet_type}", w_dist_tau21_mean_tt)
-                self.log(f"w_dist_tau21_std_{jet_type}", w_dist_tau21_std_tt)
-                self.log(f"w_dist_tau32_mean_{jet_type}", w_dist_tau32_mean_tt)
-                self.log(f"w_dist_tau32_std_{jet_type}", w_dist_tau32_std_tt)
-                self.log(f"w1m_mean_{jet_type}", w_dists_tt["w1m_mean"])
-                self.log(f"w1p_mean_{jet_type}", w_dists_tt["w1p_mean"])
-                self.log(f"w1m_std_{jet_type}", w_dists_tt["w1m_std"])
-                self.log(f"w1p_std_{jet_type}", w_dists_tt["w1p_std"])
+                self.log(f"w_dist_tau21_mean_{jet_type}", w_dist_tau21_mean_tt, sync_dist=True)
+                self.log(f"w_dist_tau21_std_{jet_type}", w_dist_tau21_std_tt, sync_dist=True)
+                self.log(f"w_dist_tau32_mean_{jet_type}", w_dist_tau32_mean_tt, sync_dist=True)
+                self.log(f"w_dist_tau32_std_{jet_type}", w_dist_tau32_std_tt, sync_dist=True)
+                self.log(f"w1m_mean_{jet_type}", w_dists_tt["w1m_mean"], sync_dist=True)
+                self.log(f"w1p_mean_{jet_type}", w_dists_tt["w1p_mean"], sync_dist=True)
+                self.log(f"w1m_std_{jet_type}", w_dists_tt["w1m_std"], sync_dist=True)
+                self.log(f"w1p_std_{jet_type}", w_dists_tt["w1p_std"], sync_dist=True)
 
                 # todo: plot substructure for different jet types and log them
                 # plot substructure
@@ -567,12 +572,16 @@ class JetClassEvaluationCallback(pl.Callback):
             if self.wandb_logger is not None:
                 self.wandb_logger.log({f"epoch{trainer.current_epoch}": wandb.Image(img_path)})
 
+            time_eval_end = time.time()
+            eval_time = time_eval_end - time_eval_start
             # Log jet generation time
             if self.log_times:
                 if self.comet_logger is not None:
                     self.comet_logger.log_metrics({"Jet generation time": generation_time})
+                    self.comet_logger.log_metrics({"Evaluation time": eval_time})
                 if self.wandb_logger is not None:
                     self.wandb_logger.log({"Jet generation time": generation_time})
+                    self.wandb_logger.log({"Evaluation time": eval_time})
 
         if self.fix_seed:
             torch.manual_seed(torch.seed())
