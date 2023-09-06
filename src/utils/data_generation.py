@@ -108,7 +108,7 @@ def generate_data(
                     jet_samples_batch[..., :2], means[:2], stds[:2], sigma=10
                 )
                 jet_samples_batch[..., 2] = inverse_normalize_tensor(
-                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=2
+                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=5
                 )
             else:
                 jet_samples_batch = inverse_normalize_tensor(
@@ -155,7 +155,7 @@ def generate_data(
                     jet_samples_batch[..., :2], means[:2], stds[:2], sigma=10
                 )
                 jet_samples_batch[..., 2] = inverse_normalize_tensor(
-                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=2
+                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=5
                 )
             else:
                 jet_samples_batch = inverse_normalize_tensor(
