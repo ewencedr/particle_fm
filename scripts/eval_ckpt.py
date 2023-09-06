@@ -157,7 +157,7 @@ def main():
         if f"evaluated_ckpts/epoch_{ckpt_epoch}" in str(ckpt_path)
         else ckpt_path.parent.parent / "evaluated_ckpts" / f"epoch_{ckpt_epoch}"
     )
-    plots_dir = output_dir / f"plots{suffix}"
+    plots_dir = output_dir / f"plots_{n_samples_gen}{suffix}"
     plots_dir.mkdir(parents=True, exist_ok=True)
     pylogger.info(f"Output directory: {output_dir}")
     pylogger.info(f"Plots directory: {plots_dir}")
