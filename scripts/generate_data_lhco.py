@@ -46,10 +46,20 @@ os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")
 
 data_folder = os.environ.get("DATA_DIR")
 
+def string_to_bool(str: str)-> bool:
+    if str == "True":
+        return True
+    else:
+        return False
 
 def main(params):
     folder = params.folder
     save_file = params.save_file
+    
+    use_signal_region = string_to_bool(params.signal_region)
+    
+    if use_signal_region:
+        save_file += "_sr"
 
     cfg_backup_file = join(folder, "config.yaml")
 
@@ -75,11 +85,19 @@ def main(params):
     model = model.load_from_checkpoint(ckpt)
     print(f"Model loaded from {ckpt}")
 
-    cond_x = datamodule.jet_data_sr_raw[:, 0]
-    mask_x = datamodule.mask_sr_raw[:, 0]
-    cond_y = datamodule.jet_data_sr_raw[:, 1]
-    mask_y = datamodule.mask_sr_raw[:, 1]
-    mjj = datamodule.mjj_sr
+
+    if use_signal_region:
+        cond_x = datamodule.jet_data_sr_raw[:, 0]
+        mask_x = datamodule.mask_sr_raw[:, 0]
+        cond_y = datamodule.jet_data_sr_raw[:, 1]
+        mask_y = datamodule.mask_sr_raw[:, 1]
+        mjj = datamodule.mjj_sr
+    else:
+        cond_x = datamodule.jet_data_raw[:, 0]
+        mask_x = datamodule.mask_raw[:, 0]
+        cond_y = datamodule.jet_data_raw[:, 1]
+        mask_y = datamodule.mask_raw[:, 1]
+        mjj = datamodule.mjj
 
     normalized_cond_x = normalize_tensor(
         torch.Tensor(cond_x).clone(),
@@ -461,5 +479,12 @@ if __name__ == "__main__":
         help="steps for ode_solver",
         type=int,
     )
+    parser.add_argument(
+        "--signal_region",
+        "-sr",
+        default="True",
+        help="sample in signal region",
+    )
+    
     params = parser.parse_args()
     main(params)

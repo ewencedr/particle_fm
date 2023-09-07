@@ -1,0 +1,10 @@
+- experiment=/lhco/lhco_both_jets
+- task_name=latent-256-pt-new
+- model.layers=6
+- model.hidden_dim=128
+- model.latent=256
+- data.file_suffix_processed_data=_masssorted
+- data.normalize_sigma=5
+- data.log_pt=true
+- data.pt_standardization=true
+- data.multiplicity_conditioning=true

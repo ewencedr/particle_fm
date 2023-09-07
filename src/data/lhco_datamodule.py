@@ -122,6 +122,9 @@ class LHCODataModule(LightningDataModule):
         self.tensor_conditioning_val_sr: Optional[torch.Tensor] = None
         self.tensor_conditioning_test_sr: Optional[torch.Tensor] = None
 
+        self.jet_data_raw: Optional[np.array] = None
+        self.particle_data_raw: Optional[np.array] = None
+        self.mask_raw: Optional[np.array] = None
         self.jet_data_sr_raw: Optional[np.array] = None
         self.particle_data_sr_raw: Optional[np.array] = None
         self.mask_sr_raw: Optional[np.array] = None
@@ -204,6 +207,10 @@ class LHCODataModule(LightningDataModule):
                     if self.hparams.conditioning:
                         raise ValueError("Conditioning does not make sense for one_pc")
                 elif self.hparams.jet_type == "all":
+                    self.jet_data_raw = jet_data.copy()
+                    self.particle_data_raw = particle_data.copy()
+                    self.mask_raw = mask.copy()
+                    
                     jet_data = np.reshape(jet_data, (-1, jet_data.shape[-1]), order="F")
                     particle_data = np.reshape(
                         particle_data,
@@ -226,6 +233,7 @@ class LHCODataModule(LightningDataModule):
                         mask_sr, (-1, mask_sr.shape[-2], mask_sr.shape[-1]), order="F"
                     )
                 elif self.hparams.jet_type == "x":
+
                     particle_data = particle_data[:, 0]
                     mask = mask[:, 0]
                     jet_data = jet_data[:, 0]
@@ -234,6 +242,10 @@ class LHCODataModule(LightningDataModule):
                     mask_sr = mask_sr[:, 0]
                     jet_data_sr = jet_data_sr[:, 0]
 
+                    self.jet_data_raw = jet_data.copy()
+                    self.particle_data_raw = particle_data.copy()
+                    self.mask_raw = mask.copy()
+                    
                     self.jet_data_sr_raw = jet_data_sr.copy()
                     self.particle_data_sr_raw = particle_data_sr.copy()
                     self.mask_sr_raw = mask_sr.copy()
@@ -245,7 +257,11 @@ class LHCODataModule(LightningDataModule):
                     particle_data_sr = particle_data_sr[:, 1]
                     mask_sr = mask_sr[:, 1]
                     jet_data_sr = jet_data_sr[:, 1]
-
+                    
+                    self.jet_data_raw = jet_data.copy()
+                    self.particle_data_raw = particle_data.copy()
+                    self.mask_raw = mask.copy()
+                    
                     self.jet_data_sr_raw = jet_data_sr.copy()
                     self.particle_data_sr_raw = particle_data_sr.copy()
                     self.mask_sr_raw = mask_sr.copy()
@@ -614,6 +630,7 @@ class LHCODataModule(LightningDataModule):
             self.tensor_conditioning_val_sr = tensor_conditioning_val_sr
             self.tensor_conditioning_test_sr = tensor_conditioning_test_sr
             self.mjj_sr = mjj[args_to_keep_sr]
+            self.mjj = mjj[args_to_keep]
 
     def train_dataloader(self):
         return DataLoader(
