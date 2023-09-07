@@ -83,7 +83,7 @@ def main():
     args = parser.parse_args()
     ckpt = args.ckpt
     n_samples_gen = args.n_samples
-    suffix = f"-{args.suffix}" if args.suffix is not None else ""
+    suffix = "" if args.suffix is None or args.suffix == "" else f"-{args.suffix}"
 
     pylogger.info(f"ckpt: {ckpt}")
     pylogger.info(f"n_samples: {n_samples_gen}")
@@ -596,8 +596,8 @@ def main():
 
     # transform numpy.float64 for better readability in yaml file
     metrics = {k: float(v) for k, v in metrics.items()}
-    metrics["num_eval_samples"] = W_DIST_CFG["num_eval_samples"]
-    metrics["num_batches"] = W_DIST_CFG["num_batches"]
+    metrics["w1_calc_num_eval_samples"] = W_DIST_CFG["num_eval_samples"]
+    metrics["w1_calc_num_batches"] = W_DIST_CFG["num_batches"]
     # write to yaml file
     with open(yaml_path, "w") as outfile:
         yaml.dump(metrics, outfile, default_flow_style=False)
