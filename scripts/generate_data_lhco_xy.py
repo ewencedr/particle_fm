@@ -46,19 +46,21 @@ os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")
 
 data_folder = os.environ.get("DATA_DIR")
 
-def string_to_bool(str: str)-> bool:
+
+def string_to_bool(str: str) -> bool:
     if str == "True":
         return True
     else:
         return False
 
+
 def main(params):
     folder_x = params.folder_x
     folder_y = params.folder_y
     save_file = params.save_file
-    
+
     use_signal_region = string_to_bool(params.signal_region)
-    
+
     if use_signal_region:
         save_file += "_sr"
 
@@ -102,7 +104,6 @@ def main(params):
     print(f"Model loaded from {ckpt_x}")
     model_y = model_y.load_from_checkpoint(ckpt_y)
     print(f"Model loaded from {ckpt_y}")
-
 
     if use_signal_region:
         cond_x = datamodule_x.jet_data_sr_raw
@@ -174,40 +175,40 @@ def main(params):
     print("Preparing data for saving")
     # remove unphysical values
 
-    data_x[..., 0][data_x[..., 0] > np.max(datamodule_x.tensor_train.numpy()[..., 0])] = np.max(
-        datamodule_x.tensor_train.numpy()[..., 0]
-    )
-    data_x[..., 1][data_x[..., 1] > np.max(datamodule_x.tensor_train.numpy()[..., 1])] = np.max(
-        datamodule_x.tensor_train.numpy()[..., 1]
-    )
+    # data_x[..., 0][data_x[..., 0] > np.max(datamodule_x.tensor_train.numpy()[..., 0])] = np.max(
+    #    datamodule_x.tensor_train.numpy()[..., 0]
+    # )
+    # data_x[..., 1][data_x[..., 1] > np.max(datamodule_x.tensor_train.numpy()[..., 1])] = np.max(
+    #    datamodule_x.tensor_train.numpy()[..., 1]
+    # )
     data_x[..., 2][data_x[..., 2] > np.max(datamodule_x.tensor_train.numpy()[..., 2])] = np.max(
         datamodule_x.tensor_train.numpy()[..., 2]
     )
-    data_x[..., 0][data_x[..., 0] < np.min(datamodule_x.tensor_train.numpy()[..., 0])] = np.min(
-        datamodule_x.tensor_train.numpy()[..., 0]
-    )
-    data_x[..., 1][data_x[..., 1] < np.min(datamodule_x.tensor_train.numpy()[..., 1])] = np.min(
-        datamodule_x.tensor_train.numpy()[..., 1]
-    )
+    # data_x[..., 0][data_x[..., 0] < np.min(datamodule_x.tensor_train.numpy()[..., 0])] = np.min(
+    #    datamodule_x.tensor_train.numpy()[..., 0]
+    # )
+    # data_x[..., 1][data_x[..., 1] < np.min(datamodule_x.tensor_train.numpy()[..., 1])] = np.min(
+    #    datamodule_x.tensor_train.numpy()[..., 1]
+    # )
     data_x[..., 2][data_x[..., 2] < np.min(datamodule_x.tensor_train.numpy()[..., 2])] = np.min(
         datamodule_x.tensor_train.numpy()[..., 2]
     )
 
-    data_y[..., 0][data_y[..., 0] > np.max(datamodule_y.tensor_train.numpy()[..., 0])] = np.max(
-        datamodule_y.tensor_train.numpy()[..., 0]
-    )
-    data_y[..., 1][data_y[..., 1] > np.max(datamodule_y.tensor_train.numpy()[..., 1])] = np.max(
-        datamodule_y.tensor_train.numpy()[..., 1]
-    )
+    # data_y[..., 0][data_y[..., 0] > np.max(datamodule_y.tensor_train.numpy()[..., 0])] = np.max(
+    #    datamodule_y.tensor_train.numpy()[..., 0]
+    # )
+    # data_y[..., 1][data_y[..., 1] > np.max(datamodule_y.tensor_train.numpy()[..., 1])] = np.max(
+    #    datamodule_y.tensor_train.numpy()[..., 1]
+    # )
     data_y[..., 2][data_y[..., 2] > np.max(datamodule_y.tensor_train.numpy()[..., 2])] = np.max(
         datamodule_y.tensor_train.numpy()[..., 2]
     )
-    data_y[..., 0][data_y[..., 0] < np.min(datamodule_y.tensor_train.numpy()[..., 0])] = np.min(
-        datamodule_y.tensor_train.numpy()[..., 0]
-    )
-    data_y[..., 1][data_y[..., 1] < np.min(datamodule_y.tensor_train.numpy()[..., 1])] = np.min(
-        datamodule_y.tensor_train.numpy()[..., 1]
-    )
+    # data_y[..., 0][data_y[..., 0] < np.min(datamodule_y.tensor_train.numpy()[..., 0])] = np.min(
+    #    datamodule_y.tensor_train.numpy()[..., 0]
+    # )
+    # data_y[..., 1][data_y[..., 1] < np.min(datamodule_y.tensor_train.numpy()[..., 1])] = np.min(
+    #    datamodule_y.tensor_train.numpy()[..., 1]
+    # )
     data_y[..., 2][data_y[..., 2] < np.min(datamodule_y.tensor_train.numpy()[..., 2])] = np.min(
         datamodule_y.tensor_train.numpy()[..., 2]
     )
@@ -512,6 +513,6 @@ if __name__ == "__main__":
         default="True",
         help="sample in signal region",
     )
-    
+
     params = parser.parse_args()
     main(params)

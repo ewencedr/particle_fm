@@ -46,18 +46,20 @@ os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")
 
 data_folder = os.environ.get("DATA_DIR")
 
-def string_to_bool(str: str)-> bool:
+
+def string_to_bool(str: str) -> bool:
     if str == "True":
         return True
     else:
         return False
 
+
 def main(params):
     folder = params.folder
     save_file = params.save_file
-    
+
     use_signal_region = string_to_bool(params.signal_region)
-    
+
     if use_signal_region:
         save_file += "_sr"
 
@@ -84,7 +86,6 @@ def main(params):
 
     model = model.load_from_checkpoint(ckpt)
     print(f"Model loaded from {ckpt}")
-
 
     if use_signal_region:
         cond_x = datamodule.jet_data_sr_raw[:, 0]
@@ -155,40 +156,40 @@ def main(params):
 
     print("Preparing data for saving")
     # remove unphysical values
-    data_x[..., 0][data_x[..., 0] > np.max(datamodule.tensor_train.numpy()[..., 0])] = np.max(
-        datamodule.tensor_train.numpy()[..., 0]
-    )
-    data_x[..., 1][data_x[..., 1] > np.max(datamodule.tensor_train.numpy()[..., 1])] = np.max(
-        datamodule.tensor_train.numpy()[..., 1]
-    )
+    # data_x[..., 0][data_x[..., 0] > np.max(datamodule.tensor_train.numpy()[..., 0])] = np.max(
+    #    datamodule.tensor_train.numpy()[..., 0]
+    # )
+    # data_x[..., 1][data_x[..., 1] > np.max(datamodule.tensor_train.numpy()[..., 1])] = np.max(
+    #    datamodule.tensor_train.numpy()[..., 1]
+    # )
     data_x[..., 2][data_x[..., 2] > np.max(datamodule.tensor_train.numpy()[..., 2])] = np.max(
         datamodule.tensor_train.numpy()[..., 2]
     )
-    data_x[..., 0][data_x[..., 0] < np.min(datamodule.tensor_train.numpy()[..., 0])] = np.min(
-        datamodule.tensor_train.numpy()[..., 0]
-    )
-    data_x[..., 1][data_x[..., 1] < np.min(datamodule.tensor_train.numpy()[..., 1])] = np.min(
-        datamodule.tensor_train.numpy()[..., 1]
-    )
+    # data_x[..., 0][data_x[..., 0] < np.min(datamodule.tensor_train.numpy()[..., 0])] = np.min(
+    #    datamodule.tensor_train.numpy()[..., 0]
+    # )
+    # data_x[..., 1][data_x[..., 1] < np.min(datamodule.tensor_train.numpy()[..., 1])] = np.min(
+    #    datamodule.tensor_train.numpy()[..., 1]
+    # )
     data_x[..., 2][data_x[..., 2] < np.min(datamodule.tensor_train.numpy()[..., 2])] = np.min(
         datamodule.tensor_train.numpy()[..., 2]
     )
 
-    data_y[..., 0][data_y[..., 0] > np.max(datamodule.tensor_train.numpy()[..., 0])] = np.max(
-        datamodule.tensor_train.numpy()[..., 0]
-    )
-    data_y[..., 1][data_y[..., 1] > np.max(datamodule.tensor_train.numpy()[..., 1])] = np.max(
-        datamodule.tensor_train.numpy()[..., 1]
-    )
+    # data_y[..., 0][data_y[..., 0] > np.max(datamodule.tensor_train.numpy()[..., 0])] = np.max(
+    #    datamodule.tensor_train.numpy()[..., 0]
+    # )
+    # data_y[..., 1][data_y[..., 1] > np.max(datamodule.tensor_train.numpy()[..., 1])] = np.max(
+    #    datamodule.tensor_train.numpy()[..., 1]
+    # )
     data_y[..., 2][data_y[..., 2] > np.max(datamodule.tensor_train.numpy()[..., 2])] = np.max(
         datamodule.tensor_train.numpy()[..., 2]
     )
-    data_y[..., 0][data_y[..., 0] < np.min(datamodule.tensor_train.numpy()[..., 0])] = np.min(
-        datamodule.tensor_train.numpy()[..., 0]
-    )
-    data_y[..., 1][data_y[..., 1] < np.min(datamodule.tensor_train.numpy()[..., 1])] = np.min(
-        datamodule.tensor_train.numpy()[..., 1]
-    )
+    # data_y[..., 0][data_y[..., 0] < np.min(datamodule.tensor_train.numpy()[..., 0])] = np.min(
+    #    datamodule.tensor_train.numpy()[..., 0]
+    # )
+    # data_y[..., 1][data_y[..., 1] < np.min(datamodule.tensor_train.numpy()[..., 1])] = np.min(
+    #    datamodule.tensor_train.numpy()[..., 1]
+    # )
     data_y[..., 2][data_y[..., 2] < np.min(datamodule.tensor_train.numpy()[..., 2])] = np.min(
         datamodule.tensor_train.numpy()[..., 2]
     )
@@ -485,6 +486,6 @@ if __name__ == "__main__":
         default="True",
         help="sample in signal region",
     )
-    
+
     params = parser.parse_args()
     main(params)
