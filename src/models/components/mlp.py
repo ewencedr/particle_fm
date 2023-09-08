@@ -151,3 +151,27 @@ class small_cond_ResNet_model(nn.Module):
         x = torch.cat([t, x, cond], dim=-1)
         x = self.mlp5(x)
         return x
+
+
+class cathode_classifier(nn.Module):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        activation: str = "ELU",
+        dim_t: int = 6,
+        dim_cond: int = 1,
+    ):
+        super().__init__()
+        self.layers = 
+
+    def forward(self, t, x, cond):
+        x = torch.cat([t, x, cond], dim=-1)
+        x = self.mlp1(x)
+        x = torch.cat([t, x, cond], dim=-1)
+        x = self.mlp2(x)
+        x = torch.cat([t, x, cond], dim=-1)
+        x = self.mlp3(x)
+        x = torch.cat([t, x, cond], dim=-1)
+        x = self.mlp4(x)
+        return x
