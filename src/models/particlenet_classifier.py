@@ -7,6 +7,7 @@ Paper: "ParticleNet: Jet Tagging via Particle Clouds" - https://arxiv.org/abs/19
 Adapted from the DGCNN implementation in https://github.com/WangYueFt/dgcnn/blob/master/pytorch/model.py.
 """
 import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
@@ -330,3 +331,95 @@ class ParticleNetTagger(nn.Module):
         )
         mask = torch.cat((pf_mask, sv_mask), dim=2)
         return self.pn(points, features, mask)
+
+
+class ParticleNetModule(pl.LightningModule):
+    """ParticleNet module for a binary classifier."""
+
+    def __init__(
+        self,
+        optimizer: torch.optim.Optimizer,
+        scheduler: torch.optim.lr_scheduler = None,
+        features: int = 3,
+        coord_features: int = 3,
+    ):
+        super().__init__()
+        # this line allows to access init params with 'self.hparams' attribute
+        # also ensures init params will be stored in ckpt
+        self.save_hyperparameters(logger=False)
+        self.particlenet = ParticleNet(
+            input_dims=features,
+            num_classes=2,
+        )
+        # use BCE loss for logits
+        self.loss = nn.BCEWithLogitsLoss()
+
+    def forward(self, x_coords, x_features, x_mask):
+        """Forward pass of the model.
+
+        Parameters
+        ----------
+        x_coords : torch.Tensor
+            (batch_size, num_coords, num_points)
+        x_features : torch.Tensor
+            (batch_size, num_features, num_points)
+        x_mask : torch.Tensor
+            (batch_size, 1, num_points)
+        """
+        return self.particlenet(x_coords, x_features, x_mask)
+
+    def on_train_start(self):
+        """Print the model architecture."""
+        self.logger.info(self.particlenet)
+
+    def training_step(self, batch, batch_idx):
+        """Compute the training loss."""
+        x_coords, x_features, x_mask, y = batch
+        y_hat = self(x_coords, x_features, x_mask)
+
+        loss = self.loss(y_hat, y)
+
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        return {"loss": loss}
+
+    def validation_step(self, batch, batch_idx):
+        """Compute the validation loss."""
+        x_coords, x_features, x_mask, y = batch
+        y_hat = self(x_coords, x_features, x_mask)
+
+        loss = self.loss(y_hat, y)
+
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        return {"loss": loss}
+
+    def test_step(self):
+        pass
+
+    def on_validation_epoch_start(self):
+        pass
+
+    def on_validation_epoch_end(self):
+        pass
+
+    def configure_optimizers(self):
+        """Choose what optimizers and learning-rate schedulers to use in your optimization.
+        Normally you'd need one. But in the case of GANs or similar you might have multiple.
+
+        Examples:
+            https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
+        """
+        optimizer = self.hparams.optimizer(params=self.parameters())
+        if self.hparams.scheduler is not None:
+            scheduler = self.hparams.scheduler(optimizer=optimizer)
+            opt = {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": "val/loss",
+                    "interval": "epoch",
+                    "frequency": 1,
+                },
+            }
+        else:
+            opt = {"optimizer": optimizer}
+        return opt
