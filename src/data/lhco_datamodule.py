@@ -207,10 +207,15 @@ class LHCODataModule(LightningDataModule):
                     if self.hparams.conditioning:
                         raise ValueError("Conditioning does not make sense for one_pc")
                 elif self.hparams.jet_type == "all":
+                    particle_data = particle_data[:, : self.hparams.num_particles, :]
+                    particle_data_sr = particle_data_sr[:, : self.hparams.num_particles, :]
+                    mask = mask[:, : self.hparams.num_particles, :]
+                    mask_sr = mask_sr[:, : self.hparams.num_particles, :]
+
                     self.jet_data_raw = jet_data.copy()
                     self.particle_data_raw = particle_data.copy()
                     self.mask_raw = mask.copy()
-                    
+
                     jet_data = np.reshape(jet_data, (-1, jet_data.shape[-1]), order="F")
                     particle_data = np.reshape(
                         particle_data,
@@ -233,7 +238,6 @@ class LHCODataModule(LightningDataModule):
                         mask_sr, (-1, mask_sr.shape[-2], mask_sr.shape[-1]), order="F"
                     )
                 elif self.hparams.jet_type == "x":
-
                     particle_data = particle_data[:, 0]
                     mask = mask[:, 0]
                     jet_data = jet_data[:, 0]
@@ -242,10 +246,15 @@ class LHCODataModule(LightningDataModule):
                     mask_sr = mask_sr[:, 0]
                     jet_data_sr = jet_data_sr[:, 0]
 
+                    particle_data = particle_data[:, : self.hparams.num_particles, :]
+                    particle_data_sr = particle_data_sr[:, : self.hparams.num_particles, :]
+                    mask = mask[:, : self.hparams.num_particles, :]
+                    mask_sr = mask_sr[:, : self.hparams.num_particles, :]
+
                     self.jet_data_raw = jet_data.copy()
                     self.particle_data_raw = particle_data.copy()
                     self.mask_raw = mask.copy()
-                    
+
                     self.jet_data_sr_raw = jet_data_sr.copy()
                     self.particle_data_sr_raw = particle_data_sr.copy()
                     self.mask_sr_raw = mask_sr.copy()
@@ -257,11 +266,16 @@ class LHCODataModule(LightningDataModule):
                     particle_data_sr = particle_data_sr[:, 1]
                     mask_sr = mask_sr[:, 1]
                     jet_data_sr = jet_data_sr[:, 1]
-                    
+
+                    particle_data = particle_data[:, : self.hparams.num_particles, :]
+                    particle_data_sr = particle_data_sr[:, : self.hparams.num_particles, :]
+                    mask = mask[:, : self.hparams.num_particles, :]
+                    mask_sr = mask_sr[:, : self.hparams.num_particles, :]
+
                     self.jet_data_raw = jet_data.copy()
                     self.particle_data_raw = particle_data.copy()
                     self.mask_raw = mask.copy()
-                    
+
                     self.jet_data_sr_raw = jet_data_sr.copy()
                     self.particle_data_sr_raw = particle_data_sr.copy()
                     self.mask_sr_raw = mask_sr.copy()
