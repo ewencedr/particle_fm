@@ -156,22 +156,18 @@ class small_cond_ResNet_model(nn.Module):
 class cathode_classifier(nn.Module):
     def __init__(
         self,
-        in_features: int,
-        out_features: int,
-        activation: str = "ELU",
-        dim_t: int = 6,
-        dim_cond: int = 1,
+        features: int = 5,
+        layers: int = 3,
     ):
         super().__init__()
-        self.layers = 
+        self.layers = []
+        for nodes in layers:
+            self.layers.append(nn.Linear(features, nodes))
+            self.layers.append(nn.ReLU())
+            features = nodes
+        self.layers.append(nn.Linear(features, 1))
+        self.layers.append(nn.Sigmoid())
+        self.model_stack = nn.Sequential(*self.layers)
 
-    def forward(self, t, x, cond):
-        x = torch.cat([t, x, cond], dim=-1)
-        x = self.mlp1(x)
-        x = torch.cat([t, x, cond], dim=-1)
-        x = self.mlp2(x)
-        x = torch.cat([t, x, cond], dim=-1)
-        x = self.mlp3(x)
-        x = torch.cat([t, x, cond], dim=-1)
-        x = self.mlp4(x)
-        return x
+    def forward(self, x):
+        return self.model_stack(x)
