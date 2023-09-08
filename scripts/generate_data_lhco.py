@@ -62,6 +62,8 @@ def main(params):
 
     if use_signal_region:
         save_file += "_sr"
+    else:
+        save_file += "_sb"
 
     cfg_backup_file = join(folder, "config.yaml")
 
