@@ -12,6 +12,18 @@ import torch.nn as nn
 
 
 def knn(x, k):
+    """Return the k nearest neighbors of each point in x.
+    Parameters
+    ----------
+    x : torch.Tensor
+        (batch_size, num_dims, num_points)
+    k : int
+        Number of neighbors.
+    Returns
+    -------
+    torch.Tensor
+        (batch_size, num_points, k)
+    """
     inner = -2 * torch.matmul(x.transpose(2, 1), x)
     xx = torch.sum(x**2, dim=1, keepdim=True)
     pairwise_distance = -xx - inner - xx.transpose(2, 1)
