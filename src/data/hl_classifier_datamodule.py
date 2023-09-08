@@ -51,7 +51,7 @@ class HLClassifierDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        file_name: str = "high_level",
+        file_name: str = "cathode_v",
         train_val_test_split: Tuple[float, float, float] = (0.70, 0.15, 0.15),
         batch_size: int = 64,
         num_workers: int = 0,
@@ -99,8 +99,8 @@ class HLClassifierDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            path_truth = f"{self.hparams.data_dir}/lhco/substructure/high_level.h5"
-            path_data = f"{self.hparams.data_dir}/lhco/substructure/{self.hparams.file_name}.h5"
+            path_truth = f"{self.hparams.data_dir}/lhco/high_level/cathode_id.h5"
+            path_data = f"{self.hparams.data_dir}/lhco/high_level/{self.hparams.file_name}.h5"
 
             with h5py.File(path_truth, "r") as f:
                 data_truth = f["data"][:]
