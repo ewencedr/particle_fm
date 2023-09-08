@@ -20,6 +20,7 @@ import yaml
 
 # set env variable DATA_DIR again because of hydra
 from dotenv import load_dotenv
+from jetnet.evaluation import w1p
 
 # set env variable DATA_DIR again because of hydra
 from omegaconf import OmegaConf
@@ -391,12 +392,19 @@ def main():
         for key, value in metrics_this_type.items():
             metrics[f"{key}_{jet_type}"] = value
 
+        # calculate the w1 distance for each particle feature
+        pylogger.info("Calculating w1 distance for each particle feature.")
+        w1p_means_this_type, w1p_stds_this_type = w1p(
+            jets1=data_sim[jet_type_mask_sim],
+            jets2=data_gen[jet_type_mask_gen],
+            mask1=mask_sim[jet_type_mask_sim],
+            mask2=mask_gen[jet_type_mask_gen],
+            exclude_zeros=True,
+            **W_DIST_CFG,
+        )
+        # add to dict
         for i, part_feature_name in enumerate(part_names_sim):
-            w1_mean, w1_std = wasserstein_distance_batched(
-                data_sim[jet_type_mask_sim, :, i][mask_sim[jet_type_mask_sim, :, 0] == 1],
-                data_gen[jet_type_mask_gen, :, i][mask_gen[jet_type_mask_gen, :, 0] == 1],
-                **W_DIST_CFG,
-            )
+            w1_mean, w1_std = w1p_means_this_type[i], w1p_stds_this_type[i]
             metrics[f"w_dist_{part_feature_name}_mean_{jet_type}"] = w1_mean
             metrics[f"w_dist_{part_feature_name}_std_{jet_type}"] = w1_std
 
