@@ -1,0 +1,6 @@
+_target_: src.data.hl_datamodule_datamodule.HLClassifierDataModule
+data_dir: ${paths.data_dir}
+file_name: high_level
+batch_size: 128
+num_workers: 32
+pin_memory: False
