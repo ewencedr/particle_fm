@@ -2,15 +2,10 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
-from torchvision.datasets import MNIST
-from torchvision.transforms import transforms
+from torch.utils.data import DataLoader, Dataset
 import h5py
-import energyflow as ef
 import numpy as np
 from src.data.components import (
-    calculate_all_wasserstein_metrics,
-    inverse_normalize_tensor,
     normalize_tensor,
 )
 
@@ -58,15 +53,15 @@ class HLClassifierDataModule(LightningDataModule):
         data_dir: str = "data/",
         file_name: str = "cathode_v",
         train_val_test_split: Tuple[float, float, float] = (0.70, 0.15, 0.15),
-        batch_size: int = 64,
+        batch_size: int = 128,
         num_workers: int = 0,
         pin_memory: bool = False,
     ) -> None:
-        """Initialize a `MNISTDataModule`.
+        """Initialize a `HLClassifierDataModule`.
 
         :param data_dir: The data directory. Defaults to `"data/"`.
-        :param train_val_test_split: The train, validation and test split. Defaults to `(55_000, 5_000, 10_000)`.
-        :param batch_size: The batch size. Defaults to `64`.
+        :param train_val_test_split: The train, validation and test split in percent. Defaults to `(0.70, 0.15, 0.15)`.
+        :param batch_size: The batch size. Defaults to `128`.
         :param num_workers: The number of workers. Defaults to `0`.
         :param pin_memory: Whether to pin memory. Defaults to `False`.
         """
@@ -113,21 +108,14 @@ class HLClassifierDataModule(LightningDataModule):
             with h5py.File(path_data, "r") as f:
                 data = f["data"][:]
 
-            # print(f"data_truth: {data_truth}")
-            # print(f"data: {data}")
-
             labels_true = np.expand_dims(np.ones(len(data_truth)), axis=-1)
             labels_false = np.expand_dims(np.zeros(len(data)), axis=-1)
-            # labels_true = np.ones(len(data_truth))
-            # labels_false = np.zeros(len(data))
+
+            print("data_truth.shape", data_truth.shape)
+            print("data.shape", data.shape)
 
             data = np.concatenate([data_truth, data])
             labels = np.concatenate([labels_true, labels_false])
-
-            print(np.isnan(data).any())
-
-            print(f"data.shape: {data.shape}")
-            print(f"labels.shape: {labels.shape}")
 
             random_permutation = np.random.permutation(len(data))
             data = data[random_permutation]
@@ -152,22 +140,9 @@ class HLClassifierDataModule(LightningDataModule):
                 ],
             )
 
-            print(f"data train1: {data_train}")
-
             # preprocess data
             mean = np.mean(data_train, axis=0)
             std = np.std(data_train, axis=0)
-
-            print("mean.shape", mean.shape)
-            print("std.shape", std.shape)
-            normalize_sigma = 5
-
-            # data_train = (data_train - mean) / std
-            # data_val = (data_val - mean) / std
-            # data_test = (data_test - mean) / std
-
-            print(f"mean: {mean}")
-            print(f"std: {std}")
 
             data_train = normalize_tensor(
                 torch.tensor(data_train).clone(), torch.tensor(mean), torch.tensor(std)
@@ -178,8 +153,6 @@ class HLClassifierDataModule(LightningDataModule):
             data_test = normalize_tensor(
                 torch.tensor(data_test).clone(), torch.tensor(mean), torch.tensor(std)
             )
-
-            print(f"data train: {data_train}")
 
             self.data_train = torch.utils.data.TensorDataset(
                 data_train.float(),

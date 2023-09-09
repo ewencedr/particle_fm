@@ -107,28 +107,11 @@ class HLClassifierLitModule(LightningModule):
             - A tensor of target labels.
         """
         x, labels = batch
-        # print(f"x shape: {x.shape}")
-        # print(f"x: {x}")
         labels = labels.squeeze()
-        # print(f" x : {x}")
         logits = self.forward(x).squeeze()
-        # print(f"logits: {logits.shape}")
 
-        # print(f"logits shape: {logits.shape}")
-        # logits = logits.squeeze(-1)
-        # print(f"logits shape: {logits.shape}")
-        # print(f"labels shape: {labels.shape}")
-
-        # print(f"logits: {logits}")
-        # print(f"labels: {labels}")
         loss = self.criterion(logits, labels)
-        # print(f"loss shape: {loss.shape}")
-        # print(f"loss: {loss}")
-        # preds = torch.argmax(logits, dim=-1)
         preds = logits
-        # print(f"preds shape: {preds.shape}")
-        # print(f"labels shape: {labels.shape}")
-        # preds = preds.unsqueeze(-1)
         return loss, preds, labels
 
     def training_step(
