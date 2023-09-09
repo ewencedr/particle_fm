@@ -156,8 +156,8 @@ class small_cond_ResNet_model(nn.Module):
 class cathode_classifier(nn.Module):
     def __init__(
         self,
-        features: int = 5,
-        layers: int = 3,
+        features: int = 4,
+        layers: int = [64, 64, 64],
     ):
         super().__init__()
         self.layers = []
@@ -166,7 +166,7 @@ class cathode_classifier(nn.Module):
             self.layers.append(nn.ReLU())
             features = nodes
         self.layers.append(nn.Linear(features, 1))
-        self.layers.append(nn.Sigmoid())
+        # self.layers.append(nn.Sigmoid())
         self.model_stack = nn.Sequential(*self.layers)
 
     def forward(self, x):

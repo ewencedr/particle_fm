@@ -1,4 +1,4 @@
-_target_: src.models.hl_classifier.HLlassifierLitModule
+_target_: src.models.hl_classifier.HLClassifierLitModule
 
 optimizer:
   _target_: torch.optim.Adam
