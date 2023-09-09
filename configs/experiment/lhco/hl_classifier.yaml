@@ -25,6 +25,12 @@ trainer:
 
 task_name: "hl_classifier"
 
+callbacks:
+  early_stopping:
+    monitor: "val/acc"
+    patience: 10
+    mode: "max"
+
 logger:
   wandb:
     tags: ${tags}
