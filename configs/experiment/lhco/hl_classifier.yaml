@@ -28,9 +28,9 @@ task_name: "hl_classifier"
 logger:
   wandb:
     tags: ${tags}
-    project: "LHCO"
+    project: "LHCO_classification"
     group: "lhco_hl_classifier"
     name: ${task_name}
   comet:
-    project_name: "LHCO"
+    project_name: "LHCO_classification"
     experiment_name: ${task_name}
