@@ -172,6 +172,13 @@ class ClassifierDataModule(LightningDataModule):
             input_mask = np.concatenate([mask_mixed, mask_background])
             input_labels = np.concatenate([labels_mixed, labels_background])
 
+            # shuffle data
+            # needed because data is ordered by class
+            perm = np.random.permutation(len(input_data))
+            input_data = input_data[perm]
+            input_mask = input_mask[perm]
+            input_labels = input_labels[perm]
+
             if len(input_data) != len(input_mask) or len(input_data) != len(input_labels):
                 raise ValueError("Data, mask and labels must have the same length.")
 
