@@ -114,11 +114,11 @@ def main(params):
         mask_y = datamodule_y.mask_sr_raw
         mjj = datamodule_x.mjj_sr
     else:
-        cond_x = datamodule_x.jet_data_raw
-        mask_x = datamodule_x.mask_raw
-        cond_y = datamodule_y.jet_data_raw
-        mask_y = datamodule_y.mask_raw
-        mjj = datamodule_x.mjj
+        cond_x = datamodule_x.jet_data_raw[:120_000]
+        mask_x = datamodule_x.mask_raw[:120_000]
+        cond_y = datamodule_y.jet_data_raw[:120_000]
+        mask_y = datamodule_y.mask_raw[:120_000]
+        mjj = datamodule_x.mjj[:120_000]
 
     normalized_cond_x = normalize_tensor(
         torch.Tensor(cond_x).clone(),
@@ -144,6 +144,7 @@ def main(params):
         variable_set_sizes=datamodule_x.hparams.variable_jet_sizes,
         mask=torch.Tensor(mask_x),
         normalized_data=datamodule_x.hparams.normalize,
+        normalize_sigma=datamodule_x.hparams.normalize_sigma,
         means=datamodule_x.means,
         stds=datamodule_x.stds,
         log_pt=datamodule_x.hparams.log_pt,
@@ -162,6 +163,7 @@ def main(params):
         variable_set_sizes=datamodule_y.hparams.variable_jet_sizes,
         mask=torch.Tensor(mask_y),
         normalized_data=datamodule_y.hparams.normalize,
+        normalize_sigma=datamodule_y.hparams.normalize_sigma,
         means=datamodule_y.means,
         stds=datamodule_y.stds,
         log_pt=datamodule_y.hparams.log_pt,
