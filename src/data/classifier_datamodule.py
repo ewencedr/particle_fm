@@ -11,14 +11,7 @@ import numpy as np
 
 
 class ClassifierDataModule(LightningDataModule):
-    """`LightningDataModule` for the MNIST dataset.
-
-    The MNIST database of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples.
-    It is a subset of a larger set available from NIST. The digits have been size-normalized and centered in a
-    fixed-size image. The original black and white images from NIST were size normalized to fit in a 20x20 pixel box
-    while preserving their aspect ratio. The resulting images contain grey levels as a result of the anti-aliasing
-    technique used by the normalization algorithm. the images were centered in a 28x28 image by computing the center of
-    mass of the pixels, and translating the image so as to position this point at the center of the 28x28 field.
+    """`LightningDataModule` for the LHCO dataset.
 
     A `LightningDataModule` implements 7 key methods:
 
@@ -58,12 +51,12 @@ class ClassifierDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        train_val_test_split: Tuple[int, int, int] = (55_000, 5_000, 10_000),
-        batch_size: int = 64,
+        train_val_test_split: Tuple[float, float, float] = (0.70, 0.20, 0.10),
+        batch_size: int = 128,
         num_workers: int = 0,
         pin_memory: bool = False,
     ) -> None:
-        """Initialize a `MNISTDataModule`.
+        """Initialize a `ClassifierDataModule`.
 
         :param data_dir: The data directory. Defaults to `"data/"`.
         :param train_val_test_split: The train, validation and test split. Defaults to `(55_000, 5_000, 10_000)`.
@@ -142,7 +135,7 @@ class ClassifierDataModule(LightningDataModule):
 
             print(f"Number of background events: {len(jet_data_bckg)}")
             print(f"Number of signal events: {len(jet_data_sgnl)}")
-            n_signal = 2000
+            n_signal = 0
             n_background = 100_000
 
             jet_data_mixed = np.concatenate(
@@ -177,17 +170,32 @@ class ClassifierDataModule(LightningDataModule):
             input_mask = np.concatenate([mask_mixed, mask_background])
             input_labels = np.concatenate([labels_mixed, labels_background])
 
-            data_train, data_val = np.split(
+            if len(input_data) != len(input_mask) or len(input_data) != len(input_labels):
+                raise ValueError("Data, mask and labels must have the same length.")
+
+            n_samples_val = int(self.hparams.train_val_test_split[1] * len(input_data))
+            n_samples_test = int(self.hparams.train_val_test_split[2] * len(input_data))
+
+            data_train, data_val, data_test = np.split(
                 input_data,
-                [int(0.8 * len(input_data))],
+                [
+                    len(input_data) - n_samples_val - n_samples_test,
+                    len(input_data) - n_samples_test,
+                ],
             )
-            mask_train, mask_val = np.split(
+            mask_train, mask_val, mask_test = np.split(
                 input_mask,
-                [int(0.8 * len(input_data))],
+                [
+                    len(input_mask) - n_samples_val - n_samples_test,
+                    len(input_mask) - n_samples_test,
+                ],
             )
-            labels_train, labels_val = np.split(
+            labels_train, labels_val, labels_test = np.split(
                 input_labels,
-                [int(0.8 * len(input_data))],
+                [
+                    len(input_labels) - n_samples_val - n_samples_test,
+                    len(input_labels) - n_samples_test,
+                ],
             )
 
             print(f"data_train.shape: {data_train.shape}")
@@ -196,14 +204,11 @@ class ClassifierDataModule(LightningDataModule):
             print(f"data_val.shape: {data_val.shape}")
             print(f"mask_val.shape: {mask_val.shape}")
             print(f"labels_val.shape: {labels_val.shape}")
+            print(f"data_test.shape: {data_test.shape}")
+            print(f"mask_test.shape: {mask_test.shape}")
+            print(f"labels_test.shape: {labels_test.shape}")
 
-            mean = np.mean(data_train, axis=(0, 1))
-            std = np.std(data_train, axis=(0, 1))
-
-            normalize_sigma = 5
-
-            data_train = (data_train - mean) / (normalize_sigma * std)
-            data_val = (data_val - mean) / (normalize_sigma * std)
+            # TODO preprocess data
 
             self.data_train = torch.utils.data.TensorDataset(
                 torch.from_numpy(data_train).float(),
