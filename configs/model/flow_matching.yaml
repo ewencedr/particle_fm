@@ -9,8 +9,8 @@ optimizer:
 scheduler:
   _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
   _partial_: true
-  warmup: 1000
-  max_iters: 10000
+  #warmup: 1000
+  #max_iters: 10000
 
 features: 3
 n_transforms: 1
