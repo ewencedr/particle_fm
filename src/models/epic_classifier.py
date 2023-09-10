@@ -9,7 +9,7 @@ from .components.epic import EPiC_discriminator
 
 
 class EPiCClassifierLitModule(LightningModule):
-    """Example of a `LightningModule` for MNIST classification.
+    """Example of a `LightningModule` for PointCloud classification by using an EPiC architecture.
 
     A `LightningModule` implements 8 key methods:
 
@@ -45,6 +45,7 @@ class EPiCClassifierLitModule(LightningModule):
         self,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
+        net_config: Dict[str, Any] = {},
     ) -> None:
         """Initialize a `MNISTLitModule`.
 
@@ -58,10 +59,10 @@ class EPiCClassifierLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.net = EPiC_discriminator()
+        self.net = EPiC_discriminator(**net_config)
 
         # loss function
-        self.criterion = torch.nn.BCELoss()
+        self.criterion = torch.nn.BCEWithLogitsLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="binary")
@@ -104,11 +105,12 @@ class EPiCClassifierLitModule(LightningModule):
             - A tensor of predictions.
             - A tensor of target labels.
         """
-        x, mask, y = batch
-        logits = self.forward(x, mask=mask)
-        loss = self.criterion(logits, y)
-        preds = torch.argmax(logits, dim=1)
-        return loss, preds, y
+        x, mask, labels = batch
+        labels = labels.squeeze()
+        logits = self.forward(x, mask=mask).squeeze()
+        loss = self.criterion(logits, labels)
+        preds = logits
+        return loss, preds, labels
 
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
