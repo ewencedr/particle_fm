@@ -2,12 +2,14 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
-from torchvision.datasets import MNIST
-from torchvision.transforms import transforms
+from torch.utils.data import DataLoader, Dataset
 import h5py
 import energyflow as ef
 import numpy as np
+
+from src.data.components import (
+    normalize_tensor,
+)
 
 
 class ClassifierDataModule(LightningDataModule):
@@ -208,17 +210,38 @@ class ClassifierDataModule(LightningDataModule):
             print(f"mask_test.shape: {mask_test.shape}")
             print(f"labels_test.shape: {labels_test.shape}")
 
-            # TODO preprocess data
+            # preprocess data
+            full_mask_train = np.repeat(mask_train, repeats=3, axis=-1) == 0
+            full_mask_train = np.ma.make_mask(full_mask_train, shrink=False)
+            masked_data_train = np.ma.masked_array(data_train, full_mask_train)
+
+            mean = np.ma.mean(masked_data_train, axis=(0, 1, 2))
+            std = np.ma.std(masked_data_train, axis=(0, 1, 2))
+
+            data_train = normalize_tensor(
+                torch.tensor(data_train).clone(), torch.tensor(mean), torch.tensor(std)
+            )
+            data_val = normalize_tensor(
+                torch.tensor(data_val).clone(), torch.tensor(mean), torch.tensor(std)
+            )
+            data_test = normalize_tensor(
+                torch.tensor(data_test).clone(), torch.tensor(mean), torch.tensor(std)
+            )
 
             self.data_train = torch.utils.data.TensorDataset(
-                torch.from_numpy(data_train).float(),
-                torch.from_numpy(mask_train).float(),
+                data_train.float(),
+                torch.from_numpy(mask_train),
                 torch.from_numpy(labels_train).float(),
             )
             self.data_val = torch.utils.data.TensorDataset(
-                torch.from_numpy(data_val).float(),
-                torch.from_numpy(mask_val).float(),
+                data_val.float(),
+                torch.from_numpy(mask_val),
                 torch.from_numpy(labels_val).float(),
+            )
+            self.data_test = torch.utils.data.TensorDataset(
+                data_test.float(),
+                torch.from_numpy(mask_test),
+                torch.from_numpy(labels_test).float(),
             )
 
     def train_dataloader(self) -> DataLoader[Any]:
