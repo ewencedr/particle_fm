@@ -10,9 +10,12 @@ logger_ed = get_pylogger("epic_discriminator")
 logger_emask = get_pylogger("epic_mask")
 
 
+# TODO remove need for num_point parameter
+# TODO epic_encoder and conditioning in epic_layer and epic_discriminator might not work when using data of different shape than (batch, points, feats)
+
+
 class EPiC_layer(nn.Module):
-    """equivariant layer with global concat & residual connections inside this module  & weight_norm
-    ordered: first update global, then local
+    """Equivariant Point Cloud (EPiC) Layer. Based on https://arxiv.org/abs/2301.08128. Can handle point clouds with shape (..., points, feats).
 
     Args:
         local_in_dim (int, optional): local in dim. Defaults to 3.
@@ -85,7 +88,7 @@ class EPiC_layer(nn.Module):
         x_local: torch.Tensor = None,
         global_cond_in: torch.Tensor = None,
         mask: torch.Tensor = None,
-    ) -> tuple[torch.Tensor, torch.Tensor]:  # shapes: x_global[b,latent], x_local[b,n,input_dim]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         # Check and prepare input
         if x_global is None or x_local is None:
             raise ValueError("x_global or x_local is None")
@@ -150,21 +153,20 @@ class EPiC_layer(nn.Module):
 
         # actual forward pass
 
-        batch_size, n_points, input_dim = x_local.size()
-        latent_global = x_global.size(1)
         logger_emask.debug(f"mask.shape: {mask.shape}")
 
         # meansum pooling
-        x_pooled_sum = (x_local * mask).sum(1, keepdim=False)
-        x_pooled_mean = x_pooled_sum / mask.sum(1, keepdim=False)
+        x_pooled_sum = (x_local * mask).sum(-2, keepdim=False)
+        x_pooled_mean = x_pooled_sum / mask.sum(-2, keepdim=False)
         x_pooled_sum = x_pooled_sum * self.sum_scale
+
         x_pooledCATglobal = torch.cat(
             [
                 x_pooled_mean,
                 x_pooled_sum,
                 x_global,
             ],
-            1,
+            -1,
         )  # meansum pooling
         logger_el.debug(f"x_pooled_mean.shape: {x_pooled_mean.shape}")
         logger_el.debug(f"x_pooled_sum.shape: {x_pooled_sum.shape}")
@@ -183,10 +185,8 @@ class EPiC_layer(nn.Module):
         )  # with residual connection before AF
         x_global = self.do(x_global)
 
-        x_global2local = x_global.view(-1, 1, latent_global).repeat(
-            1, n_points, 1
-        )  # first add dimension, than expand it
-        x_localCATglobal = torch.cat([x_local, x_global2local], 2)
+        x_global2local = x_global.unsqueeze(-2).repeat_interleave(self.num_points, dim=-2)
+        x_localCATglobal = torch.cat([x_local, x_global2local], -1)
 
         # phi p
         logger_el.debug(f"x_localCATglobal.shape: {x_localCATglobal.shape}")
@@ -417,17 +417,18 @@ class EPiC_discriminator(nn.Module):
         input_dim: int = 3,
         hid_d: int = 256,
         feats: int = 128,
-        equiv_layers: int = 8,
+        equiv_layers: int = 2,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
         frequencies: int = 6,
-        num_points: int = 30,
+        num_points: int = 279,
         t_local_cat: bool = False,
         t_global_cat: bool = False,
         dropout: float = 0.0,
         sum_scale: float = 1e-2,
+        num_sup_sets: int = 2,
     ):
         super().__init__()
         self.activation = activation
@@ -439,6 +440,7 @@ class EPiC_discriminator(nn.Module):
         self.global_cond_dim = global_cond_dim
         self.local_cond_dim = local_cond_dim
         self.num_points = num_points
+        self.num_sup_sets = num_sup_sets
         self.sum_scale = sum_scale
 
         self.t_local_cat = t_local_cat
@@ -488,7 +490,9 @@ class EPiC_discriminator(nn.Module):
 
         self.do = nn.Dropout(dropout)
 
-        self.fc_g3 = self.wrapper_func(nn.Linear(int(2 * self.hid_d + self.latent), self.hid_d))
+        self.fc_g3 = self.wrapper_func(
+            nn.Linear(int(2 * self.hid_d + self.latent) * self.num_sup_sets, self.hid_d)
+        )
         self.fc_g4 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
         self.out = self.wrapper_func(nn.Linear(self.hid_d, 1))
 
@@ -498,7 +502,7 @@ class EPiC_discriminator(nn.Module):
         x_local: torch.Tensor = None,
         global_cond_in: torch.Tensor = None,
         mask: torch.Tensor = None,
-    ):  # shape: [batch, points, feats]
+    ):
         if x_local is None:
             raise ValueError("x_local is None")
         if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
@@ -557,8 +561,8 @@ class EPiC_discriminator(nn.Module):
         )
         x_local = self.do(x_local)
 
-        z_sum = (x_local * mask).sum(1, keepdim=False)
-        z_mean = z_sum / mask.sum(1, keepdim=False)
+        z_sum = (x_local * mask).sum(-2, keepdim=False)
+        z_mean = z_sum / mask.sum(-2, keepdim=False)
         z_sum = z_sum * self.sum_scale
 
         x_global = torch.cat((z_sum, z_mean), dim=-1)
@@ -575,13 +579,16 @@ class EPiC_discriminator(nn.Module):
                 t_in, x_global, x_local, global_cond_in=global_cond_in, mask=mask
             )
 
-        x_sum = (x_local * mask).sum(1, keepdim=False)
-        x_mean = x_sum / mask.sum(1, keepdim=False)
+        x_sum = (x_local * mask).sum(-2, keepdim=False)
+        x_mean = x_sum / mask.sum(-2, keepdim=False)
         x_sum = x_sum * self.sum_scale
+
         x = torch.cat((x_sum, x_mean, x_global), dim=-1)
+
+        x = x.view(x.shape[0], -1)
 
         x = getattr(F, self.activation, lambda x: x)(self.fc_g3(x))
         x = getattr(F, self.activation, lambda x: x)(self.fc_g4(x))
         x = self.out(x)
 
-        return x_local * mask
+        return x
