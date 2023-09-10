@@ -57,6 +57,8 @@ class ClassifierDataModule(LightningDataModule):
         batch_size: int = 128,
         num_workers: int = 0,
         pin_memory: bool = False,
+        gendatafile: str = "idealized_LHCO",  # "lhco-xy-256-logpt_sr-midpoint-500",
+        idealized: bool = False,
     ) -> None:
         """Initialize a `ClassifierDataModule`.
 
@@ -149,25 +151,38 @@ class ClassifierDataModule(LightningDataModule):
             mask_mixed = np.concatenate([mask_bckg[:n_background], mask_sgnl[:n_signal]])
 
             # shuffle
-            np.random_permutation = np.random.permutation(len(jet_data_mixed))
-            jet_data_mixed = jet_data_mixed[np.random_permutation]
-            particle_data_mixed = particle_data_mixed[np.random_permutation]
-            mask_mixed = mask_mixed[np.random_permutation]
+            random_permutation = np.random.permutation(len(jet_data_mixed))
+            jet_data_mixed = jet_data_mixed[random_permutation]
+            particle_data_mixed = particle_data_mixed[random_permutation]
+            mask_mixed = mask_mixed[random_permutation]
 
             labels_mixed = np.ones(len(jet_data_mixed))
 
-            # Load generated data for test
+            # Load generated data
+            path_gen = f"{self.hparams.data_dir}/lhco/generated/{self.hparams.gendatafile}.h5"
+            with h5py.File(path_gen, "r") as f:
+                jet_data_gen = f["jet_features"][:]
+                particle_data_gen = f["particle_features"][:]  # pt, eta, phi
 
-            # TODO
+            jet_data_gen = jet_data_gen[..., :4]
 
-            # if idealized:
+            mask_gen = np.expand_dims(np.array(particle_data_gen[..., 0] != 0), axis=-1).astype(
+                int
+            )
 
-            jet_data_background = jet_data_bckg[:n_background]
-            particle_data_background = particle_data_bckg[:n_background]
-            mask_background = mask_bckg[:n_background]
+            # TODO length of both classes should not need to be the same
+            if self.hparams.idealized:
+                jet_data_background = jet_data_bckg[: len(particle_data_mixed)]
+                particle_data_background = particle_data_bckg[: len(particle_data_mixed)]
+                mask_background = mask_bckg[: len(particle_data_mixed)]
+            else:
+                jet_data_background = jet_data_gen[: len(particle_data_mixed)]
+                particle_data_background = particle_data_gen[: len(particle_data_mixed)]
+                mask_background = mask_gen[: len(particle_data_mixed)]
 
             labels_background = np.zeros(len(jet_data_background))
 
+            # concatenate both classes
             input_data = np.concatenate([particle_data_mixed, particle_data_background])
             input_mask = np.concatenate([mask_mixed, mask_background])
             input_labels = np.concatenate([labels_mixed, labels_background])
