@@ -397,7 +397,6 @@ class EPiC_discriminator(nn.Module):
         latent (int, optional): used for latent size of equiv concat. Defaults to 16.
         input_dim (int, optional): number of features of input point cloud. Defaults to 3.
         hid_d (int, optional): Hidden dimension. Defaults to 256.
-        feats (int, optional): Embedding dimension for EPiC Layers. Defaults to 128.
         equiv_layers (int, optional): Number of EPiC Layers used. Defaults to 8.
         global_cond_dim (int, optional): Global conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
         local_cond_dim (int, optional): Local conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
@@ -416,8 +415,7 @@ class EPiC_discriminator(nn.Module):
         latent: int = 16,
         input_dim: int = 3,
         hid_d: int = 256,
-        feats: int = 128,
-        equiv_layers: int = 2,
+        equiv_layers: int = 6,
         global_cond_dim: int = 0,
         local_cond_dim: int = 0,
         activation: str = "leaky_relu",
@@ -435,7 +433,6 @@ class EPiC_discriminator(nn.Module):
         self.latent = latent
         self.input_dim = input_dim
         self.hid_d = hid_d
-        self.feats = feats
         self.equiv_layers = equiv_layers
         self.global_cond_dim = global_cond_dim
         self.local_cond_dim = local_cond_dim
@@ -483,10 +480,6 @@ class EPiC_discriminator(nn.Module):
                     sum_scale=sum_scale,
                 )
             )
-
-        self.fc_l3 = self.wrapper_func(
-            nn.Linear(self.hid_d + t_local_dim + self.local_cond_dim, self.feats),
-        )
 
         self.do = nn.Dropout(dropout)
 
