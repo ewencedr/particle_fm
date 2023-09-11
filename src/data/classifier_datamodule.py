@@ -57,7 +57,7 @@ class ClassifierDataModule(LightningDataModule):
         batch_size: int = 128,
         num_workers: int = 0,
         pin_memory: bool = False,
-        gendatafile: str = "idealized_LHCO",  # "lhco-xy-256-logpt_sr-midpoint-500",
+        gendatafile: str = "idealized_LHCO",
         idealized: bool = False,
     ) -> None:
         """Initialize a `ClassifierDataModule`.

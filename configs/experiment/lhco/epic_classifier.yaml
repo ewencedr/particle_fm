@@ -14,25 +14,33 @@ defaults:
 
 
 
-tags: ["classifier", "LHCO"]
+tags: ["classifier", "LHCO", "EPiC"]
 
 seed: 12345
 
 trainer:
   min_epochs: 10
-  max_epochs: 10
+  max_epochs: 300
   gradient_clip_val: 0.5
 
+callbacks:
+  early_stopping:
+    monitor: val/loss
+    patience: 20
+    mode: min
+    verbose: true
 
+data:
+  gendatafile: "lhco-xy-256-logpt_sr-midpoint-500"
 
-task_name: "classifier"
+task_name: "epic_classifier"
 
 logger:
   wandb:
     tags: ${tags}
-    project: "LHCO"
+    project: "LHCO_epic_classifier"
     group: "lhco_flow_matching"
     name: ${task_name}
   comet:
-    project_name: "LHCO"
+    project_name: "LHCO_epic_classifier"
     experiment_name: ${task_name}
