@@ -1,4 +1,4 @@
-task_name: latent-256-pt-new
+task_name: lhco_both_jets2
 tags:
 - flow_matching
 - LHCO
@@ -11,7 +11,7 @@ seed: 12345
 data:
   _target_: src.data.lhco_datamodule.LHCODataModule
   data_dir: ${paths.data_dir}
-  batch_size: 1024
+  batch_size: 128
   num_workers: 32
   pin_memory: false
   val_fraction: 0.05
@@ -20,7 +20,7 @@ data:
   variable_jet_sizes: true
   centering: false
   normalize: true
-  normalize_sigma: 5
+  normalize_sigma: 1
   conditioning: true
   use_all_data: false
   relative_coords: true
@@ -29,24 +29,23 @@ data:
   use_calculated_base_distribution: true
   file_suffix_processed_data: _masssorted
   log_pt: true
-  pt_standardization: true
+  pt_standardization: false
   multiplicity_conditioning: true
 model:
   _target_: src.models.flow_matching_module.SetFlowMatchingLitModule
   optimizer:
     _target_: torch.optim.AdamW
     _partial_: true
-    lr: 0.001
+    lr: 0.0003
     weight_decay: 5.0e-05
   scheduler:
-    _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
+    _target_: torch.optim.lr_scheduler.CosineAnnealingLR
     _partial_: true
-    warmup: ${trainer.min_epochs}
-    max_iters: ${trainer.max_epochs}
+    T_max: ${trainer.max_epochs}
   features: 3
   n_transforms: 1
-  layers: 6
-  hidden_dim: 128
+  layers: 8
+  hidden_dim: 150
   latent: 256
   activation: leaky_relu
   wrapper_func: weight_norm
@@ -87,18 +86,7 @@ callbacks:
     save_on_train_epoch_end: null
     metric_map:
       val/loss: loss
-  early_stopping:
-    _target_: pytorch_lightning.callbacks.EarlyStopping
-    monitor: val/loss
-    min_delta: 0.0
-    patience: 100
-    verbose: false
-    mode: min
-    strict: true
-    check_finite: true
-    stopping_threshold: null
-    divergence_threshold: null
-    check_on_train_epoch_end: null
+  early_stopping: null
   model_summary:
     _target_: pytorch_lightning.callbacks.RichModelSummary
     max_depth: -1
@@ -132,7 +120,7 @@ callbacks:
     generation_config:
       batch_size: 2048
       ode_solver: midpoint
-      ode_steps: 50
+      ode_steps: 100
       verbose: true
     plot_config:
       plot_efps: false

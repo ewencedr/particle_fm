@@ -119,23 +119,16 @@ hydra:
   overrides:
     hydra:
     - hydra.run.dir="/home/ewencedr/deep-learning/src"
-    - hydra.job.name=train_ddp_process_2
+    - hydra.job.name=train_ddp_process_1
     - hydra.mode=RUN
     task:
-    - experiment=/lhco/lhco_both_jets
-    - task_name=latent-256-pt-new
-    - model.layers=6
-    - model.hidden_dim=128
-    - model.latent=256
-    - data.file_suffix_processed_data=_masssorted
-    - data.normalize_sigma=5
-    - data.log_pt=true
-    - data.pt_standardization=true
-    - data.multiplicity_conditioning=true
+    - experiment=/lhco/lhco_both_jets2
+    - task_name=lhco_both_jets2
+    - trainer=ddp
   job:
-    name: train_ddp_process_2
+    name: train_ddp_process_1
     chdir: null
-    override_dirname: data.file_suffix_processed_data=_masssorted,data.log_pt=true,data.multiplicity_conditioning=true,data.normalize_sigma=5,data.pt_standardization=true,experiment=/lhco/lhco_both_jets,model.hidden_dim=128,model.latent=256,model.layers=6,task_name=latent-256-pt-new
+    override_dirname: experiment=/lhco/lhco_both_jets2,task_name=lhco_both_jets2,trainer=ddp
     id: ???
     num: ???
     config_name: train.yaml
@@ -168,11 +161,11 @@ hydra:
       debug: null
       local: default.yaml
       hparams_search: null
-      experiment: /lhco/lhco_both_jets
+      experiment: /lhco/lhco_both_jets2
       hydra: default.yaml
       extras: default.yaml
       paths: default.yaml
-      trainer: ddp.yaml
+      trainer: ddp
       logger: many_loggers.yaml
       callbacks: /lhco/lhco.yaml
       model: flow_matching.yaml
