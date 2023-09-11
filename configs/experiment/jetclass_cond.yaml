@@ -31,9 +31,9 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 13 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
-  features: 13  # = 3 + number of `additional_part_features` (see below)
+  features: 14  # = 3 + number of `additional_part_features` (see below)
   layers: 13 # default is 6
   hidden_dim: 250 # default is 128
   latent: 15 # default is 10
@@ -51,8 +51,9 @@ data:
   normalize: True
   normalize_sigma: 5
   # conditioning
-  conditioning_pt: False
-  conditioning_eta: False
+  conditioning_pt: True
+  conditioning_energy: True
+  conditioning_eta: True
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
@@ -68,6 +69,7 @@ data:
     - part_isPhoton
     - part_isElectron
     - part_isMuon
+    - part_energyrel
 
 callbacks:
   ema:

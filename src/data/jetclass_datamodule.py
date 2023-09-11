@@ -87,6 +87,7 @@ class JetClassDataModule(LightningDataModule):
         verbose: bool = True,
         variable_jet_sizes: bool = True,
         conditioning_pt: bool = True,
+        conditioning_energy: bool = True,
         conditioning_eta: bool = True,
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
@@ -139,6 +140,7 @@ class JetClassDataModule(LightningDataModule):
         return sum(
             [
                 self.hparams.conditioning_pt,
+                self.hparams.conditioning_energy,
                 self.hparams.conditioning_eta,
                 self.hparams.conditioning_mass,
                 self.hparams.conditioning_num_particles,
@@ -537,6 +539,7 @@ class JetClassDataModule(LightningDataModule):
         one_hot_len = len(categories)
         if (
             not self.hparams.conditioning_pt
+            and not self.hparams.conditioning_energy
             and not self.hparams.conditioning_eta
             and not self.hparams.conditioning_mass
             and not self.hparams.conditioning_num_particles
@@ -555,6 +558,9 @@ class JetClassDataModule(LightningDataModule):
         if self.hparams.conditioning_pt:
             keep_col.append(get_feat_index(names_jet_data, "jet_pt") + one_hot_len - 1)
             names_conditioning_data.append("jet_pt")
+        if self.hparams.conditioning_energy:
+            keep_col.append(get_feat_index(names_jet_data, "jet_energy") + one_hot_len - 1)
+            names_conditioning_data.append("jet_energy")
         if self.hparams.conditioning_eta:
             keep_col.append(get_feat_index(names_jet_data, "jet_eta") + one_hot_len - 1)
             names_conditioning_data.append("jet_eta")
