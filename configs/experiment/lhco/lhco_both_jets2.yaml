@@ -5,7 +5,7 @@
 
 defaults:
   - override /data: lhco.yaml
-  - override /model: flow_matching.yaml
+  - override /model: flow_matching2.yaml
   - override /callbacks: /lhco/lhco.yaml
   - override /trainer: gpu.yaml
 
@@ -27,7 +27,7 @@ model:
   num_particles: 279
   global_cond_dim: 5 # needs to be calculated when using conditioning
   local_cond_dim: 5
-  layers: 8
+  layers: 12
   hidden_dim: 150
   latent: 256
   #scheduler:
