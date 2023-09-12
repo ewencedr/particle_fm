@@ -1,9 +1,11 @@
 from typing import Any, Dict, Optional, Tuple
 
+import awkward as ak
 import energyflow as ef
 import h5py
 import numpy as np
 import torch
+import vector
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
@@ -46,28 +48,241 @@ class JetClassClassifierDataModule(LightningDataModule):
         `"test"`, or `"predict"`. Defaults to ``None``.
         """
 
+        # Features needed for ParT
+        # part_etarel
+        # part_phirel
+        # log ( part_pt )
+        # log ( part_energy )
+        # log ( part_ptrel )
+        # log ( part_energyrel )
+        # part_deltaR
+        # part_charge
+        # part_isElectron
+        # part_isMuon
+        # part_isPhoton
+        # part_isChargedHadron
+        # part_isNeutralHadron
+        # tanh ( part_d0val)
+        # tanh ( part_dzval)
+        # part_d0err
+        # part_dzerr
+
         # Load data from the data_file (that's the output from `eval_ckpt.py`)
         with h5py.File(self.hparams.data_file, "r") as h5file:
             data_gen = h5file["part_data_gen"][:]
             mask_gen = h5file["part_mask_gen"][:]
+            cond_gen = h5file["cond_data_gen"][:]
             label_gen = np.ones(len(data_gen))
-            # cond_gen = h5file["cond_data_gen"][:]
+
+            part_names = list(h5file["part_data_sim"].attrs["names"])
+            cond_names = list(h5file["cond_data_sim"].attrs["names"])
+            # jet_names = list(h5file["jet_data_sim"].attrs["names"])
+
+            def idx_part(feat_name):
+                return part_names.index(feat_name)
+
+            def idx_cond(feat_name):
+                return cond_names.index(feat_name)
+
+            print("part_names:", part_names)
+            print("cond_names:", cond_names)
+
+            print("part index (part_etarel):", idx_part("part_etarel"))
+            print("cond index (jet_type_label_Tbqq):", idx_cond("jet_type_label_Tbqq"))
+
             data_sim = h5file["part_data_sim"][:]
+            # jet_data_sim = h5file["jet_data_sim"][:]
             mask_sim = h5file["part_mask_sim"][:]
+            cond_sim = h5file["cond_data_sim"][:]
             label_sim = np.zeros(len(data_sim))
-            # cond_sim = h5file["cond_data_sim"][:]
-            x_features = np.concatenate([data_gen, data_sim])
+
+            # x_features = np.concatenate([data_gen, data_sim])
+            # cond_features = np.concatenate([cond_gen, cond_sim])
             # use the first three particle features as coordinates (etarel, phirel, ptrel)
-            x_coords = x_features[:, :, :3]
-            x_mask = np.concatenate([mask_gen, mask_sim])
-            y = np.concatenate([label_gen, label_sim])
+            # x_coords = x_features[:, :, :3]
+            # x_mask = np.concatenate([mask_gen, mask_sim])
+            # y = np.concatenate([label_gen, label_sim])
+
+            # todo: remove after debugging is done
+            x_features = data_sim
+            x_coords = data_sim[:, :, :3]
+            cond_features = cond_sim
+            x_mask = mask_sim
+            y = label_sim
+            # jet_data = jet_data_sim
+
+            x_features_ParT = np.concatenate(
+                [
+                    # log ( part_pt )
+                    (np.log(x_features[:, :, idx_part("part_pt")])[..., None] - 1.7) * 0.7,
+                    # (
+                    #     (
+                    #         np.log(
+                    #             x_features[:, :, idx_part("part_ptrel")]
+                    #             * cond_features[:, idx_cond("jet_pt")][:, None]
+                    #         )
+                    #     )[..., None]
+                    #     - 1.7
+                    # )
+                    # * 0.7,
+                    # log ( part_energy )
+                    (np.log(x_features[:, :, idx_part("part_energy")])[..., None] - 2.0) * 0.7,
+                    # (
+                    #     (
+                    #         np.log(
+                    #             x_features[:, :, idx_part("part_energyrel")]
+                    #             * cond_features[:, idx_cond("jet_energy")][:, None]
+                    #         )
+                    #     )[..., None]
+                    #     - 2.0
+                    # )
+                    # * 0.7,
+                    # log ( part_ptrel )
+                    (np.log(x_features[:, :, idx_part("part_ptrel")])[..., None] + 4.7) * 0.7,
+                    # log ( part_energyrel )
+                    (np.log(x_features[:, :, idx_part("part_energyrel")])[..., None] + 4.7) * 0.7,
+                    # part_deltaR
+                    np.clip(
+                        (
+                            np.hypot(
+                                x_features[:, :, idx_part("part_deta")],
+                                x_features[:, :, idx_part("part_dphi")],
+                            )[..., None]
+                            - 0.2
+                        )
+                        * 4.0,
+                        -5,
+                        5,
+                    )
+                    * x_mask[:, :, 0][..., None],
+                    x_features[:, :, idx_part("part_charge")][..., None],
+                    x_features[:, :, idx_part("part_isChargedHadron")][..., None],
+                    x_features[:, :, idx_part("part_isNeutralHadron")][..., None],
+                    x_features[:, :, idx_part("part_isPhoton")][..., None],
+                    x_features[:, :, idx_part("part_isElectron")][..., None],
+                    x_features[:, :, idx_part("part_isMuon")][..., None],
+                    np.tanh(x_features[:, :, idx_part("part_d0val")])[..., None],
+                    np.clip(x_features[:, :, idx_part("part_d0err")][..., None], 0, 1),
+                    np.tanh(x_features[:, :, idx_part("part_dzval")])[..., None],
+                    np.clip(x_features[:, :, idx_part("part_dzerr")][..., None], 0, 1),
+                    x_features[:, :, idx_part("part_deta")][..., None],
+                    x_features[:, :, idx_part("part_dphi")][..., None],
+                ],
+                axis=-1,
+            )
+            self.names_x_features_ParT = [
+                "log_part_pt",
+                "log_part_energy",
+                "log_part_ptrel",
+                "log_part_energyrel",
+                "part_deltaR",
+                "part_charge",
+                "part_isChargedHadron",
+                "part_isNeutralHadron",
+                "part_isPhoton",
+                "part_isElectron",
+                "part_isMuon",
+                "tanh_part_d0val",
+                "part_d0err",
+                "tanh_part_dzval",
+                "part_dzerr",
+                "part_etarel",
+                "part_dphi",
+            ]
 
             # shuffle data
-            permutation = np.random.permutation(len(x_features))
-            x_features = x_features[permutation]
-            x_coords = x_coords[permutation]
-            x_mask = x_mask[permutation]
-            y = y[permutation]
+            # permutation = np.random.permutation(len(x_features))
+            # x_features = x_features[permutation]
+            # x_features_ParT = x_features_ParT[permutation]
+            # x_coords = x_coords[permutation]
+            # x_mask = x_mask[permutation]
+            # y = y[permutation]
+            # cond_features = cond_features[permutation]
+            # jet_data = jet_data[permutation]
+
+            self.x_features_ParT = x_features_ParT
+            # remove inf and nan values
+            # TODO: check if this is ok with JetClass...
+            self.x_features_ParT = np.nan_to_num(
+                self.x_features_ParT, nan=0.0, posinf=0.0, neginf=0.0
+            )
+            vector.register_awkward()
+
+            # construct x_lorentz from part_px, part_py, part_pz, part_energy
+            self.x_lorentz = np.concatenate(
+                [
+                    x_features[:, :, idx_part("part_px")][..., None],
+                    x_features[:, :, idx_part("part_py")][..., None],
+                    x_features[:, :, idx_part("part_pz")][..., None],
+                    x_features[:, :, idx_part("part_energy")][..., None],
+                ],
+                axis=-1,
+            )
+
+            # # ------------------------------
+            # # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
+            # self.x_lorentz = ak.zip(
+            #     {
+            #         "pt": x_features[:, :, idx_part("part_ptrel")] * cond_features[:, idx_cond("jet_pt")][:, None],
+            #         # "energy": np.exp(self.x_features_ParT[:, :, 3]),
+            #         # fmt: off
+            #         "eta": x_features[:, :, idx_part("part_etarel")] + cond_features[:, idx_cond("jet_eta")][:, None],
+            #         "phi": x_features[:, :, idx_part("part_dphi")] + np.random.uniform(-np.pi, np.pi, size=(len(self.x_features_ParT), 1)),
+            #         "mass": np.zeros_like(self.x_features_ParT[:, :, 2]),
+            #         # fmt: on
+            #     },
+            #     with_name="Momentum4D",
+            # )
+            # self.x_lorentz = np.concatenate(
+            #     [
+            #         self.x_lorentz.px.to_numpy()[..., None],
+            #         self.x_lorentz.py.to_numpy()[..., None],
+            #         self.x_lorentz.pz.to_numpy()[..., None],
+            #         self.x_lorentz.energy.to_numpy()[..., None],
+            #     ],
+            #     axis=-1,
+            # )
+            # # ------------------------------
+
+            # # ------------------------------
+            # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
+            # pt = x_features[:, :, idx_part("part_ptrel")] * cond_features[:, idx_cond("jet_pt")][:, None] * x_mask[:, :, 0]
+            # eta = x_features[:, :, idx_part("part_etarel")] + cond_features[:, idx_cond("jet_eta")][:, None] * x_mask[:, :, 0]
+            # phi = x_features[:, :, idx_part("part_dphi")] + np.random.uniform(0, 2*np.pi, size=(len(self.x_features_ParT), 1)) * x_mask[:, :, 0]
+            # px = pt * np.cos(phi) * x_mask[:, :, 0]
+            # print(px.shape)
+            # py = pt * np.sin(phi) * x_mask[:, :, 0]
+            # print(py.shape)
+            # pz =  pt * np.sinh(eta) * x_mask[:, :, 0]
+            # print(pz.shape)
+            # energy = x_features[:, :, idx_part("part_energyrel")] * cond_features[:, idx_cond("jet_energy")][:, None] * x_mask[:, :, 0]
+            # print(energy.shape)
+            # self.x_lorentz = np.concatenate(
+            #     [
+            #         px[..., None],
+            #         py[..., None],
+            #         pz[..., None],
+            #         energy[..., None],
+            #     ], axis=-1
+            # )
+            # self.x_lorentz = ak.zip(
+            #     {
+            #         "px": px,
+            #         "py": py,
+            #         "pz": pz,
+            #         "energy": energy,
+            #     },
+            #     with_name="Momentum4D",
+            # )
+            # # ------------------------------
+
+            self.y = y
+            self.x_mask = x_mask
+            self.cond = cond_features
+            self.names_cond = cond_names
+            # self.jet_data = jet_data
+
+        return
 
         # Swap indices to get required shape for ParticleNet: (batch, features, particles)
         x_coords = np.swapaxes(x_coords, 1, 2)
