@@ -111,8 +111,8 @@ class TransformerBlock(nn.Module):
 
         self.ff = nn.Sequential(
             nn.Linear(emb, ff_hidden_mult * emb),
-            # nn.ReLU(),
-            nn.Tanh(),
+            nn.ReLU(),
+            # nn.Tanh(),
             nn.Linear(ff_hidden_mult * emb, emb),
         )
 
@@ -177,11 +177,12 @@ class Transformer(nn.Module):
         self.emb = nn.Linear(input_dim, emb)
         self.demb = nn.Linear(emb, output_dim)
 
-    def forward(self, x):
+    def forward(self, t, x, cond, mask):
         """
         :param x: A batch by sequence length integer tensor of token indices.
         :return: predicted log-probability vectors for each token based on the preceding tokens.
         """
+
         x = self.emb(x)
         x = self.do(x)
         x = self.tblocks(x)
