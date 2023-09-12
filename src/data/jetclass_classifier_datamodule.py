@@ -183,6 +183,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 "part_dphi",
             ]
 
+            # TODO: add shuffling
             # shuffle data
             # permutation = np.random.permutation(len(x_features))
             # x_features = x_features[permutation]
