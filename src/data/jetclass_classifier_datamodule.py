@@ -207,43 +207,6 @@ class JetClassClassifierDataModule(LightningDataModule):
             )
             vector.register_awkward()
 
-            # construct x_lorentz from part_px, part_py, part_pz, part_energy
-            # self.x_lorentz = np.concatenate(
-            #     [
-            #         x_features[:, :, idx_part("part_px")][..., None],
-            #         x_features[:, :, idx_part("part_py")][..., None],
-            #         x_features[:, :, idx_part("part_pz")][..., None],
-            #         x_features[:, :, idx_part("part_energy")][..., None],
-            #     ],
-            #     axis=-1,
-            # )
-
-            # # ------------------------------
-            # # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
-            # self.x_lorentz = ak.zip(
-            #     {
-            #         "pt": x_features[:, :, idx_part("part_ptrel")] * cond_features[:, idx_cond("jet_pt")][:, None],
-            #         # "energy": np.exp(self.x_features_ParT[:, :, 3]),
-            #         # fmt: off
-            #         "eta": x_features[:, :, idx_part("part_etarel")] + cond_features[:, idx_cond("jet_eta")][:, None],
-            #         "phi": x_features[:, :, idx_part("part_dphi")] + np.random.uniform(-np.pi, np.pi, size=(len(self.x_features_ParT), 1)),
-            #         "mass": np.zeros_like(self.x_features_ParT[:, :, 2]),
-            #         # fmt: on
-            #     },
-            #     with_name="Momentum4D",
-            # )
-            # self.x_lorentz = np.concatenate(
-            #     [
-            #         self.x_lorentz.px.to_numpy()[..., None],
-            #         self.x_lorentz.py.to_numpy()[..., None],
-            #         self.x_lorentz.pz.to_numpy()[..., None],
-            #         self.x_lorentz.energy.to_numpy()[..., None],
-            #     ],
-            #     axis=-1,
-            # )
-            # # ------------------------------
-
-            # # ------------------------------
             # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
             pt = (
                 x_features[:, :, idx_part("part_ptrel")]
@@ -254,18 +217,14 @@ class JetClassClassifierDataModule(LightningDataModule):
                 x_features[:, :, idx_part("part_etarel")]
                 + cond_features[:, idx_cond("jet_eta")][:, None] * x_mask[:, :, 0]
             )
-            # phi = x_features[:, :, idx_part("part_dphi")] + np.random.uniform(0, 2*np.pi, size=(len(self.x_features_ParT), 1)) * x_mask[:, :, 0]
-            # TODO: change here to a random uniform distribution (since we don't have phi in the data)
             phi = (
                 x_features[:, :, idx_part("part_dphi")]
-                + cond_features[:, idx_cond("jet_phi")][:, None] * x_mask[:, :, 0]
+                + np.random.uniform(0, 2 * np.pi, size=(len(self.x_features_ParT), 1))
+                * x_mask[:, :, 0]
             )
             px = pt * np.cos(phi) * x_mask[:, :, 0]
-            print(px.shape)
             py = pt * np.sin(phi) * x_mask[:, :, 0]
-            print(py.shape)
             pz = pt * np.sinh(eta) * x_mask[:, :, 0]
-            print(pz.shape)
             energy = (
                 x_features[:, :, idx_part("part_energyrel")]
                 * cond_features[:, idx_cond("jet_energy")][:, None]
@@ -281,16 +240,6 @@ class JetClassClassifierDataModule(LightningDataModule):
                 ],
                 axis=-1,
             )
-            # self.x_lorentz = ak.zip(
-            #     {
-            #         "px": px,
-            #         "py": py,
-            #         "pz": pz,
-            #         "energy": energy,
-            #     },
-            #     with_name="Momentum4D",
-            # )
-            # # ------------------------------
 
             self.y = y
             self.x_mask = x_mask
