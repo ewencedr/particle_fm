@@ -364,16 +364,16 @@ def main(params):
     )
 
     dump_hlvs(
-        sorted_consts.reshape(-1, sorted_consts.shape[-2], sorted_consts.shape[-1])[
-            :n_substructure_events
-        ],
+        np.reshape(
+            sorted_consts, (-1, sorted_consts.shape[-2], sorted_consts.shape[-1]), order="F"
+        )[:n_substructure_events],
         save_file_substr,
         plot=False,
     )
 
     # calculate substructure for reference data
     dump_hlvs(
-        id_etaphipt.reshape(-1, id_etaphipt.shape[-2], id_etaphipt.shape[-1])[
+        np.reshape(id_etaphipt, (-1, id_etaphipt.shape[-2], id_etaphipt.shape[-1]), order="F")[
             :n_substructure_events
         ],
         save_file_substr_id,
