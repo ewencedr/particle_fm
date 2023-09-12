@@ -114,29 +114,27 @@ class JetClassClassifierDataModule(LightningDataModule):
             x_features_ParT = np.concatenate(
                 [
                     # log ( part_pt )
-                    (np.log(x_features[:, :, idx_part("part_pt")])[..., None] - 1.7) * 0.7,
-                    # (
-                    #     (
-                    #         np.log(
-                    #             x_features[:, :, idx_part("part_ptrel")]
-                    #             * cond_features[:, idx_cond("jet_pt")][:, None]
-                    #         )
-                    #     )[..., None]
-                    #     - 1.7
-                    # )
-                    # * 0.7,
+                    (
+                        (
+                            np.log(
+                                x_features[:, :, idx_part("part_ptrel")]
+                                * cond_features[:, idx_cond("jet_pt")][:, None]
+                            )
+                        )[..., None]
+                        - 1.7
+                    )
+                    * 0.7,
                     # log ( part_energy )
-                    (np.log(x_features[:, :, idx_part("part_energy")])[..., None] - 2.0) * 0.7,
-                    # (
-                    #     (
-                    #         np.log(
-                    #             x_features[:, :, idx_part("part_energyrel")]
-                    #             * cond_features[:, idx_cond("jet_energy")][:, None]
-                    #         )
-                    #     )[..., None]
-                    #     - 2.0
-                    # )
-                    # * 0.7,
+                    (
+                        (
+                            np.log(
+                                x_features[:, :, idx_part("part_energyrel")]
+                                * cond_features[:, idx_cond("jet_energy")][:, None]
+                            )
+                        )[..., None]
+                        - 2.0
+                    )
+                    * 0.7,
                     # log ( part_ptrel )
                     (np.log(x_features[:, :, idx_part("part_ptrel")])[..., None] + 4.7) * 0.7,
                     # log ( part_energyrel )
@@ -145,7 +143,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                     np.clip(
                         (
                             np.hypot(
-                                x_features[:, :, idx_part("part_deta")],
+                                x_features[:, :, idx_part("part_etarel")],
                                 x_features[:, :, idx_part("part_dphi")],
                             )[..., None]
                             - 0.2
@@ -165,7 +163,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                     np.clip(x_features[:, :, idx_part("part_d0err")][..., None], 0, 1),
                     np.tanh(x_features[:, :, idx_part("part_dzval")])[..., None],
                     np.clip(x_features[:, :, idx_part("part_dzerr")][..., None], 0, 1),
-                    x_features[:, :, idx_part("part_deta")][..., None],
+                    np.clip(x_features[:, :, idx_part("part_etarel")][..., None], -1, 1),
                     x_features[:, :, idx_part("part_dphi")][..., None],
                 ],
                 axis=-1,
