@@ -69,11 +69,6 @@ class JetClassClassifierDataModule(LightningDataModule):
 
         # Load data from the data_file (that's the output from `eval_ckpt.py`)
         with h5py.File(self.hparams.data_file, "r") as h5file:
-            data_gen = h5file["part_data_gen"][:]
-            mask_gen = h5file["part_mask_gen"][:]
-            cond_gen = h5file["cond_data_gen"][:]
-            label_gen = np.ones(len(data_gen))
-
             part_names = list(h5file["part_data_sim"].attrs["names"])
             cond_names = list(h5file["cond_data_sim"].attrs["names"])
             # jet_names = list(h5file["jet_data_sim"].attrs["names"])
@@ -90,27 +85,26 @@ class JetClassClassifierDataModule(LightningDataModule):
             print("part index (part_etarel):", idx_part("part_etarel"))
             print("cond index (jet_type_label_Tbqq):", idx_cond("jet_type_label_Tbqq"))
 
+            data_gen = h5file["part_data_gen"][:]
+            mask_gen = h5file["part_mask_gen"][:]
+            cond_gen = h5file["cond_data_gen"][:]
+            label_gen = np.ones(len(data_gen))
+
             data_sim = h5file["part_data_sim"][:]
-            # jet_data_sim = h5file["jet_data_sim"][:]
             mask_sim = h5file["part_mask_sim"][:]
             cond_sim = h5file["cond_data_sim"][:]
             label_sim = np.zeros(len(data_sim))
 
-            # x_features = np.concatenate([data_gen, data_sim])
-            # cond_features = np.concatenate([cond_gen, cond_sim])
+            x_features = np.concatenate([data_gen, data_sim])
+            cond_features = np.concatenate([cond_gen, cond_sim])
             # use the first three particle features as coordinates (etarel, phirel, ptrel)
-            # x_coords = x_features[:, :, :3]
-            # x_mask = np.concatenate([mask_gen, mask_sim])
-            # y = np.concatenate([label_gen, label_sim])
+            x_coords = x_features[
+                :, :, :3
+            ]  # TODO: probably not needed for ParT (only for ParticleNet)
+            x_mask = np.concatenate([mask_gen, mask_sim])
+            y = np.concatenate([label_gen, label_sim])
 
-            # todo: remove after debugging is done
-            x_features = data_sim
-            x_coords = data_sim[:, :, :3]
-            cond_features = cond_sim
-            x_mask = mask_sim
-            y = label_sim
-            # jet_data = jet_data_sim
-
+            # create the features array as needed by ParT
             x_features_ParT = np.concatenate(
                 [
                     # log ( part_pt )
