@@ -123,12 +123,14 @@ hydra:
     - hydra.mode=RUN
     task:
     - experiment=/lhco/lhco_both_jets2
-    - task_name=lhco_both_jets2
+    - task_name=setup2 y-jet
     - trainer=ddp
+    - data.jet_type=y
   job:
     name: train_ddp_process_1
     chdir: null
-    override_dirname: experiment=/lhco/lhco_both_jets2,task_name=lhco_both_jets2,trainer=ddp
+    override_dirname: data.jet_type=y,experiment=/lhco/lhco_both_jets2,task_name=setup2
+      y-jet,trainer=ddp
     id: ???
     num: ???
     config_name: train.yaml
@@ -168,7 +170,7 @@ hydra:
       trainer: ddp
       logger: many_loggers.yaml
       callbacks: /lhco/lhco.yaml
-      model: flow_matching.yaml
+      model: flow_matching2.yaml
       data: lhco.yaml
       hydra/env: default
       hydra/callbacks: null

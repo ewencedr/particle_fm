@@ -1,4 +1,4 @@
-task_name: lhco_both_jets2
+task_name: setup2 y-jet
 tags:
 - flow_matching
 - LHCO
@@ -24,7 +24,7 @@ data:
   conditioning: true
   use_all_data: false
   relative_coords: true
-  jet_type: all
+  jet_type: 'y'
   shuffle_data: false
   use_calculated_base_distribution: true
   file_suffix_processed_data: _masssorted
@@ -44,7 +44,7 @@ model:
     T_max: ${trainer.max_epochs}
   features: 3
   n_transforms: 1
-  layers: 8
+  layers: 12
   hidden_dim: 150
   latent: 256
   activation: leaky_relu
