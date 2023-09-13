@@ -98,9 +98,8 @@ class JetClassClassifierDataModule(LightningDataModule):
             x_features = np.concatenate([data_gen, data_sim])
             cond_features = np.concatenate([cond_gen, cond_sim])
             # use the first three particle features as coordinates (etarel, phirel, ptrel)
-            x_coords = x_features[
-                :, :, :3
-            ]  # TODO: probably not needed for ParT (only for ParticleNet)
+            # TODO: probably not needed for ParT (only for ParticleNet)
+            x_coords = x_features[:, :, :3]
             x_mask = np.concatenate([mask_gen, mask_sim])
             y = np.concatenate([label_gen, label_sim])
 
@@ -157,8 +156,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                     np.clip(x_features[:, :, idx_part("part_d0err")][..., None], 0, 1),
                     np.tanh(x_features[:, :, idx_part("part_dzval")])[..., None],
                     np.clip(x_features[:, :, idx_part("part_dzerr")][..., None], 0, 1),
-                    # TODO: remove clipping of etarel (this is done in the preprocessing if wanted...)
-                    np.clip(x_features[:, :, idx_part("part_etarel")][..., None], -1, 1),
+                    x_features[:, :, idx_part("part_etarel")][..., None],
                     x_features[:, :, idx_part("part_dphi")][..., None],
                 ],
                 axis=-1,
@@ -185,14 +183,13 @@ class JetClassClassifierDataModule(LightningDataModule):
 
             # TODO: add shuffling
             # shuffle data
-            # permutation = np.random.permutation(len(x_features))
-            # x_features = x_features[permutation]
-            # x_features_ParT = x_features_ParT[permutation]
-            # x_coords = x_coords[permutation]
-            # x_mask = x_mask[permutation]
-            # y = y[permutation]
-            # cond_features = cond_features[permutation]
-            # jet_data = jet_data[permutation]
+            permutation = np.random.permutation(len(x_features))
+            x_features = x_features[permutation]
+            x_features_ParT = x_features_ParT[permutation]
+            x_coords = x_coords[permutation]
+            x_mask = x_mask[permutation]
+            y = y[permutation]
+            cond_features = cond_features[permutation]
 
             self.x_features_ParT = x_features_ParT
             # remove inf and nan values
