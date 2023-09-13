@@ -247,8 +247,6 @@ class JetClassClassifierDataModule(LightningDataModule):
         self.y = y
         # self.jet_data = jet_data
 
-        return
-
         # Split data into train, val, test
         fractions = self.hparams.train_val_test_split
         total_length = len(x_features)
@@ -258,29 +256,37 @@ class JetClassClassifierDataModule(LightningDataModule):
         ]
         print(f"Splitting data into {split_indices} for train, val, test")
 
-        x_features_train, x_features_val, x_features_test = np.split(x_features, split_indices)
-        x_coords_train, x_coords_val, x_coords_test = np.split(pf_points, split_indices)
-        x_mask_train, x_mask_val, x_mask_test = np.split(pf_mask, split_indices)
-        y_train, y_val, y_test = np.split(y, split_indices)
+        self.pf_features_train, self.pf_features_val, self.pf_features_test = np.split(
+            pf_features, split_indices
+        )
+        self.pf_vectors_train, self.pf_vectors_val, self.pf_vectors_test = np.split(
+            pf_vectors, split_indices
+        )
+        self.pf_points_train, self.pf_points_val, self.pf_points_test = np.split(
+            pf_points, split_indices
+        )
+        self.pf_mask_train, self.pf_mask_val, self.pf_mask_test = np.split(pf_mask, split_indices)
+        self.cond_train, self.cond_val, self.cond_test = np.split(cond_features, split_indices)
+        self.y_train, self.y_val, self.y_test = np.split(y, split_indices)
 
         # Create datasets
         self.data_train = TensorDataset(
-            torch.tensor(x_features_train, dtype=torch.float32),
-            torch.tensor(x_coords_train, dtype=torch.float32),
-            torch.tensor(x_mask_train, dtype=torch.float32),
-            torch.tensor(y_train, dtype=torch.float32),
+            torch.tensor(self.pf_features_train, dtype=torch.float32),
+            torch.tensor(self.pf_vectors_train, dtype=torch.float32),
+            torch.tensor(self.pf_mask_train, dtype=torch.float32),
+            torch.tensor(self.y_train, dtype=torch.float32),
         )
         self.data_val = TensorDataset(
-            torch.tensor(x_features_val, dtype=torch.float32),
-            torch.tensor(x_coords_val, dtype=torch.float32),
-            torch.tensor(x_mask_val, dtype=torch.float32),
-            torch.tensor(y_val, dtype=torch.float32),
+            torch.tensor(self.pf_features_val, dtype=torch.float32),
+            torch.tensor(self.pf_vectors_val, dtype=torch.float32),
+            torch.tensor(self.pf_mask_val, dtype=torch.float32),
+            torch.tensor(self.y_val, dtype=torch.float32),
         )
         self.data_test = TensorDataset(
-            torch.tensor(x_features_test, dtype=torch.float32),
-            torch.tensor(x_coords_test, dtype=torch.float32),
-            torch.tensor(x_mask_test, dtype=torch.float32),
-            torch.tensor(y_test, dtype=torch.float32),
+            torch.tensor(self.pf_features_test, dtype=torch.float32),
+            torch.tensor(self.pf_vectors_test, dtype=torch.float32),
+            torch.tensor(self.pf_mask_test, dtype=torch.float32),
+            torch.tensor(self.y_test, dtype=torch.float32),
         )
 
     def train_dataloader(self):
