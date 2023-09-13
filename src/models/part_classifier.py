@@ -48,17 +48,13 @@ class ParticleTransformerPL(L.LightningModule):
 
     def training_step(self, batch, batch_nb):
         # X, y, _ = batch
-        part_features, part_coords, part_mask, part_labels = batch
-        # TODO: lorentz vectors should come from dataloader
-        part_lorentz = torch.randn(part_features.size(0), 4, part_features.size(2)).to("cuda")
-        # inputs = [X[k].to("cuda") for k in self.data_config.input_names]
-        # label = y[self.data_config.label_names[0]].long()
-        label = part_labels.long().to("cuda")
+        pf_features, pf_vectors, pf_mask, jet_labels = batch
+        label = jet_labels.long().to("cuda")
         model_output = self(
             points=None,
-            features=part_features.to("cuda"),
-            lorentz_vectors=part_lorentz.to("cuda"),
-            mask=part_mask.to("cuda"),
+            features=pf_features.to("cuda"),
+            lorentz_vectors=pf_vectors.to("cuda"),
+            mask=pf_mask.to("cuda"),
         )
         with torch.cuda.amp.autocast():
             logits = _flatten_preds(model_output)
