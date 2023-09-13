@@ -100,7 +100,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             # use the first three particle features as coordinates (etarel, phirel, ptrel)
             # TODO: probably not needed for ParT (only for ParticleNet)
             pf_points = x_features[:, :, :3]
-            x_mask = np.concatenate([mask_gen, mask_sim])
+            pf_mask = np.concatenate([mask_gen, mask_sim])
             y = np.concatenate([label_gen, label_sim])
 
             # create the features array as needed by ParT
@@ -145,7 +145,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                         -5,
                         5,
                     )
-                    * x_mask[:, :, 0][..., None],
+                    * pf_mask[:, :, 0][..., None],
                     x_features[:, :, idx_part("part_charge")][..., None],
                     x_features[:, :, idx_part("part_isChargedHadron")][..., None],
                     x_features[:, :, idx_part("part_isNeutralHadron")][..., None],
@@ -187,7 +187,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             x_features = x_features[permutation]
             pf_features = pf_features[permutation]
             pf_points = pf_points[permutation]
-            x_mask = x_mask[permutation]
+            pf_mask = pf_mask[permutation]
             y = y[permutation]
             cond_features = cond_features[permutation]
 
@@ -201,26 +201,25 @@ class JetClassClassifierDataModule(LightningDataModule):
             pt = (
                 x_features[:, :, idx_part("part_ptrel")]
                 * cond_features[:, idx_cond("jet_pt")][:, None]
-                * x_mask[:, :, 0]
+                * pf_mask[:, :, 0]
             )
             eta = (
                 x_features[:, :, idx_part("part_etarel")]
-                + cond_features[:, idx_cond("jet_eta")][:, None] * x_mask[:, :, 0]
+                + cond_features[:, idx_cond("jet_eta")][:, None] * pf_mask[:, :, 0]
             )
             rng = np.random.default_rng(1234)
             phi = (
                 x_features[:, :, idx_part("part_dphi")]
-                + rng.uniform(0, 2 * np.pi, size=(len(self.pf_features), 1)) * x_mask[:, :, 0]
+                + rng.uniform(0, 2 * np.pi, size=(len(self.pf_features), 1)) * pf_mask[:, :, 0]
             )
-            px = pt * np.cos(phi) * x_mask[:, :, 0]
-            py = pt * np.sin(phi) * x_mask[:, :, 0]
-            pz = pt * np.sinh(eta) * x_mask[:, :, 0]
+            px = pt * np.cos(phi) * pf_mask[:, :, 0]
+            py = pt * np.sin(phi) * pf_mask[:, :, 0]
+            pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
             energy = (
                 x_features[:, :, idx_part("part_energyrel")]
                 * cond_features[:, idx_cond("jet_energy")][:, None]
-                * x_mask[:, :, 0]
+                * pf_mask[:, :, 0]
             )
-            print(energy.shape)
             self.pf_vectors = np.concatenate(
                 [
                     px[..., None],
@@ -232,7 +231,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             )
 
             self.y = y
-            self.x_mask = x_mask
+            self.pf_mask = pf_mask
             self.cond = cond_features
             self.names_cond = cond_names
             # self.jet_data = jet_data
@@ -242,7 +241,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         # Swap indices to get required shape for ParticleNet: (batch, features, particles)
         pf_points = np.swapaxes(pf_points, 1, 2)
         x_features = np.swapaxes(x_features, 1, 2)
-        x_mask = np.swapaxes(x_mask, 1, 2)
+        pf_mask = np.swapaxes(pf_mask, 1, 2)
 
         # Split data into train, val, test
         fractions = self.hparams.train_val_test_split
@@ -255,7 +254,7 @@ class JetClassClassifierDataModule(LightningDataModule):
 
         x_features_train, x_features_val, x_features_test = np.split(x_features, split_indices)
         x_coords_train, x_coords_val, x_coords_test = np.split(pf_points, split_indices)
-        x_mask_train, x_mask_val, x_mask_test = np.split(x_mask, split_indices)
+        x_mask_train, x_mask_val, x_mask_test = np.split(pf_mask, split_indices)
         y_train, y_val, y_test = np.split(y, split_indices)
 
         # Create datasets
