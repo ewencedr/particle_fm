@@ -99,12 +99,12 @@ class JetClassClassifierDataModule(LightningDataModule):
             cond_features = np.concatenate([cond_gen, cond_sim])
             # use the first three particle features as coordinates (etarel, phirel, ptrel)
             # TODO: probably not needed for ParT (only for ParticleNet)
-            x_coords = x_features[:, :, :3]
+            pf_points = x_features[:, :, :3]
             x_mask = np.concatenate([mask_gen, mask_sim])
             y = np.concatenate([label_gen, label_sim])
 
             # create the features array as needed by ParT
-            x_features_ParT = np.concatenate(
+            pf_features = np.concatenate(
                 [
                     # log ( part_pt )
                     (
@@ -161,7 +161,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 ],
                 axis=-1,
             )
-            self.names_x_features_ParT = [
+            self.names_pf_features = [
                 "log_part_pt",
                 "log_part_energy",
                 "log_part_ptrel",
@@ -185,18 +185,16 @@ class JetClassClassifierDataModule(LightningDataModule):
             # shuffle data
             permutation = np.random.permutation(len(x_features))
             x_features = x_features[permutation]
-            x_features_ParT = x_features_ParT[permutation]
-            x_coords = x_coords[permutation]
+            pf_features = pf_features[permutation]
+            pf_points = pf_points[permutation]
             x_mask = x_mask[permutation]
             y = y[permutation]
             cond_features = cond_features[permutation]
 
-            self.x_features_ParT = x_features_ParT
+            self.pf_features = pf_features
             # remove inf and nan values
             # TODO: check if this is ok with JetClass...
-            self.x_features_ParT = np.nan_to_num(
-                self.x_features_ParT, nan=0.0, posinf=0.0, neginf=0.0
-            )
+            self.pf_features = np.nan_to_num(self.pf_features, nan=0.0, posinf=0.0, neginf=0.0)
             vector.register_awkward()
 
             # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
@@ -209,10 +207,10 @@ class JetClassClassifierDataModule(LightningDataModule):
                 x_features[:, :, idx_part("part_etarel")]
                 + cond_features[:, idx_cond("jet_eta")][:, None] * x_mask[:, :, 0]
             )
+            rng = np.random.default_rng(1234)
             phi = (
                 x_features[:, :, idx_part("part_dphi")]
-                + np.random.uniform(0, 2 * np.pi, size=(len(self.x_features_ParT), 1))
-                * x_mask[:, :, 0]
+                + rng.uniform(0, 2 * np.pi, size=(len(self.pf_features), 1)) * x_mask[:, :, 0]
             )
             px = pt * np.cos(phi) * x_mask[:, :, 0]
             py = pt * np.sin(phi) * x_mask[:, :, 0]
@@ -223,7 +221,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 * x_mask[:, :, 0]
             )
             print(energy.shape)
-            self.x_lorentz = np.concatenate(
+            self.pf_vectors = np.concatenate(
                 [
                     px[..., None],
                     py[..., None],
@@ -242,7 +240,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         return
 
         # Swap indices to get required shape for ParticleNet: (batch, features, particles)
-        x_coords = np.swapaxes(x_coords, 1, 2)
+        pf_points = np.swapaxes(pf_points, 1, 2)
         x_features = np.swapaxes(x_features, 1, 2)
         x_mask = np.swapaxes(x_mask, 1, 2)
 
@@ -256,7 +254,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         print(f"Splitting data into {split_indices} for train, val, test")
 
         x_features_train, x_features_val, x_features_test = np.split(x_features, split_indices)
-        x_coords_train, x_coords_val, x_coords_test = np.split(x_coords, split_indices)
+        x_coords_train, x_coords_val, x_coords_test = np.split(pf_points, split_indices)
         x_mask_train, x_mask_val, x_mask_test = np.split(x_mask, split_indices)
         y_train, y_val, y_test = np.split(y, split_indices)
 
