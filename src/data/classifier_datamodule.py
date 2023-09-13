@@ -61,6 +61,7 @@ class ClassifierDataModule(LightningDataModule):
         idealized: bool = False,
         gen_jet: str = "both",
         ref_jet: str = "both",
+        use_shuffled_data: bool = False,
     ) -> None:
         """Initialize a `ClassifierDataModule`.
 
@@ -121,8 +122,14 @@ class ClassifierDataModule(LightningDataModule):
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            path_bckg = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
-            path_sgnl = f"{self.hparams.data_dir}/lhco/final_data/processed_data_signal_rel.h5"
+            if self.hparams.use_shuffled_data:
+                path_bckg = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel_shuffled.h5"
+                path_sgnl = f"{self.hparams.data_dir}/lhco/final_data/processed_data_signal_rel_shuffled.h5"
+            else:
+                path_bckg = (
+                    f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
+                )
+                path_sgnl = f"{self.hparams.data_dir}/lhco/final_data/processed_data_signal_rel.h5"
 
             with h5py.File(path_bckg, "r") as f:
                 jet_data_bckg = f["jet_data"][:]

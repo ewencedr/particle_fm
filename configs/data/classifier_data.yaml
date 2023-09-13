@@ -7,3 +7,4 @@ pin_memory: False
 gen_jet: "both"
 ref_jet: "both"
 idealized: False
+use_shuffled_data: False
