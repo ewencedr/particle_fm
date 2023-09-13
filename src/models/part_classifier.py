@@ -1,6 +1,10 @@
+import sys
+
 import lightning as L
 import torch
 import torch.nn as nn
+
+sys.path.insert(0, "/home/birkjosc/repositories/weaver-core")
 from weaver.nn.model.ParticleTransformer import ParticleTransformer
 from weaver.train import optim
 from weaver.utils.nn.tools import _flatten_label, _flatten_preds
@@ -48,7 +52,7 @@ class ParticleTransformerPL(L.LightningModule):
 
     def training_step(self, batch, batch_nb):
         # X, y, _ = batch
-        pf_features, pf_vectors, pf_mask, jet_labels = batch
+        pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
         label = jet_labels.long().to("cuda")
         model_output = self(
             points=None,
@@ -60,10 +64,10 @@ class ParticleTransformerPL(L.LightningModule):
             logits = _flatten_preds(model_output)
             loss = self.loss_func(logits, label)
         _, preds = logits.max(1)
-        # correct = (preds == label).sum().item()
-        # accuracy = correct / label.size(0)
-        # self.log("train_loss", loss, on_step=True, on_epoch=True)
-        # self.log("train_acc", accuracy, on_step=True, on_epoch=True)
+        correct = (preds == label).sum().item()
+        accuracy = correct / label.size(0)
+        self.log("train_loss", loss, on_step=True, on_epoch=True)
+        self.log("train_acc", accuracy, on_step=True, on_epoch=True)
         return loss
 
     # def training_step(self, batch, batch_nb):
