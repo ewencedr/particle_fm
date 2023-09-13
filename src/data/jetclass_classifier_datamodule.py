@@ -183,7 +183,8 @@ class JetClassClassifierDataModule(LightningDataModule):
 
             # TODO: add shuffling
             # shuffle data
-            permutation = np.random.permutation(len(x_features))
+            rng = np.random.default_rng(1234)
+            permutation = rng.permutation(len(x_features))
             x_features = x_features[permutation]
             pf_features = pf_features[permutation]
             pf_points = pf_points[permutation]
