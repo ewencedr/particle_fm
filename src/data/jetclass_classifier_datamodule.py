@@ -229,20 +229,24 @@ class JetClassClassifierDataModule(LightningDataModule):
                 axis=-1,
             )
 
+        # Swap indices of particle-level arrays to get required shape for
+        # ParT/ParticleNet: (n_jets, n_features, n_particles)
+        x_features = np.swapaxes(x_features, 1, 2)
+        pf_features = np.swapaxes(pf_features, 1, 2)
+        pf_vectors = np.swapaxes(pf_vectors, 1, 2)
+        pf_mask = np.swapaxes(pf_mask, 1, 2)
+        pf_points = np.swapaxes(pf_points, 1, 2)
+
         self.cond = cond_features
         self.names_cond = cond_names
         self.pf_features = pf_features
         self.pf_vectors = pf_vectors
         self.pf_mask = pf_mask
+        self.pf_points = pf_points
         self.y = y
         # self.jet_data = jet_data
 
         return
-
-        # Swap indices to get required shape for ParticleNet: (batch, features, particles)
-        pf_points = np.swapaxes(pf_points, 1, 2)
-        x_features = np.swapaxes(x_features, 1, 2)
-        pf_mask = np.swapaxes(pf_mask, 1, 2)
 
         # Split data into train, val, test
         fractions = self.hparams.train_val_test_split
