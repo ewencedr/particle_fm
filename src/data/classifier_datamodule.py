@@ -187,15 +187,22 @@ class ClassifierDataModule(LightningDataModule):
             # Load generated data
             path_gen = f"{self.hparams.data_dir}/lhco/generated/{self.hparams.gendatafile}.h5"
             print(f"Loading generated data from {path_gen}")
-            with h5py.File(path_gen, "r") as f:
-                jet_data_gen = f["jet_features"][:]
-                particle_data_gen = f["particle_features"][:]  # pt, eta, phi
-                particle_data_gen_raw = f["data_raw"][:]  # pt, eta, phi
 
-            print(f"particle data shape: {particle_data_gen.shape}")
-            # if self.hparams.jets_to_use != "both":
-            #    particle_data_gen = particle_data_gen_raw
-            particle_data_gen = particle_data_gen_raw
+            if self.hparams.use_shuffled_data:
+                with h5py.File(path_gen, "r") as f:
+                    jet_data_gen = f["jet_features"][:]
+                    particle_data_gen = f["particle_features"][:]  # pt, eta, phi
+                    # particle_data_gen_raw = f["data_raw"][:]  # pt, eta, phi
+            else:
+                with h5py.File(path_gen, "r") as f:
+                    jet_data_gen = f["jet_features"][:]
+                    particle_data_gen = f["particle_features"][:]  # pt, eta, phi
+                    particle_data_gen_raw = f["data_raw"][:]  # pt, eta, phi
+
+                print(f"particle data shape: {particle_data_gen.shape}")
+                # if self.hparams.jets_to_use != "both":
+                #    particle_data_gen = particle_data_gen_raw
+                particle_data_gen = particle_data_gen_raw
 
             jet_data_gen = jet_data_gen[..., :4]
 
