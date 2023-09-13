@@ -109,11 +109,11 @@ class ClassifierDataModule(LightningDataModule):
         else:
             self.jets_to_use = ""
 
-        if self.hparams.gen_jet not in ["first", "second"]:
-            raise ValueError("gen_jet must be one of 'first' or 'second'")
+        if self.hparams.gen_jet not in ["first", "second", "both"]:
+            raise ValueError("gen_jet must be one of 'first' or 'second' or 'both'")
 
-        if self.hparams.ref_jet not in ["first", "second"]:
-            raise ValueError("ref_jet must be one of 'first' or 'second'")
+        if self.hparams.ref_jet not in ["first", "second", "both"]:
+            raise ValueError("ref_jet must be one of 'first' or 'second', or 'both'")
 
         if self.hparams.gen_jet == "both" and self.hparams.ref_jet != "both":
             raise ValueError("gen_jet must be 'both' if ref_jet is 'both'")
