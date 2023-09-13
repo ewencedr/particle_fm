@@ -59,6 +59,8 @@ class ClassifierDataModule(LightningDataModule):
         pin_memory: bool = False,
         gendatafile: str = "idealized_LHCO",
         idealized: bool = False,
+        gen_jet: str = "both",
+        ref_jet: str = "both",
     ) -> None:
         """Initialize a `ClassifierDataModule`.
 
@@ -100,6 +102,23 @@ class ClassifierDataModule(LightningDataModule):
 
         :param stage: The stage to setup. Either `"fit"`, `"validate"`, `"test"`, or `"predict"`. Defaults to ``None``.
         """
+
+        if self.hparams.ref_jet == "both" and self.hparams.gen_jet == "both":
+            self.jets_to_use = "both"
+        else:
+            self.jets_to_use = ""
+
+        if self.hparams.gen_jet not in ["first", "second"]:
+            raise ValueError("gen_jet must be one of 'first' or 'second'")
+
+        if self.hparams.ref_jet not in ["first", "second"]:
+            raise ValueError("ref_jet must be one of 'first' or 'second'")
+
+        if self.hparams.gen_jet == "both" and self.hparams.ref_jet != "both":
+            raise ValueError("gen_jet must be 'both' if ref_jet is 'both'")
+        if self.hparams.gen_jet != "both" and self.hparams.ref_jet == "both":
+            raise ValueError("ref_jet must be 'both' if gen_jet is 'both'")
+
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             path_bckg = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
@@ -160,9 +179,16 @@ class ClassifierDataModule(LightningDataModule):
 
             # Load generated data
             path_gen = f"{self.hparams.data_dir}/lhco/generated/{self.hparams.gendatafile}.h5"
+            print(f"Loading generated data from {path_gen}")
             with h5py.File(path_gen, "r") as f:
                 jet_data_gen = f["jet_features"][:]
                 particle_data_gen = f["particle_features"][:]  # pt, eta, phi
+                particle_data_gen_raw = f["data_raw"][:]  # pt, eta, phi
+
+            print(f"particle data shape: {particle_data_gen.shape}")
+            # if self.hparams.jets_to_use != "both":
+            #    particle_data_gen = particle_data_gen_raw
+            particle_data_gen = particle_data_gen_raw
 
             jet_data_gen = jet_data_gen[..., :4]
 
@@ -172,17 +198,51 @@ class ClassifierDataModule(LightningDataModule):
 
             # TODO length of both classes should not need to be the same
             if self.hparams.idealized:
+                print(f"Using background as background")
                 jet_data_background = jet_data_bckg[: len(particle_data_mixed)]
                 particle_data_background = particle_data_bckg[: len(particle_data_mixed)]
                 mask_background = mask_bckg[: len(particle_data_mixed)]
             else:
+                print("Using generated data as background")
                 jet_data_background = jet_data_gen[: len(particle_data_mixed)]
                 particle_data_background = particle_data_gen[: len(particle_data_mixed)]
                 mask_background = mask_gen[: len(particle_data_mixed)]
 
             labels_background = np.zeros(len(jet_data_background))
 
+            # jet_data_background += np.random.normal(0, 1, jet_data_background.shape)
+            # particle_data_background += np.random.normal(0, 1, particle_data_background.shape)
+
+            # if self.hparams.jets_to_use == "first":
+            #    particle_data_background = particle_data_background[:, 0]
+            #    jet_data_background = jet_data_background[:, 0]
+            #    mask_background = mask_background[:, 0]
+            # elif self.hparams.jets_to_use == "second":
+            #    particle_data_background = particle_data_background[:, 1]
+            #    jet_data_background = jet_data_background[:, 1]
+            #    mask_background = mask_background[:, 1]
+
+            if self.hparams.gen_jet == "first":
+                particle_data_background = particle_data_background[:, 0]
+                jet_data_background = jet_data_background[:, 0]
+                mask_background = mask_background[:, 0]
+            elif self.hparams.gen_jet == "second":
+                particle_data_background = particle_data_background[:, 1]
+                jet_data_background = jet_data_background[:, 1]
+                mask_background = mask_background[:, 1]
+
+            if self.hparams.ref_jet == "first":
+                particle_data_mixed = particle_data_mixed[:, 0]
+                jet_data_mixed = jet_data_mixed[:, 0]
+                mask_mixed = mask_mixed[:, 0]
+            elif self.hparams.ref_jet == "second":
+                particle_data_mixed = particle_data_mixed[:, 1]
+                jet_data_mixed = jet_data_mixed[:, 1]
+                mask_mixed = mask_mixed[:, 1]
+
             # concatenate both classes
+            print(f"particle_data_mixed.shape: {particle_data_mixed.shape}")
+            print(f"particle_data_background.shape: {particle_data_background.shape}")
             input_data = np.concatenate([particle_data_mixed, particle_data_background])
             input_mask = np.concatenate([mask_mixed, mask_background])
             input_labels = np.concatenate([labels_mixed, labels_background])
@@ -193,6 +253,21 @@ class ClassifierDataModule(LightningDataModule):
             input_data = input_data[perm]
             input_mask = input_mask[perm]
             input_labels = input_labels[perm]
+
+            print(f"input_data.shape: {input_data.shape}")
+            print(f"input_mask.shape: {input_mask.shape}")
+            print(f"input_labels.shape: {input_labels.shape}")
+
+            # if self.hparams.jets_to_use == "first":
+            #    input_data = input_data[:, 0]
+            #    input_mask = input_mask[:, 0]
+            # elif self.hparams.jets_to_use == "second":
+            #    input_data = input_data[:, 1]
+            #    input_mask = input_mask[:, 1]
+
+            print(f"input_data.shape: {input_data.shape}")
+            print(f"input_mask.shape: {input_mask.shape}")
+            print(f"input_labels.shape: {input_labels.shape}")
 
             if len(input_data) != len(input_mask) or len(input_data) != len(input_labels):
                 raise ValueError("Data, mask and labels must have the same length.")
@@ -237,8 +312,12 @@ class ClassifierDataModule(LightningDataModule):
             full_mask_train = np.ma.make_mask(full_mask_train, shrink=False)
             masked_data_train = np.ma.masked_array(data_train, full_mask_train)
 
-            mean = np.ma.mean(masked_data_train, axis=(0, 1, 2))
-            std = np.ma.std(masked_data_train, axis=(0, 1, 2))
+            if self.jets_to_use != "both":
+                mean = np.ma.mean(masked_data_train, axis=(0, 1))
+                std = np.ma.std(masked_data_train, axis=(0, 1))
+            else:
+                mean = np.ma.mean(masked_data_train, axis=(0, 1, 2))
+                std = np.ma.std(masked_data_train, axis=(0, 1, 2))
 
             data_train = normalize_tensor(
                 torch.tensor(data_train).clone(), torch.tensor(mean), torch.tensor(std)

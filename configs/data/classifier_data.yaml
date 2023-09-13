@@ -4,3 +4,6 @@ gendatafile: "idealized_LHCO"
 batch_size: 128
 num_workers: 32
 pin_memory: False
+gen_jet: "both"
+ref_jet: "both"
+idealized: False
