@@ -34,7 +34,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         """Prepare the data."""
         pass
 
-    def setup(self, stage: Optional[str] = None) -> None:
+    def setup(self, stage: Optional[str] = None, debug_sim_only=False) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
 
         This method is called by Lightning before `trainer.fit()`,
@@ -102,6 +102,14 @@ class JetClassClassifierDataModule(LightningDataModule):
             pf_points = x_features[:, :, :3]
             pf_mask = np.concatenate([mask_gen, mask_sim])
             y = np.concatenate([label_gen, label_sim])
+
+            if debug_sim_only:
+                # use only sim for debugging
+                x_features = data_sim
+                cond_features = cond_sim
+                pf_points = x_features[:, :, :3]
+                pf_mask = mask_sim
+                y = label_sim
 
             # create the features array as needed by ParT
             pf_features = np.concatenate(
@@ -181,6 +189,11 @@ class JetClassClassifierDataModule(LightningDataModule):
                 "part_dphi",
             ]
 
+            print(f"pf_features: shape={pf_features.shape}, {self.names_pf_features}")
+            print(f"pf_points: shape={pf_points.shape}")
+            print(f"pf_mask: shape={pf_mask.shape}")
+            print(f"cond_features: shape={cond_features.shape}, {cond_names}")
+
             # TODO: add shuffling
             # shuffle data
             rng = np.random.default_rng(1234)
@@ -220,6 +233,10 @@ class JetClassClassifierDataModule(LightningDataModule):
                 * cond_features[:, idx_cond("jet_energy")][:, None]
                 * pf_mask[:, :, 0]
             )
+            # ensure that energy >= momentum
+            p = np.sqrt(px**2 + py**2 + pz**2)
+            energy = np.clip(energy, a_min=p, a_max=None)
+
             pf_vectors = np.concatenate(
                 [
                     px[..., None],
@@ -274,18 +291,21 @@ class JetClassClassifierDataModule(LightningDataModule):
             torch.tensor(self.pf_features_train, dtype=torch.float32),
             torch.tensor(self.pf_vectors_train, dtype=torch.float32),
             torch.tensor(self.pf_mask_train, dtype=torch.float32),
+            torch.tensor(self.cond_train, dtype=torch.float32),
             torch.tensor(self.y_train, dtype=torch.float32),
         )
         self.data_val = TensorDataset(
             torch.tensor(self.pf_features_val, dtype=torch.float32),
             torch.tensor(self.pf_vectors_val, dtype=torch.float32),
             torch.tensor(self.pf_mask_val, dtype=torch.float32),
+            torch.tensor(self.cond_val, dtype=torch.float32),
             torch.tensor(self.y_val, dtype=torch.float32),
         )
         self.data_test = TensorDataset(
             torch.tensor(self.pf_features_test, dtype=torch.float32),
             torch.tensor(self.pf_vectors_test, dtype=torch.float32),
             torch.tensor(self.pf_mask_test, dtype=torch.float32),
+            torch.tensor(self.cond_test, dtype=torch.float32),
             torch.tensor(self.y_test, dtype=torch.float32),
         )
 
