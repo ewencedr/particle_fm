@@ -191,10 +191,9 @@ class JetClassClassifierDataModule(LightningDataModule):
             y = y[permutation]
             cond_features = cond_features[permutation]
 
-            self.pf_features = pf_features
             # remove inf and nan values
             # TODO: check if this is ok with JetClass...
-            self.pf_features = np.nan_to_num(self.pf_features, nan=0.0, posinf=0.0, neginf=0.0)
+            pf_features = np.nan_to_num(pf_features, nan=0.0, posinf=0.0, neginf=0.0)
             vector.register_awkward()
 
             # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
@@ -210,7 +209,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             rng = np.random.default_rng(1234)
             phi = (
                 x_features[:, :, idx_part("part_dphi")]
-                + rng.uniform(0, 2 * np.pi, size=(len(self.pf_features), 1)) * pf_mask[:, :, 0]
+                + rng.uniform(0, 2 * np.pi, size=(len(pf_features), 1)) * pf_mask[:, :, 0]
             )
             px = pt * np.cos(phi) * pf_mask[:, :, 0]
             py = pt * np.sin(phi) * pf_mask[:, :, 0]
@@ -220,7 +219,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 * cond_features[:, idx_cond("jet_energy")][:, None]
                 * pf_mask[:, :, 0]
             )
-            self.pf_vectors = np.concatenate(
+            pf_vectors = np.concatenate(
                 [
                     px[..., None],
                     py[..., None],
@@ -230,11 +229,13 @@ class JetClassClassifierDataModule(LightningDataModule):
                 axis=-1,
             )
 
-            self.y = y
-            self.pf_mask = pf_mask
-            self.cond = cond_features
-            self.names_cond = cond_names
-            # self.jet_data = jet_data
+        self.cond = cond_features
+        self.names_cond = cond_names
+        self.pf_features = pf_features
+        self.pf_vectors = pf_vectors
+        self.pf_mask = pf_mask
+        self.y = y
+        # self.jet_data = jet_data
 
         return
 
