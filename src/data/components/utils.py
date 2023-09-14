@@ -276,6 +276,76 @@ def calculate_jet_features(particle_data):
     return jet_data
 
 
+def get_mjj(jet_x: np.ndarray, jet_y: np.ndarray) -> np.ndarray:
+    """Calculate mjj from constituent data. (pt, y, phi)->(mjj)
+
+    Args:
+        consts (np.ndarray): constituent data. (pt, y, phi)
+
+    Returns:
+        np.ndarray: mjj
+    """
+    p4_jets_x = ef.p4s_from_ptyphims(jet_x)
+    p4_jets_y = ef.p4s_from_ptyphims(jet_y)
+    sum_p4 = p4_jets_x + p4_jets_y
+    mjj = ef.ms_from_p4s(sum_p4)
+    return mjj
+
+
+def get_jet_data(consts: np.ndarray) -> np.ndarray:
+    """Calculate jet data from constituent data. (pt, y, phi)->(pt, y, phi, m)
+
+    Args:
+        consts (np.ndarray): constituent data. (pt, y, phi)
+
+    Returns:
+        np.ndarray: jet data. (pt, y, phi, m)
+    """
+    p4s = ef.p4s_from_ptyphims(consts[..., :3])
+    sum_p4 = np.sum(p4s, axis=-2)
+    jet_data = ef.ptyphims_from_p4s(sum_p4, phi_ref=0)
+    return jet_data
+
+
+def get_nonrel_consts(jets: np.ndarray, particles: np.ndarray) -> np.ndarray:
+    """Calculate the non-relative constituents of a jet.
+
+    Args:
+        jets (np.ndarray): jets with features (pt, eta, phi, mass)
+        particles (np.ndarray): particles with features (pt, eta, phi)
+
+    Returns:
+        np.ndarray: non-rel constituents
+    """
+    pt = np.expand_dims(jets[..., 0], axis=-1)
+    eta = np.expand_dims(jets[..., 1], axis=-1)
+    phi = np.expand_dims(jets[..., 2], axis=-1)
+
+    mask_nonrel = np.expand_dims((particles[..., 0] > 0).astype(int), axis=-1)
+    non_rel_eta = np.expand_dims(particles.copy()[..., 1] + eta, axis=-1)
+    non_rel_phi = np.expand_dims(particles.copy()[..., 2] + phi, axis=-1)
+
+    # wrap phi between -pi and pi
+    non_rel_phi = np.where(
+        non_rel_phi > np.pi,
+        non_rel_phi - 2 * np.pi,
+        non_rel_phi,
+    )
+    non_rel_phi = np.where(
+        non_rel_phi < -np.pi,
+        non_rel_phi + 2 * np.pi,
+        non_rel_phi,
+    )
+    non_rel_pt = np.expand_dims(particles.copy()[..., 0] * pt, axis=-1)
+
+    # fix the masking
+    non_rel_eta = non_rel_eta * mask_nonrel
+    non_rel_phi = non_rel_phi * mask_nonrel
+    particles_nonrel = np.concatenate([non_rel_pt, non_rel_eta, non_rel_phi], axis=-1)
+
+    return particles_nonrel
+
+
 def count_parameters(model):
     """Count Parameters of model.
 
