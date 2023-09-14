@@ -365,9 +365,9 @@ def main(params):
     keys = []
     data_substructure = []
     with h5py.File(save_file_substr + ".h5", "r") as f:
-        tau21 = np.array(f["tau21"])
-        tau32 = np.array(f["tau32"])
-        d2 = np.array(f["d2"])
+        tau21 = np.nan_to_num(np.array(f["tau21"]))
+        tau32 = np.nan_to_num(np.array(f["tau32"]))
+        d2 = np.nan_to_num(np.array(f["d2"]))
         for key in f.keys():
             keys.append(key)
             data_substructure.append(np.array(f[key]))
@@ -377,9 +377,9 @@ def main(params):
     # load substructure for JetNet data
     data_substructure_jetnet = []
     with h5py.File(save_file_substr_id + ".h5", "r") as f:
-        tau21_jetnet = np.array(f["tau21"])
-        tau32_jetnet = np.array(f["tau32"])
-        d2_jetnet = np.array(f["d2"])
+        tau21_jetnet = np.nan_to_num(np.array(f["tau21"]))
+        tau32_jetnet = np.nan_to_num(np.array(f["tau32"]))
+        d2_jetnet = np.nan_to_num(np.array(f["d2"]))
         for key in f.keys():
             data_substructure_jetnet.append(np.array(f[key]))
     data_substructure_jetnet = np.array(data_substructure_jetnet)
