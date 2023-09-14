@@ -576,7 +576,190 @@ class EPiC_discriminator(nn.Module):
         x_mean = x_sum / mask.sum(-2, keepdim=False)
         x_sum = x_sum * self.sum_scale
 
-        x = torch.cat((x_sum, x_mean, x_global), dim=-1)
+        x_local = torch.cat((x_sum, x_mean, x_global), dim=-1)
+
+        if self.num_sup_sets > 1:
+            x_sum_2 = x_local.sum(-2, keepdim=False)
+
+            x_mean_2 = x_sum_2 / self.num_sup_sets
+            x_sum_2 = x_sum_2 * self.sum_scale
+
+            x_local = torch.cat((x_sum_2, x_mean_2), dim=-1)
+
+        x = x_local.view(x_local.shape[0], -1)
+
+        x = getattr(F, self.activation, lambda x: x)(self.fc_g3(x))
+        x = getattr(F, self.activation, lambda x: x)(self.fc_g4(x))
+        x = self.out(x)
+
+        return x
+
+
+class EPiC_discriminator3(nn.Module):
+    """EPiC Discriminator.
+
+    Args:
+        latent (int, optional): used for latent size of equiv concat. Defaults to 16.
+        input_dim (int, optional): number of features of input point cloud. Defaults to 3.
+        hid_d (int, optional): Hidden dimension. Defaults to 256.
+        equiv_layers (int, optional): Number of EPiC Layers used. Defaults to 8.
+        global_cond_dim (int, optional): Global conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
+        local_cond_dim (int, optional): Local conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
+        activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
+        wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
+        frequencies (int, optional): Frequencies for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
+        num_points (int, optional): Number of points in set. Defaults to 30.
+        t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector in EPiC layers. Defaults to False.
+        dropout (float, optional): Dropout rate. Defaults to 0.0.
+        sum_scale (float, optional): Scale for sum pooling. Defaults to 1e-2.
+    """
+
+    def __init__(
+        self,
+        latent: int = 16,
+        input_dim: int = 3,
+        hid_d: int = 256,
+        equiv_layers: int = 6,
+        global_cond_dim: int = 0,
+        local_cond_dim: int = 0,
+        activation: str = "leaky_relu",
+        wrapper_func: str = "weight_norm",
+        frequencies: int = 6,
+        num_points: int = 279,
+        t_local_cat: bool = False,
+        t_global_cat: bool = False,
+        dropout: float = 0.0,
+        sum_scale: float = 1e-2,
+        num_sup_sets: int = 2,
+    ):
+        super().__init__()
+        self.activation = activation
+        self.latent = latent
+        self.input_dim = input_dim
+        self.hid_d = hid_d
+        self.equiv_layers = equiv_layers
+        self.global_cond_dim = global_cond_dim
+        self.local_cond_dim = local_cond_dim
+        self.num_points = num_points
+        self.num_sup_sets = num_sup_sets
+        self.sum_scale = sum_scale
+
+        self.t_local_cat = t_local_cat
+        self.t_global_cat = t_global_cat
+        t_local_dim = 2 * frequencies if self.t_local_cat else 0
+        t_global_dim = 2 * frequencies if self.t_global_cat else 0
+
+        self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
+
+        self.fc_l1 = self.wrapper_func(
+            nn.Linear(self.input_dim + t_local_dim + self.local_cond_dim, self.hid_d)
+        )
+        self.fc_l2 = self.wrapper_func(
+            nn.Linear(self.hid_d + t_local_dim + self.local_cond_dim, self.hid_d)
+        )
+
+        self.fc_g1 = self.wrapper_func(
+            nn.Linear(int(2 * self.hid_d) + t_global_dim + self.global_cond_dim, self.hid_d)
+        )
+        self.fc_g2 = self.wrapper_func(
+            nn.Linear(self.hid_d + t_global_dim + self.global_cond_dim, self.latent)
+        )
+
+        self.particle_discriminator = EPiC_discriminator_2(
+            latent=latent,
+            equiv_layers=equiv_layers,
+            input_dim=input_dim,
+            num_points=num_points,
+            num_sup_sets=num_sup_sets,
+            global_cond_dim=global_cond_dim,
+            local_cond_dim=local_cond_dim,
+            t_local_cat=t_local_cat,
+            t_global_cat=t_global_cat,
+            frequencies=frequencies,
+            dropout=dropout,
+            sum_scale=sum_scale,
+        )
+        self.jet_discriminator = EPiC_discriminator_2(
+            equiv_layers=equiv_layers,
+            input_dim=272,
+            num_points=num_sup_sets,
+            num_sup_sets=num_sup_sets,
+            global_cond_dim=global_cond_dim,
+            local_cond_dim=local_cond_dim,
+            t_local_cat=t_local_cat,
+            t_global_cat=t_global_cat,
+            frequencies=frequencies,
+            dropout=dropout,
+            sum_scale=sum_scale,
+        )
+
+        self.fc_g3 = self.wrapper_func(
+            nn.Linear(int(2 * self.hid_d + self.latent) * self.num_sup_sets, self.hid_d)
+        )
+        self.fc_g4 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
+        self.out = self.wrapper_func(nn.Linear(self.hid_d, 1))
+
+    def forward(
+        self,
+        t_in: torch.Tensor = None,
+        x_local: torch.Tensor = None,
+        global_cond_in: torch.Tensor = None,
+        mask: torch.Tensor = None,
+    ):
+        if x_local is None:
+            raise ValueError("x_local is None")
+        if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
+            raise ValueError(
+                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is"
+                f" {self.local_cond_dim} but no global_cond is given"
+            )
+        if t_in is None and (self.t_local_cat or self.t_global_cat):
+            raise ValueError(
+                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no"
+                " t is given"
+            )
+        if t_in is None:
+            t = torch.Tensor().to(x_local.device)
+        else:
+            t = t_in
+
+        if mask is None:
+            mask = torch.ones_like(x_local[:, :, 0]).unsqueeze(-1)
+
+        logger_eg.debug(f"t: {t.shape}")
+        logger_eg.debug(f"x_local: {x_local.shape}")
+
+        # time conditioning
+        if not self.t_local_cat:
+            t_local = torch.Tensor().to(t.device)
+        else:
+            t_local = t
+
+        if self.t_global_cat:
+            # prepare t for concat to global
+            t_global = t.clone()[:, 0, :]
+        else:
+            t_global = torch.Tensor().to(t.device)
+
+        # global conditioning
+        if self.global_cond_dim == 0:
+            global_cond = torch.Tensor().to(x_local.device)
+        else:
+            global_cond = global_cond_in
+
+        # local conditioning
+        if self.local_cond_dim > 0:
+            local_cond = global_cond_in.unsqueeze(-2).repeat_interleave(self.num_points, dim=-2)
+            logger_eg.debug(f"local_cond shape: {local_cond.shape}")
+        else:
+            local_cond = torch.Tensor().to(x_local.device)
+
+        # actual forward pass
+
+        x = self.particle_discriminator(x_local=x_local, t_in=t_in, global_cond_in=global_cond_in)
+        print(f"x.shape: {x.shape}")
+        x = self.jet_discriminator(x_local=x, t_in=t_in, global_cond_in=global_cond_in)
 
         x = x.view(x.shape[0], -1)
 
@@ -585,3 +768,194 @@ class EPiC_discriminator(nn.Module):
         x = self.out(x)
 
         return x
+
+
+class EPiC_discriminator_2(nn.Module):
+    """EPiC Discriminator.
+
+    Args:
+        latent (int, optional): used for latent size of equiv concat. Defaults to 16.
+        input_dim (int, optional): number of features of input point cloud. Defaults to 3.
+        hid_d (int, optional): Hidden dimension. Defaults to 256.
+        equiv_layers (int, optional): Number of EPiC Layers used. Defaults to 8.
+        global_cond_dim (int, optional): Global conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
+        local_cond_dim (int, optional): Local conditioning dimension. 0 corresponds to no conditioning. Defaults to 0.
+        activation (str, optional): Activation function to use in architecture. Defaults to "leaky_relu".
+        wrapper_func (str, optional): Wrapper for linear layers. Defaults to "weight_norm".
+        frequencies (int, optional): Frequencies for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
+        num_points (int, optional): Number of points in set. Defaults to 30.
+        t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
+        t_global_cat (bool, optional): Concat time to global vector in EPiC layers. Defaults to False.
+        dropout (float, optional): Dropout rate. Defaults to 0.0.
+        sum_scale (float, optional): Scale for sum pooling. Defaults to 1e-2.
+    """
+
+    def __init__(
+        self,
+        latent: int = 16,
+        input_dim: int = 3,
+        hid_d: int = 256,
+        equiv_layers: int = 6,
+        global_cond_dim: int = 0,
+        local_cond_dim: int = 0,
+        activation: str = "leaky_relu",
+        wrapper_func: str = "weight_norm",
+        frequencies: int = 6,
+        num_points: int = 279,
+        t_local_cat: bool = False,
+        t_global_cat: bool = False,
+        dropout: float = 0.0,
+        sum_scale: float = 1e-2,
+        num_sup_sets: int = 2,
+    ):
+        super().__init__()
+        self.activation = activation
+        self.latent = latent
+        self.input_dim = input_dim
+        self.hid_d = hid_d
+        self.equiv_layers = equiv_layers
+        self.global_cond_dim = global_cond_dim
+        self.local_cond_dim = local_cond_dim
+        self.num_points = num_points
+        self.num_sup_sets = num_sup_sets
+        self.sum_scale = sum_scale
+
+        self.t_local_cat = t_local_cat
+        self.t_global_cat = t_global_cat
+        t_local_dim = 2 * frequencies if self.t_local_cat else 0
+        t_global_dim = 2 * frequencies if self.t_global_cat else 0
+
+        self.wrapper_func = getattr(nn.utils, wrapper_func, lambda x: x)
+
+        self.fc_l1 = self.wrapper_func(
+            nn.Linear(self.input_dim + t_local_dim + self.local_cond_dim, self.hid_d)
+        )
+        self.fc_l2 = self.wrapper_func(
+            nn.Linear(self.hid_d + t_local_dim + self.local_cond_dim, self.hid_d)
+        )
+
+        self.fc_g1 = self.wrapper_func(
+            nn.Linear(int(2 * self.hid_d) + t_global_dim + self.global_cond_dim, self.hid_d)
+        )
+        self.fc_g2 = self.wrapper_func(
+            nn.Linear(self.hid_d + t_global_dim + self.global_cond_dim, self.latent)
+        )
+
+        self.nn_list = nn.ModuleList()
+        for _ in range(self.equiv_layers):
+            self.nn_list.append(
+                EPiC_layer(
+                    self.hid_d,
+                    self.hid_d,
+                    self.latent,
+                    activation=activation,
+                    wrapper_func=wrapper_func,
+                    num_points=self.num_points,
+                    t_global_cat=t_global_cat,
+                    t_local_cat=t_local_cat,
+                    global_cond_dim=global_cond_dim,
+                    local_cond_dim=local_cond_dim,
+                    frequencies=frequencies,
+                    dropout=dropout,
+                    sum_scale=sum_scale,
+                )
+            )
+
+        self.do = nn.Dropout(dropout)
+
+        self.fc_g3 = self.wrapper_func(
+            nn.Linear(int(2 * self.hid_d + self.latent) * self.num_sup_sets, self.hid_d)
+        )
+        self.fc_g4 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
+        self.out = self.wrapper_func(nn.Linear(self.hid_d, 1))
+
+    def forward(
+        self,
+        t_in: torch.Tensor = None,
+        x_local: torch.Tensor = None,
+        global_cond_in: torch.Tensor = None,
+        mask: torch.Tensor = None,
+    ):
+        if x_local is None:
+            raise ValueError("x_local is None")
+        if global_cond_in is None and (self.global_cond_dim > 0 or self.local_cond_dim > 0):
+            raise ValueError(
+                f"global_cond_dim is {self.global_cond_dim} and local_cond_dim is"
+                f" {self.local_cond_dim} but no global_cond is given"
+            )
+        if t_in is None and (self.t_local_cat or self.t_global_cat):
+            raise ValueError(
+                f"t_local_cat is {self.t_local_cat} and t_global_cat is {self.t_global_cat} but no"
+                " t is given"
+            )
+        if t_in is None:
+            t = torch.Tensor().to(x_local.device)
+        else:
+            t = t_in
+
+        if mask is None:
+            mask = torch.ones_like(x_local[:, :, 0]).unsqueeze(-1)
+
+        logger_eg.debug(f"t: {t.shape}")
+        logger_eg.debug(f"x_local: {x_local.shape}")
+
+        # time conditioning
+        if not self.t_local_cat:
+            t_local = torch.Tensor().to(t.device)
+        else:
+            t_local = t
+
+        if self.t_global_cat:
+            # prepare t for concat to global
+            t_global = t.clone()[:, 0, :]
+        else:
+            t_global = torch.Tensor().to(t.device)
+
+        # global conditioning
+        if self.global_cond_dim == 0:
+            global_cond = torch.Tensor().to(x_local.device)
+        else:
+            global_cond = global_cond_in
+
+        # local conditioning
+        if self.local_cond_dim > 0:
+            local_cond = global_cond_in.unsqueeze(-2).repeat_interleave(self.num_points, dim=-2)
+            logger_eg.debug(f"local_cond shape: {local_cond.shape}")
+        else:
+            local_cond = torch.Tensor().to(x_local.device)
+
+        # actual forward pass
+        x_local = getattr(F, self.activation, lambda x: x)(
+            self.fc_l1(torch.cat((t_local, x_local, local_cond), dim=-1))
+        )
+
+        x_local = getattr(F, self.activation, lambda x: x)(
+            self.fc_l2(torch.cat((t_local, x_local, local_cond), dim=-1)) + x_local
+        )
+        x_local = self.do(x_local)
+
+        z_sum = (x_local * mask).sum(-2, keepdim=False)
+        z_mean = z_sum / mask.sum(-2, keepdim=False)
+        z_sum = z_sum * self.sum_scale
+
+        x_global = torch.cat((z_sum, z_mean), dim=-1)
+
+        x_global = getattr(F, self.activation, lambda x: x)(
+            self.fc_g1(torch.cat((t_global, x_global, global_cond), dim=-1))
+        )
+        x_global = getattr(F, self.activation, lambda x: x)(
+            self.fc_g2(torch.cat((t_global, x_global, global_cond), dim=-1))
+        )
+
+        for i in range(self.equiv_layers):
+            x_global, x_local = self.nn_list[i](
+                t_in, x_global, x_local, global_cond_in=global_cond_in, mask=mask
+            )
+
+        x_sum = (x_local * mask).sum(-2, keepdim=False)
+        x_mean = x_sum / mask.sum(-2, keepdim=False)
+        x_sum = x_sum * self.sum_scale
+
+        x_local = torch.cat((x_sum, x_mean, x_global), dim=-1)
+
+        return x_local
