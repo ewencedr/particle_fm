@@ -9,6 +9,10 @@ import vector
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
+from src.utils.pylogger import get_pylogger
+
+logger = get_pylogger(__name__)
+
 
 class JetClassClassifierDataModule(LightningDataModule):
     """Data module for jet classification task (classifier test)."""
@@ -79,11 +83,11 @@ class JetClassClassifierDataModule(LightningDataModule):
             def idx_cond(feat_name):
                 return cond_names.index(feat_name)
 
-            print("part_names:", part_names)
-            print("cond_names:", cond_names)
+            logger.info("part_names:", part_names)
+            logger.info("cond_names:", cond_names)
 
-            print("part index (part_etarel):", idx_part("part_etarel"))
-            print("cond index (jet_type_label_Tbqq):", idx_cond("jet_type_label_Tbqq"))
+            logger.info("part index (part_etarel):", idx_part("part_etarel"))
+            logger.info("cond index (jet_type_label_Tbqq):", idx_cond("jet_type_label_Tbqq"))
 
             data_gen = h5file["part_data_gen"][:]
             mask_gen = h5file["part_mask_gen"][:]
@@ -105,11 +109,14 @@ class JetClassClassifierDataModule(LightningDataModule):
 
             if debug_sim_only:
                 # use only sim for debugging
+                logger.warning("Using only sim data for debugging.")
+                logger.warning("HALF OF THE REAL DATA WILL BE LABELLED AS FAKE.")
                 x_features = data_sim
                 cond_features = cond_sim
                 pf_points = x_features[:, :, :3]
                 pf_mask = mask_sim
                 y = label_sim
+                y[: len(y) // 2] = 1
 
             # create the features array as needed by ParT
             pf_features = np.concatenate(
@@ -189,10 +196,10 @@ class JetClassClassifierDataModule(LightningDataModule):
                 "part_dphi",
             ]
 
-            print(f"pf_features: shape={pf_features.shape}, {self.names_pf_features}")
-            print(f"pf_points: shape={pf_points.shape}")
-            print(f"pf_mask: shape={pf_mask.shape}")
-            print(f"cond_features: shape={cond_features.shape}, {cond_names}")
+            logger.info(f"pf_features: shape={pf_features.shape}, {self.names_pf_features}")
+            logger.info(f"pf_points: shape={pf_points.shape}")
+            logger.info(f"pf_mask: shape={pf_mask.shape}")
+            logger.info(f"cond_features: shape={cond_features.shape}, {cond_names}")
 
             # TODO: add shuffling
             # shuffle data
@@ -271,7 +278,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             int(fractions[0] * total_length),
             int((fractions[0] + fractions[1]) * total_length),
         ]
-        print(f"Splitting data into {split_indices} for train, val, test")
+        logger.info(f"Splitting data into {split_indices} for train, val, test")
 
         self.pf_features_train, self.pf_features_val, self.pf_features_test = np.split(
             pf_features, split_indices
