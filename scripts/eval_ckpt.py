@@ -76,7 +76,7 @@ parser.add_argument(
     default=100,
 )
 
-VARIABLES_TO_CLIP = ["part_ptrel"]
+VARIABLES_TO_CLIP = ["part_ptrel", "part_energyrel"]
 W_DIST_CFG = {"num_eval_samples": 50_000, "num_batches": 10}
 
 
@@ -201,11 +201,16 @@ def main():
         for i, var_name in enumerate(datamodule.names_particle_features):
             if var_name not in VARIABLES_TO_CLIP:
                 continue
-            pylogger.info(f"Clipping outliers of generated {var_name} to original range.")
+            clip_min = datamodule.min_max_train_dict[var_name]["min"]
+            clip_max = datamodule.min_max_train_dict[var_name]["max"]
+            pylogger.info(
+                f"Clipping outliers of generated {var_name} to original range: "
+                f"[{clip_min}, {clip_max}]"
+            )
             data_gen[mask_gen[..., 0] != 0, i] = np.clip(
                 data_gen[mask_gen[..., 0] != 0, i],
-                a_min=datamodule.min_max_train_dict[var_name]["min"],
-                a_max=datamodule.min_max_train_dict[var_name]["max"],
+                a_min=clip_min,
+                a_max=clip_max,
             )
         # Argmax for particle-id features:
         # for the particle-id features, set the maximum value to 1 and the
@@ -385,6 +390,10 @@ def main():
         metrics[f"n_samples_sim_{jet_type}"] = np.sum(jet_type_mask_sim)
         metrics[f"n_samples_gen_{jet_type}"] = np.sum(jet_type_mask_gen)
 
+        if np.sum(jet_type_mask_sim) == 0 or np.sum(jet_type_mask_gen) == 0:
+            pylogger.warning(f"No samples for jet type {jet_type} found -> continue.")
+            continue
+
         # calculate metrics and add to dict
         metrics_this_type = calculate_all_wasserstein_metrics(
             data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen], **W_DIST_CFG
@@ -551,6 +560,11 @@ def main():
             else:
                 jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
                 jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+
+            if np.sum(jet_type_mask_sim) == 0 or np.sum(jet_type_mask_gen) == 0:
+                pylogger.warning(f"No samples for jet type {jet_type} found -> continue.")
+                continue
+
             w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
                 tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **W_DIST_CFG
             )
