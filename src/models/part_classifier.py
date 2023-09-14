@@ -1,7 +1,9 @@
+import copy
 import sys
 
 import lightning as L
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 
@@ -47,15 +49,37 @@ class ParticleTransformerPL(L.LightningModule):
         self.set_learning_rates()
         self.test_output_list = []
         self.test_labels_list = []
-        self.train_loss_list = []
-        self.train_acc_list = []
         self.test_output = None
         self.test_labels = None
+
+        self.train_loss_list = []
+        self.train_acc_list = []
+        self.val_loss_list = []
+        self.val_acc_list = []
+
+        self.validation_cnt = 0
+        self.validation_output = {}
+
+        self.metrics_dict = {}
+        self.metrics_df = pd.DataFrame(
+            columns=[
+                "val_loss",
+                "val_loss_epoch",
+                "val_acc",
+                "val_acc_epoch",
+                "train_loss",
+                "train_loss_step",
+                "train_acc",
+                "train_acc_step",
+            ],
+        )
 
     def forward(self, points, features, lorentz_vectors, mask):
         return self.mod(features, v=lorentz_vectors, mask=mask)
 
     def training_step(self, batch, batch_nb):
+        self.mod.for_inference = False
+        self.train()
         # X, y, _ = batch
         pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
         label = jet_labels.long().to("cuda")
@@ -81,26 +105,63 @@ class ParticleTransformerPL(L.LightningModule):
         self.train_loss = np.array(self.train_loss_list)
         self.train_acc = np.array(self.train_acc_list)
 
-    # def validation_step(self, batch, batch_nb):
-    #     X, y, _ = batch
-    #     inputs = [X[k].to("cuda") for k in self.data_config.input_names]
-    #     label = y[self.data_config.label_names[0]].long()
-    #     label = label.to("cuda")
-    #     try:
-    #         label_mask = y[self.data_config.label_names[0] + "_mask"].bool()
-    #     except KeyError:
-    #         label_mask = None
-    #     label = _flatten_label(label, label_mask)
-    #     model_output = self(*inputs)
-    #     with torch.cuda.amp.autocast():
-    #         logits = _flatten_preds(model_output)
-    #         loss = self.loss_func(logits, label)
-    #     _, preds = logits.max(1)
-    #     correct = (preds == label).sum().item()
-    #     accuracy = correct / label.size(0)
-    #     self.log("val_loss", loss, on_step=True, on_epoch=True)
-    #     self.log("val_acc", accuracy, on_step=True, on_epoch=True)
-    #     return loss
+    def validation_step(self, batch, batch_nb):
+        self.mod.for_inference = True
+        self.eval()
+
+        pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
+        label = jet_labels.long().to("cuda")
+        model_output = self(
+            points=None,
+            features=pf_features.to("cuda"),
+            lorentz_vectors=pf_vectors.to("cuda"),
+            mask=pf_mask.to("cuda"),
+        )
+
+        key = str(self.validation_cnt)
+
+        if batch_nb == 0:
+            self.validation_cnt += 1
+            key = str(self.validation_cnt)
+            self.validation_output[key] = {
+                "model_predictions": model_output.detach().cpu().numpy(),
+                "labels": label.detach().cpu().numpy(),
+                "global_step": self.trainer.global_step,
+            }
+        else:
+            self.validation_output[key]["model_predictions"] = np.concatenate(
+                [
+                    self.validation_output[key]["model_predictions"],
+                    model_output.detach().cpu().numpy(),
+                ]
+            )
+            self.validation_output[key]["labels"] = np.concatenate(
+                [self.validation_output[key]["labels"], label.detach().cpu().numpy()]
+            )
+
+        with torch.cuda.amp.autocast():
+            logits = _flatten_preds(model_output)
+            loss = self.loss_func(logits, label)
+        _, preds = logits.max(1)
+        correct = (preds == label).sum().item()
+        accuracy = correct / label.size(0)
+        self.log("val_loss", loss, on_step=True, on_epoch=True)
+        self.log("val_acc", accuracy, on_step=True, on_epoch=True)
+        self.val_loss_list.append(loss.detach().cpu().numpy())
+        self.val_acc_list.append(accuracy)
+
+        return loss
+
+    def on_validation_epoch_end(self):
+        self.val_loss = np.array(self.val_loss_list)
+        self.val_acc = np.array(self.val_acc_list)
+        each_me = copy.deepcopy(self.trainer.callback_metrics)
+        curr_epoch = str(self.trainer.current_epoch)
+        if curr_epoch not in self.metrics_dict:
+            self.metrics_dict[curr_epoch] = {}
+        for k, v in each_me.items():
+            self.metrics_dict[curr_epoch][k] = v.detach().cpu().numpy()
+            self.metrics_df.loc[curr_epoch, k] = v.detach().cpu().numpy()
 
     def test_step(self, batch, batch_nb):
         pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
