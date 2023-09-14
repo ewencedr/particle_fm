@@ -1,6 +1,7 @@
 import sys
 
 import lightning as L
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -44,8 +45,12 @@ class ParticleTransformerPL(L.LightningModule):
         self.num_classes = kwargs["num_classes"]
         self.last_embed_dim = kwargs["embed_dims"][-1]
         self.set_learning_rates()
-        self.test_output = []
-        self.test_labels = []
+        self.test_output_list = []
+        self.test_labels_list = []
+        self.train_loss_list = []
+        self.train_acc_list = []
+        self.test_output = None
+        self.test_labels = None
 
     def forward(self, points, features, lorentz_vectors, mask):
         return self.mod(features, v=lorentz_vectors, mask=mask)
@@ -68,28 +73,13 @@ class ParticleTransformerPL(L.LightningModule):
         accuracy = correct / label.size(0)
         self.log("train_loss", loss, on_step=True, on_epoch=True)
         self.log("train_acc", accuracy, on_step=True, on_epoch=True)
+        self.train_loss_list.append(loss.detach().cpu().numpy())
+        self.train_acc_list.append(accuracy)
         return loss
 
-    # def training_step(self, batch, batch_nb):
-    #     X, y, _ = batch
-    #     inputs = [X[k].to("cuda") for k in self.data_config.input_names]
-    #     label = y[self.data_config.label_names[0]].long()
-    #     label = label.to("cuda")
-    #     try:
-    #         label_mask = y[self.data_config.label_names[0] + "_mask"].bool()
-    #     except KeyError:
-    #         label_mask = None
-    #     label = _flatten_label(label, label_mask)
-    #     model_output = self(*inputs)
-    #     with torch.cuda.amp.autocast():
-    #         logits = _flatten_preds(model_output)
-    #         loss = self.loss_func(logits, label)
-    #     _, preds = logits.max(1)
-    #     correct = (preds == label).sum().item()
-    #     accuracy = correct / label.size(0)
-    #     self.log("train_loss", loss, on_step=True, on_epoch=True)
-    #     self.log("train_acc", accuracy, on_step=True, on_epoch=True)
-    #     return loss
+    def on_train_end(self):
+        self.train_loss = np.array(self.train_loss_list)
+        self.train_acc = np.array(self.train_acc_list)
 
     # def validation_step(self, batch, batch_nb):
     #     X, y, _ = batch
@@ -112,16 +102,29 @@ class ParticleTransformerPL(L.LightningModule):
     #     self.log("val_acc", accuracy, on_step=True, on_epoch=True)
     #     return loss
 
-    # def test_step(self, batch, batch_nb):
-    #     X, y, _ = batch
-    #     inputs = [X[k].to("cuda") for k in self.data_config.input_names]
-    #     label = y[self.data_config.label_names[0]].long()
-    #     label = label.to("cuda")
-    #     self.mod.for_inference = True
-    #     self.eval()
-    #     model_output = self(*inputs)
-    #     self.test_output.append(model_output.detach().cpu().numpy())
-    #     self.test_labels.append(label.detach().cpu().numpy())
+    def test_step(self, batch, batch_nb):
+        pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
+        label = jet_labels.long().to("cuda")
+        self.mod.for_inference = True
+        self.eval()
+        model_output = self(
+            points=None,
+            features=pf_features.to("cuda"),
+            lorentz_vectors=pf_vectors.to("cuda"),
+            mask=pf_mask.to("cuda"),
+        )
+        # with torch.cuda.amp.autocast():
+        #     logits = _flatten_preds(model_output)
+        #     loss = self.loss_func(logits, label)
+        # _, preds = logits.max(1)
+        # correct = (preds == label).sum().item()
+        # accuracy = correct / label.size(0)
+        self.test_output_list.append(model_output.detach().cpu().numpy())
+        self.test_labels_list.append(label.detach().cpu().numpy())
+
+    def on_test_end(self):
+        self.test_output = np.concatenate(self.test_output_list)
+        self.test_labels = np.concatenate(self.test_labels_list)
 
     def set_learning_rates(self, lr_fc=0.001, lr=0.0001):
         """Set the learning rates for the fc layer and the rest of the model."""
