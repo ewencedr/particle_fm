@@ -123,14 +123,14 @@ class CNF(nn.Module):
         if model == "epic":
             net_config = {
                 "input_dim": input_dim,
-                "features": features,
+                "feats": features,
                 "latent": latent,
                 "equiv_layers": layers,
                 "hid_d": hidden_dim,
                 "activation": activation,
                 "wrapper_func": wrapper_func,
                 "frequencies": frequencies,
-                "num_particles": num_particles,
+                "num_points": num_particles,
                 "t_local_cat": t_local_cat,
                 "t_global_cat": t_global_cat,
                 "global_cond_dim": global_cond_dim,
