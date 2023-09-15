@@ -10,6 +10,13 @@ import numpy as np
 from src.data.components import (
     normalize_tensor,
 )
+from src.data.components.utils import (
+    get_mjj,
+    get_jet_data,
+    get_nonrel_consts,
+    sort_consts,
+    sort_jets,
+)
 
 
 class ClassifierDataModule(LightningDataModule):
@@ -62,6 +69,7 @@ class ClassifierDataModule(LightningDataModule):
         gen_jet: str = "both",
         ref_jet: str = "both",
         use_shuffled_data: bool = False,
+        use_nonrel_data: bool = False,
     ) -> None:
         """Initialize a `ClassifierDataModule`.
 
@@ -227,6 +235,12 @@ class ClassifierDataModule(LightningDataModule):
                 mask_background = mask_gen[: len(particle_data_mixed)]
 
             labels_background = np.zeros(len(jet_data_background))
+
+            if self.hparams.use_nonrel_data:
+                particle_data_background = get_nonrel_consts(
+                    jet_data_background, particle_data_background
+                )
+                particle_data_mixed = get_nonrel_consts(jet_data_mixed, particle_data_mixed)
 
             if self.hparams.gen_jet == "first":
                 particle_data_background = particle_data_background[:, 0]
