@@ -61,18 +61,6 @@ class ParticleTransformerPL(L.LightningModule):
         self.validation_output = {}
 
         self.metrics_dict = {}
-        self.metrics_df = pd.DataFrame(
-            columns=[
-                "val_loss",
-                "val_loss_epoch",
-                "val_acc",
-                "val_acc_epoch",
-                "train_loss",
-                "train_loss_step",
-                "train_acc",
-                "train_acc_step",
-            ],
-        )
 
     def forward(self, points, features, lorentz_vectors, mask):
         return self.mod(features, v=lorentz_vectors, mask=mask)
@@ -100,6 +88,9 @@ class ParticleTransformerPL(L.LightningModule):
         self.train_loss_list.append(loss.detach().cpu().numpy())
         self.train_acc_list.append(accuracy)
         return loss
+
+    def on_train_epoch_end(self):
+        print(f"Epoch {self.trainer.current_epoch} finished.", end="\r")
 
     def on_train_end(self):
         self.train_loss = np.array(self.train_loss_list)
@@ -156,12 +147,11 @@ class ParticleTransformerPL(L.LightningModule):
         self.val_loss = np.array(self.val_loss_list)
         self.val_acc = np.array(self.val_acc_list)
         each_me = copy.deepcopy(self.trainer.callback_metrics)
-        curr_epoch = str(self.trainer.current_epoch)
-        if curr_epoch not in self.metrics_dict:
-            self.metrics_dict[curr_epoch] = {}
+        curr_step = str(self.trainer.global_step)
+        if curr_step not in self.metrics_dict:
+            self.metrics_dict[curr_step] = {}
         for k, v in each_me.items():
-            self.metrics_dict[curr_epoch][k] = v.detach().cpu().numpy()
-            self.metrics_df.loc[curr_epoch, k] = v.detach().cpu().numpy()
+            self.metrics_dict[curr_step][k] = v.detach().cpu().numpy()
 
     def test_step(self, batch, batch_nb):
         pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
