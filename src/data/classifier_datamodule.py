@@ -70,6 +70,8 @@ class ClassifierDataModule(LightningDataModule):
         ref_jet: str = "both",
         use_shuffled_data: bool = False,
         use_nonrel_data: bool = False,
+        n_signal: int = 0,
+        n_background: int = 100_000,
     ) -> None:
         """Initialize a `ClassifierDataModule`.
 
@@ -177,16 +179,22 @@ class ClassifierDataModule(LightningDataModule):
 
             print(f"Number of background events: {len(jet_data_bckg)}")
             print(f"Number of signal events: {len(jet_data_sgnl)}")
-            n_signal = 0
-            n_background = 100_000
 
             jet_data_mixed = np.concatenate(
-                [jet_data_bckg[:n_background], jet_data_sgnl[:n_signal]]
+                [
+                    jet_data_bckg[: self.hparams.n_background],
+                    jet_data_sgnl[: self.hparams.n_signal],
+                ]
             )
             particle_data_mixed = np.concatenate(
-                [particle_data_bckg[:n_background], particle_data_sgnl[:n_signal]]
+                [
+                    particle_data_bckg[: self.hparams.n_background],
+                    particle_data_sgnl[: self.hparams.n_signal],
+                ]
             )
-            mask_mixed = np.concatenate([mask_bckg[:n_background], mask_sgnl[:n_signal]])
+            mask_mixed = np.concatenate(
+                [mask_bckg[: self.hparams.n_background], mask_sgnl[: self.hparams.n_signal]]
+            )
 
             # shuffle
             random_permutation = np.random.permutation(len(jet_data_mixed))
