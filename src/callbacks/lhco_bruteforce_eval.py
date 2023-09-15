@@ -212,8 +212,11 @@ class LHCOEvaluationCallback(pl.Callback):
                 variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
                 mask=torch.tensor(mask),
                 normalized_data=trainer.datamodule.hparams.normalize,
+                normalize_sigma=trainer.datamodule.hparams.normalize_sigma,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
+                log_pt=trainer.datamodule.hparams.log_pt,
+                pt_standardization=trainer.datamodule.hparams.pt_standardization,
                 **self.generation_config,
             )
 
@@ -277,7 +280,8 @@ class LHCOEvaluationCallback(pl.Callback):
             consts_sorted = sort_by_pt(consts_sorted_jets)
 
             # only take the first 2 highest pt jets
-            consts_awk = consts_sorted[:, :2]
+            nr_jets = 2
+            consts_awk = consts_sorted[:, :nr_jets]
 
             # get max. number of constituents in an event
             max_consts_gen = int(ak.max(ak.num(consts_awk, axis=-1)))
@@ -287,8 +291,21 @@ class LHCOEvaluationCallback(pl.Callback):
             zero_padding = ak.zip(
                 {"pt": 0.0, "eta": 0.0, "phi": 0.0, "mass": 0.0}, with_name="Momentum4D"
             )
-            padded_consts = ak.fill_none(
+            padded_consts1 = ak.fill_none(
                 ak.pad_none(consts_awk, max_consts, clip=True, axis=-1), zero_padding, axis=-1
+            )
+
+            zero_padding_jet = ak.zip(
+                {
+                    "pt": [0.0] * max_consts,
+                    "eta": [0.0] * max_consts,
+                    "phi": [0.0] * max_consts,
+                    "mass": [0.0] * max_consts,
+                },
+                with_name="Momentum4D",
+            )
+            padded_consts = ak.fill_none(
+                ak.pad_none(padded_consts1, nr_jets, clip=True, axis=1), zero_padding_jet, axis=1
             )
 
             # go back to numpy arrays
