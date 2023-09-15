@@ -18,11 +18,11 @@
 
 This is the official repository implementing the EPiC Flow Matching point cloud generative machine learning models from arxiv1111.11111.
 
-EPiC Flow Matching is a [Continuous Normalising Flow](https://arxiv.org/abs/1806.07366) that is trained with a simulation free approach called [Flow Matching](https://arxiv.org/abs/2210.02747). The model uses [DeepSet](https://arxiv.org/abs/1703.06114) based [EPiC layers](https://arxiv.org/abs/2301.08128) for the architecture, which allow for good scalability to high set sizes.
+EPiC Flow Matching is a [Continuous Normalising Flow](https://arxiv.org/abs/1806.07366) that is trained with a simulation-free approach called [Flow Matching](https://arxiv.org/abs/2210.02747). The model uses [DeepSet](https://arxiv.org/abs/1703.06114) based [EPiC layers](https://arxiv.org/abs/2301.08128) for the architecture, which allows for good scalability to high set sizes.
 
-Additionally to the EPiC Flow Matching model, this repository also implements various other loss functions that correspond to other flow matching/diffusion based models, like [Conditional Flow Matching](https://arxiv.org/abs/2302.00482) and [DDIM](https://arxiv.org/abs/2010.02502) based [PC-Jedi](https://arxiv.org/abs/2303.05376).
+Additionally to the EPiC Flow Matching model, this repository also implements various other loss functions that correspond to other flow matching/diffusion-based models, like [Conditional Flow Matching](https://arxiv.org/abs/2302.00482) and [DDIM](https://arxiv.org/abs/2010.02502) based [PC-Jedi](https://arxiv.org/abs/2303.05376).
 
-The models are tested on the [JetNet dataset](https://zenodo.org/record/6975118). The JetNet dataset is used in particle physics to test point cloud generative deep learning architectures. It consists of simulated particle jets produced by proton proton collisions in a simplified detector. The dataset is split into jets originating from tops, light quarks, gluons, W bosons and Z bosons and has a maximum number of 150 particles per jet.
+The models are tested on the [JetNet dataset](https://zenodo.org/record/6975118). The JetNet dataset is used in particle physics to test point cloud generative deep learning architectures. It consists of simulated particle jets produced by proton-proton collisions in a simplified detector. The dataset is split into jets originating from tops, light quarks, gluons, W bosons, and Z bosons and has a maximum number of 150 particles per jet.
 
 This repository uses [pytorch lightning](https://www.pytorchlightning.ai/index.html), [hydra](https://hydra.cc/docs/intro/) for model configurations and supports logging with [comet](https://www.comet.com/site/) and [wandb](https://wandb.ai/site). For a deeper explanation of how to use this repository, please have a look at the [template](https://github.com/ashleve/lightning-hydra-template) directly.
 

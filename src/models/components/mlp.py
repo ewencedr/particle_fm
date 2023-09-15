@@ -151,3 +151,23 @@ class small_cond_ResNet_model(nn.Module):
         x = torch.cat([t, x, cond], dim=-1)
         x = self.mlp5(x)
         return x
+
+
+class cathode_classifier(nn.Module):
+    def __init__(
+        self,
+        features: int = 4,
+        layers: int = [64, 64, 64],
+    ):
+        super().__init__()
+        self.layers = []
+        for nodes in layers:
+            self.layers.append(nn.Linear(features, nodes))
+            self.layers.append(nn.ReLU())
+            features = nodes
+        self.layers.append(nn.Linear(features, 1))
+        # self.layers.append(nn.Sigmoid())
+        self.model_stack = nn.Sequential(*self.layers)
+
+    def forward(self, x):
+        return self.model_stack(x)

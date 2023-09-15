@@ -1,0 +1,42 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=fm_tops
+
+defaults:
+  - override /data: hl_classifier.yaml
+  - override /model: hl_classifier.yaml
+  - override /callbacks: default.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+
+
+tags: ["classifier", "LHCO", "high_level"]
+
+seed: 12345
+
+trainer:
+  min_epochs: 10
+  max_epochs: 100
+  gradient_clip_val: 0.5
+
+task_name: "hl_classifier"
+
+callbacks:
+  early_stopping:
+    monitor: "val/acc"
+    patience: 10
+    mode: "max"
+
+logger:
+  wandb:
+    tags: ${tags}
+    project: "LHCO_classification"
+    group: "lhco_hl_classifier"
+    name: ${task_name}
+  comet:
+    project_name: "LHCO_classification"
+    experiment_name: ${task_name}

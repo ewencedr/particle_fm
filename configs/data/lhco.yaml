@@ -9,6 +9,7 @@ num_particles: 279
 variable_jet_sizes: True
 centering: False
 normalize: True
+normalize_sigma: 5
 conditioning: True
 use_all_data: True
 relative_coords: True
@@ -16,3 +17,6 @@ jet_type: "x"
 shuffle_data: True
 use_calculated_base_distribution: True
 file_suffix_processed_data: ""
+log_pt: False
+pt_standardization: False
+multiplicity_conditioning: False

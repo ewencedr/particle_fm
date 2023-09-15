@@ -2,23 +2,18 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
-from torchvision.datasets import MNIST
-from torchvision.transforms import transforms
+from torch.utils.data import DataLoader, Dataset
 import h5py
 import energyflow as ef
 import numpy as np
 
+from src.data.components import (
+    normalize_tensor,
+)
+
 
 class ClassifierDataModule(LightningDataModule):
-    """`LightningDataModule` for the MNIST dataset.
-
-    The MNIST database of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples.
-    It is a subset of a larger set available from NIST. The digits have been size-normalized and centered in a
-    fixed-size image. The original black and white images from NIST were size normalized to fit in a 20x20 pixel box
-    while preserving their aspect ratio. The resulting images contain grey levels as a result of the anti-aliasing
-    technique used by the normalization algorithm. the images were centered in a 28x28 image by computing the center of
-    mass of the pixels, and translating the image so as to position this point at the center of the 28x28 field.
+    """`LightningDataModule` for the LHCO dataset.
 
     A `LightningDataModule` implements 7 key methods:
 
@@ -58,12 +53,17 @@ class ClassifierDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        train_val_test_split: Tuple[int, int, int] = (55_000, 5_000, 10_000),
-        batch_size: int = 64,
+        train_val_test_split: Tuple[float, float, float] = (0.70, 0.20, 0.10),
+        batch_size: int = 128,
         num_workers: int = 0,
         pin_memory: bool = False,
+        gendatafile: str = "idealized_LHCO",
+        idealized: bool = False,
+        gen_jet: str = "both",
+        ref_jet: str = "both",
+        use_shuffled_data: bool = False,
     ) -> None:
-        """Initialize a `MNISTDataModule`.
+        """Initialize a `ClassifierDataModule`.
 
         :param data_dir: The data directory. Defaults to `"data/"`.
         :param train_val_test_split: The train, validation and test split. Defaults to `(55_000, 5_000, 10_000)`.
@@ -103,10 +103,33 @@ class ClassifierDataModule(LightningDataModule):
 
         :param stage: The stage to setup. Either `"fit"`, `"validate"`, `"test"`, or `"predict"`. Defaults to ``None``.
         """
+
+        if self.hparams.ref_jet == "both" and self.hparams.gen_jet == "both":
+            self.jets_to_use = "both"
+        else:
+            self.jets_to_use = ""
+
+        if self.hparams.gen_jet not in ["first", "second", "both"]:
+            raise ValueError("gen_jet must be one of 'first' or 'second' or 'both'")
+
+        if self.hparams.ref_jet not in ["first", "second", "both"]:
+            raise ValueError("ref_jet must be one of 'first' or 'second', or 'both'")
+
+        if self.hparams.gen_jet == "both" and self.hparams.ref_jet != "both":
+            raise ValueError("gen_jet must be 'both' if ref_jet is 'both'")
+        if self.hparams.gen_jet != "both" and self.hparams.ref_jet == "both":
+            raise ValueError("ref_jet must be 'both' if gen_jet is 'both'")
+
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            path_bckg = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
-            path_sgnl = f"{self.hparams.data_dir}/lhco/final_data/processed_data_signal_rel.h5"
+            if self.hparams.use_shuffled_data:
+                path_bckg = f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel_shuffled.h5"
+                path_sgnl = f"{self.hparams.data_dir}/lhco/final_data/processed_data_signal_rel_shuffled.h5"
+            else:
+                path_bckg = (
+                    f"{self.hparams.data_dir}/lhco/final_data/processed_data_background_rel.h5"
+                )
+                path_sgnl = f"{self.hparams.data_dir}/lhco/final_data/processed_data_signal_rel.h5"
 
             with h5py.File(path_bckg, "r") as f:
                 jet_data_bckg = f["jet_data"][:]
@@ -142,7 +165,7 @@ class ClassifierDataModule(LightningDataModule):
 
             print(f"Number of background events: {len(jet_data_bckg)}")
             print(f"Number of signal events: {len(jet_data_sgnl)}")
-            n_signal = 2000
+            n_signal = 0
             n_background = 100_000
 
             jet_data_mixed = np.concatenate(
@@ -154,40 +177,138 @@ class ClassifierDataModule(LightningDataModule):
             mask_mixed = np.concatenate([mask_bckg[:n_background], mask_sgnl[:n_signal]])
 
             # shuffle
-            np.random_permutation = np.random.permutation(len(jet_data_mixed))
-            jet_data_mixed = jet_data_mixed[np.random_permutation]
-            particle_data_mixed = particle_data_mixed[np.random_permutation]
-            mask_mixed = mask_mixed[np.random_permutation]
+            random_permutation = np.random.permutation(len(jet_data_mixed))
+            jet_data_mixed = jet_data_mixed[random_permutation]
+            particle_data_mixed = particle_data_mixed[random_permutation]
+            mask_mixed = mask_mixed[random_permutation]
 
             labels_mixed = np.ones(len(jet_data_mixed))
 
-            # Load generated data for test
+            # Load generated data
+            path_gen = f"{self.hparams.data_dir}/lhco/generated/{self.hparams.gendatafile}.h5"
+            print(f"Loading generated data from {path_gen}")
 
-            # TODO
+            if self.hparams.use_shuffled_data:
+                with h5py.File(path_gen, "r") as f:
+                    jet_data_gen = f["jet_features"][:]
+                    particle_data_gen = f["particle_features"][:]  # pt, eta, phi
+                    # particle_data_gen_raw = f["data_raw"][:]  # pt, eta, phi
+            else:
+                with h5py.File(path_gen, "r") as f:
+                    jet_data_gen = f["jet_features"][:]
+                    particle_data_gen = f["particle_features"][:]  # pt, eta, phi
+                    particle_data_gen_raw = f["data_raw"][:]  # pt, eta, phi
 
-            # if idealized:
+                print(f"particle data shape: {particle_data_gen.shape}")
+                # if self.hparams.jets_to_use != "both":
+                #    particle_data_gen = particle_data_gen_raw
+                particle_data_gen = particle_data_gen_raw
 
-            jet_data_background = jet_data_bckg[:n_background]
-            particle_data_background = particle_data_bckg[:n_background]
-            mask_background = mask_bckg[:n_background]
+            jet_data_gen = jet_data_gen[..., :4]
+
+            mask_gen = np.expand_dims(np.array(particle_data_gen[..., 0] != 0), axis=-1).astype(
+                int
+            )
+
+            # TODO length of both classes should not need to be the same
+            if self.hparams.idealized:
+                print(f"Using background as background")
+                jet_data_background = jet_data_bckg[: len(particle_data_mixed)]
+                particle_data_background = particle_data_bckg[: len(particle_data_mixed)]
+                mask_background = mask_bckg[: len(particle_data_mixed)]
+            else:
+                print("Using generated data as background")
+                jet_data_background = jet_data_gen[: len(particle_data_mixed)]
+                particle_data_background = particle_data_gen[: len(particle_data_mixed)]
+                mask_background = mask_gen[: len(particle_data_mixed)]
 
             labels_background = np.zeros(len(jet_data_background))
 
+            # jet_data_background += np.random.normal(0, 1, jet_data_background.shape)
+            # particle_data_background += np.random.normal(0, 1, particle_data_background.shape)
+
+            # if self.hparams.jets_to_use == "first":
+            #    particle_data_background = particle_data_background[:, 0]
+            #    jet_data_background = jet_data_background[:, 0]
+            #    mask_background = mask_background[:, 0]
+            # elif self.hparams.jets_to_use == "second":
+            #    particle_data_background = particle_data_background[:, 1]
+            #    jet_data_background = jet_data_background[:, 1]
+            #    mask_background = mask_background[:, 1]
+
+            if self.hparams.gen_jet == "first":
+                particle_data_background = particle_data_background[:, 0]
+                jet_data_background = jet_data_background[:, 0]
+                mask_background = mask_background[:, 0]
+            elif self.hparams.gen_jet == "second":
+                particle_data_background = particle_data_background[:, 1]
+                jet_data_background = jet_data_background[:, 1]
+                mask_background = mask_background[:, 1]
+
+            if self.hparams.ref_jet == "first":
+                particle_data_mixed = particle_data_mixed[:, 0]
+                jet_data_mixed = jet_data_mixed[:, 0]
+                mask_mixed = mask_mixed[:, 0]
+            elif self.hparams.ref_jet == "second":
+                particle_data_mixed = particle_data_mixed[:, 1]
+                jet_data_mixed = jet_data_mixed[:, 1]
+                mask_mixed = mask_mixed[:, 1]
+
+            # concatenate both classes
+            print(f"particle_data_mixed.shape: {particle_data_mixed.shape}")
+            print(f"particle_data_background.shape: {particle_data_background.shape}")
             input_data = np.concatenate([particle_data_mixed, particle_data_background])
             input_mask = np.concatenate([mask_mixed, mask_background])
             input_labels = np.concatenate([labels_mixed, labels_background])
 
-            data_train, data_val = np.split(
+            # shuffle data
+            # needed because data is ordered by class
+            perm = np.random.permutation(len(input_data))
+            input_data = input_data[perm]
+            input_mask = input_mask[perm]
+            input_labels = input_labels[perm]
+
+            print(f"input_data.shape: {input_data.shape}")
+            print(f"input_mask.shape: {input_mask.shape}")
+            print(f"input_labels.shape: {input_labels.shape}")
+
+            # if self.hparams.jets_to_use == "first":
+            #    input_data = input_data[:, 0]
+            #    input_mask = input_mask[:, 0]
+            # elif self.hparams.jets_to_use == "second":
+            #    input_data = input_data[:, 1]
+            #    input_mask = input_mask[:, 1]
+
+            print(f"input_data.shape: {input_data.shape}")
+            print(f"input_mask.shape: {input_mask.shape}")
+            print(f"input_labels.shape: {input_labels.shape}")
+
+            if len(input_data) != len(input_mask) or len(input_data) != len(input_labels):
+                raise ValueError("Data, mask and labels must have the same length.")
+
+            n_samples_val = int(self.hparams.train_val_test_split[1] * len(input_data))
+            n_samples_test = int(self.hparams.train_val_test_split[2] * len(input_data))
+
+            data_train, data_val, data_test = np.split(
                 input_data,
-                [int(0.8 * len(input_data))],
+                [
+                    len(input_data) - n_samples_val - n_samples_test,
+                    len(input_data) - n_samples_test,
+                ],
             )
-            mask_train, mask_val = np.split(
+            mask_train, mask_val, mask_test = np.split(
                 input_mask,
-                [int(0.8 * len(input_data))],
+                [
+                    len(input_mask) - n_samples_val - n_samples_test,
+                    len(input_mask) - n_samples_test,
+                ],
             )
-            labels_train, labels_val = np.split(
+            labels_train, labels_val, labels_test = np.split(
                 input_labels,
-                [int(0.8 * len(input_data))],
+                [
+                    len(input_labels) - n_samples_val - n_samples_test,
+                    len(input_labels) - n_samples_test,
+                ],
             )
 
             print(f"data_train.shape: {data_train.shape}")
@@ -196,24 +317,46 @@ class ClassifierDataModule(LightningDataModule):
             print(f"data_val.shape: {data_val.shape}")
             print(f"mask_val.shape: {mask_val.shape}")
             print(f"labels_val.shape: {labels_val.shape}")
+            print(f"data_test.shape: {data_test.shape}")
+            print(f"mask_test.shape: {mask_test.shape}")
+            print(f"labels_test.shape: {labels_test.shape}")
 
-            mean = np.mean(data_train, axis=(0, 1))
-            std = np.std(data_train, axis=(0, 1))
+            # preprocess data
+            full_mask_train = np.repeat(mask_train, repeats=3, axis=-1) == 0
+            full_mask_train = np.ma.make_mask(full_mask_train, shrink=False)
+            masked_data_train = np.ma.masked_array(data_train, full_mask_train)
 
-            normalize_sigma = 5
+            if self.jets_to_use != "both":
+                mean = np.ma.mean(masked_data_train, axis=(0, 1))
+                std = np.ma.std(masked_data_train, axis=(0, 1))
+            else:
+                mean = np.ma.mean(masked_data_train, axis=(0, 1, 2))
+                std = np.ma.std(masked_data_train, axis=(0, 1, 2))
 
-            data_train = (data_train - mean) / (normalize_sigma * std)
-            data_val = (data_val - mean) / (normalize_sigma * std)
+            data_train = normalize_tensor(
+                torch.tensor(data_train).clone(), torch.tensor(mean), torch.tensor(std)
+            )
+            data_val = normalize_tensor(
+                torch.tensor(data_val).clone(), torch.tensor(mean), torch.tensor(std)
+            )
+            data_test = normalize_tensor(
+                torch.tensor(data_test).clone(), torch.tensor(mean), torch.tensor(std)
+            )
 
             self.data_train = torch.utils.data.TensorDataset(
-                torch.from_numpy(data_train).float(),
-                torch.from_numpy(mask_train).float(),
+                data_train.float(),
+                torch.from_numpy(mask_train),
                 torch.from_numpy(labels_train).float(),
             )
             self.data_val = torch.utils.data.TensorDataset(
-                torch.from_numpy(data_val).float(),
-                torch.from_numpy(mask_val).float(),
+                data_val.float(),
+                torch.from_numpy(mask_val),
                 torch.from_numpy(labels_val).float(),
+            )
+            self.data_test = torch.utils.data.TensorDataset(
+                data_test.float(),
+                torch.from_numpy(mask_test),
+                torch.from_numpy(labels_test).float(),
             )
 
     def train_dataloader(self) -> DataLoader[Any]:

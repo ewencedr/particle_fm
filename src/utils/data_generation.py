@@ -10,7 +10,8 @@ from tqdm import tqdm
 
 from src.data.components.utils import inverse_normalize_tensor
 
-# TODO put ODE solver in config
+# TODO put ODE solver in config dict
+# TODO create pre-processing class for data
 
 
 def generate_data(
@@ -25,6 +26,8 @@ def generate_data(
     normalize_sigma: int = 5,
     means=None,
     stds=None,
+    log_pt: bool = False,
+    pt_standardization: bool = False,
     shuffle_mask: bool = False,
     verbose: bool = True,
     ode_solver: str = "midpoint",
@@ -43,6 +46,8 @@ def generate_data(
         normalized_data (bool, optional): Normalized data. Defaults to False.
         normalize_sigma (int, optional): Sigma for normalized data. Defaults to 5.
         means (_type_, optional): Means for normalized data. Defaults to None.
+        log_pt (bool, optional): Logarithmic pt. Defaults to False.
+        pt_standardization (bool, optional): Standardize pt differently. Defaults to False.
         stds (_type_, optional): Standard deviations for normalized data. Defaults to None.
         shuffle_mask (bool, optional): Shuffle mask during generation. Defaults to False.
         verbose (bool, optional): Print generation progress. Defaults to True.
@@ -98,9 +103,19 @@ def generate_data(
                 .cpu()
             )
         if normalized_data:
-            jet_samples_batch = inverse_normalize_tensor(
-                jet_samples_batch, means, stds, sigma=normalize_sigma
-            )
+            if pt_standardization:
+                jet_samples_batch[..., :2] = inverse_normalize_tensor(
+                    jet_samples_batch[..., :2], means[:2], stds[:2], sigma=10
+                )
+                jet_samples_batch[..., 2] = inverse_normalize_tensor(
+                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=5
+                )
+            else:
+                jet_samples_batch = inverse_normalize_tensor(
+                    jet_samples_batch, means, stds, sigma=normalize_sigma
+                )
+            if log_pt:
+                jet_samples_batch[..., 2] = 1.0 - np.exp(jet_samples_batch[..., 2])
         if variable_set_sizes:
             jet_samples_batch = jet_samples_batch * mask_batch
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))
@@ -135,9 +150,19 @@ def generate_data(
                 .cpu()
             )
         if normalized_data:
-            jet_samples_batch = inverse_normalize_tensor(
-                jet_samples_batch, means, stds, sigma=normalize_sigma
-            )
+            if pt_standardization:
+                jet_samples_batch[..., :2] = inverse_normalize_tensor(
+                    jet_samples_batch[..., :2], means[:2], stds[:2], sigma=10
+                )
+                jet_samples_batch[..., 2] = inverse_normalize_tensor(
+                    jet_samples_batch[..., 2], [means[2]], [stds[2]], sigma=5
+                )
+            else:
+                jet_samples_batch = inverse_normalize_tensor(
+                    jet_samples_batch, means, stds, sigma=normalize_sigma
+                )
+            if log_pt:
+                jet_samples_batch[..., 2] = 1.0 - np.exp(jet_samples_batch[..., 2])
         if variable_set_sizes:
             jet_samples_batch = jet_samples_batch * mask_batch
         particle_data_sampled = torch.cat((particle_data_sampled, jet_samples_batch))

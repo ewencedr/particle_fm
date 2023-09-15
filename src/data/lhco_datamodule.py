@@ -79,11 +79,14 @@ class LHCODataModule(LightningDataModule):
         shuffle_data: bool = True,
         window_left: float = 3.3e3,
         window_right: float = 3.7e3,
+        multiplicity_conditioning: bool = False,
         # preprocessing
         centering: bool = False,
         normalize: bool = False,
         normalize_sigma: int = 5,
         use_calculated_base_distribution: bool = True,
+        log_pt: bool = False,
+        pt_standardization: bool = False,
     ):
         super().__init__()
 
@@ -119,6 +122,9 @@ class LHCODataModule(LightningDataModule):
         self.tensor_conditioning_val_sr: Optional[torch.Tensor] = None
         self.tensor_conditioning_test_sr: Optional[torch.Tensor] = None
 
+        self.jet_data_raw: Optional[np.array] = None
+        self.particle_data_raw: Optional[np.array] = None
+        self.mask_raw: Optional[np.array] = None
         self.jet_data_sr_raw: Optional[np.array] = None
         self.particle_data_sr_raw: Optional[np.array] = None
         self.mask_sr_raw: Optional[np.array] = None
@@ -185,6 +191,14 @@ class LHCODataModule(LightningDataModule):
                 particle_data_sr = particle_data2[args_to_keep_sr]
                 mask_sr = mask2[args_to_keep_sr]
 
+                # add particle multiplicity to jet data
+                if self.hparams.multiplicity_conditioning:
+                    pm = np.sum(mask, axis=-2)
+                    jet_data = np.concatenate((jet_data, pm), axis=-1)
+
+                    pm_sr = np.sum(mask_sr, axis=-2)
+                    jet_data_sr = np.concatenate((jet_data_sr, pm_sr), axis=-1)
+
                 if self.hparams.jet_type == "all_one_pc":
                     particle_data = particle_data.reshape(
                         particle_data.shape[0], -1, particle_data.shape[-1]
@@ -193,6 +207,15 @@ class LHCODataModule(LightningDataModule):
                     if self.hparams.conditioning:
                         raise ValueError("Conditioning does not make sense for one_pc")
                 elif self.hparams.jet_type == "all":
+                    particle_data = particle_data[:, : self.hparams.num_particles, :]
+                    particle_data_sr = particle_data_sr[:, : self.hparams.num_particles, :]
+                    mask = mask[:, : self.hparams.num_particles, :]
+                    mask_sr = mask_sr[:, : self.hparams.num_particles, :]
+
+                    self.jet_data_raw = jet_data.copy()
+                    self.particle_data_raw = particle_data.copy()
+                    self.mask_raw = mask.copy()
+
                     jet_data = np.reshape(jet_data, (-1, jet_data.shape[-1]), order="F")
                     particle_data = np.reshape(
                         particle_data,
@@ -222,6 +245,19 @@ class LHCODataModule(LightningDataModule):
                     particle_data_sr = particle_data_sr[:, 0]
                     mask_sr = mask_sr[:, 0]
                     jet_data_sr = jet_data_sr[:, 0]
+
+                    particle_data = particle_data[:, : self.hparams.num_particles, :]
+                    particle_data_sr = particle_data_sr[:, : self.hparams.num_particles, :]
+                    mask = mask[:, : self.hparams.num_particles, :]
+                    mask_sr = mask_sr[:, : self.hparams.num_particles, :]
+
+                    self.jet_data_raw = jet_data.copy()
+                    self.particle_data_raw = particle_data.copy()
+                    self.mask_raw = mask.copy()
+
+                    self.jet_data_sr_raw = jet_data_sr.copy()
+                    self.particle_data_sr_raw = particle_data_sr.copy()
+                    self.mask_sr_raw = mask_sr.copy()
                 elif self.hparams.jet_type == "y":
                     particle_data = particle_data[:, 1]
                     mask = mask[:, 1]
@@ -230,6 +266,19 @@ class LHCODataModule(LightningDataModule):
                     particle_data_sr = particle_data_sr[:, 1]
                     mask_sr = mask_sr[:, 1]
                     jet_data_sr = jet_data_sr[:, 1]
+
+                    particle_data = particle_data[:, : self.hparams.num_particles, :]
+                    particle_data_sr = particle_data_sr[:, : self.hparams.num_particles, :]
+                    mask = mask[:, : self.hparams.num_particles, :]
+                    mask_sr = mask_sr[:, : self.hparams.num_particles, :]
+
+                    self.jet_data_raw = jet_data.copy()
+                    self.particle_data_raw = particle_data.copy()
+                    self.mask_raw = mask.copy()
+
+                    self.jet_data_sr_raw = jet_data_sr.copy()
+                    self.particle_data_sr_raw = particle_data_sr.copy()
+                    self.mask_sr_raw = mask_sr.copy()
                 else:
                     raise ValueError("Unknown jet type")
 
@@ -336,43 +385,113 @@ class LHCODataModule(LightningDataModule):
                 tensor_conditioning_test_sr = torch.zeros(len(dataset_test_sr))
 
             if self.hparams.normalize:
-                means = np.ma.mean(dataset_train, axis=(0, 1))
-                stds = np.ma.std(dataset_train, axis=(0, 1))
+                pt_dataset_train = dataset_train.copy()
+                pt_dataset_val = dataset_val.copy()
+                pt_dataset_train_sr = dataset_train_sr.copy()
+                pt_dataset_val_sr = dataset_val_sr.copy()
+                if self.hparams.log_pt:
+                    pt_dataset_train[:, :, 2] = np.ma.log(1.0 - pt_dataset_train[:, :, 2]).filled(
+                        0
+                    )
+                    pt_dataset_val[:, :, 2] = np.ma.log(1.0 - pt_dataset_val[:, :, 2]).filled(0)
+                    pt_dataset_train_sr[:, :, 2] = np.ma.log(
+                        1.0 - pt_dataset_train_sr[:, :, 2]
+                    ).filled(0)
+                    pt_dataset_val_sr[:, :, 2] = np.ma.log(
+                        1.0 - pt_dataset_val_sr[:, :, 2]
+                    ).filled(0)
 
-                normalized_dataset_train = normalize_tensor(
-                    np.ma.copy(dataset_train), means, stds, sigma=self.hparams.normalize_sigma
-                )
+                means = np.ma.mean(pt_dataset_train, axis=(0, 1))
+                stds = np.ma.std(pt_dataset_train, axis=(0, 1))
+
+                if self.hparams.pt_standardization:
+                    normalized_dataset_train = np.ma.copy(pt_dataset_train)
+                    normalized_dataset_train[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_train[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        5,
+                    )
+                    normalized_dataset_train_sr = np.ma.copy(pt_dataset_train_sr)
+                    normalized_dataset_train_sr[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train_sr[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_train_sr[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_train_sr[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        5,
+                    )
+                else:
+                    normalized_dataset_train = normalize_tensor(
+                        np.ma.copy(pt_dataset_train),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+                    normalized_dataset_train_sr = normalize_tensor(
+                        np.ma.copy(pt_dataset_train_sr),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
                 mask_train = np.ma.getmask(normalized_dataset_train) == 0
                 mask_train = mask_train.astype(int)
                 mask_train = torch.tensor(np.expand_dims(mask_train[..., 0], axis=-1))
                 tensor_train = torch.tensor(normalized_dataset_train)
 
-                normalized_dataset_train_sr = normalize_tensor(
-                    np.ma.copy(dataset_train_sr), means, stds, sigma=self.hparams.normalize_sigma
-                )
                 mask_train_sr = np.ma.getmask(normalized_dataset_train_sr) == 0
                 mask_train_sr = mask_train_sr.astype(int)
                 mask_train_sr = torch.tensor(np.expand_dims(mask_train_sr[..., 0], axis=-1))
                 tensor_train_sr = torch.tensor(normalized_dataset_train_sr)
 
                 # Validation
-                normalized_dataset_val = normalize_tensor(
-                    np.ma.copy(dataset_val),
-                    means,
-                    stds,
-                    sigma=self.hparams.normalize_sigma,
-                )
+                if self.hparams.pt_standardization:
+                    normalized_dataset_val = np.ma.copy(pt_dataset_val)
+                    normalized_dataset_val[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_val[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        2,
+                    )
+                    normalized_dataset_val_sr = np.ma.copy(pt_dataset_val_sr)
+                    normalized_dataset_val_sr[..., :2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val_sr[..., :2]), means[:2], stds[:2], 10
+                    )
+                    normalized_dataset_val_sr[..., 2] = normalize_tensor(
+                        np.ma.copy(normalized_dataset_val_sr[..., 2]),
+                        [means[2]],
+                        [stds[2]],
+                        2,
+                    )
+
+                else:
+                    normalized_dataset_val = normalize_tensor(
+                        np.ma.copy(pt_dataset_val),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
+                    normalized_dataset_val_sr = normalize_tensor(
+                        np.ma.copy(pt_dataset_val_sr),
+                        means,
+                        stds,
+                        sigma=self.hparams.normalize_sigma,
+                    )
+
                 mask_val = np.ma.getmask(normalized_dataset_val) == 0
                 mask_val = mask_val.astype(int)
                 mask_val = torch.tensor(np.expand_dims(mask_val[..., 0], axis=-1))
                 tensor_val = torch.tensor(normalized_dataset_val)
 
-                normalized_dataset_val_sr = normalize_tensor(
-                    np.ma.copy(dataset_val_sr),
-                    means,
-                    stds,
-                    sigma=self.hparams.normalize_sigma,
-                )
                 mask_val_sr = np.ma.getmask(normalized_dataset_val_sr) == 0
                 mask_val_sr = mask_val_sr.astype(int)
                 mask_val_sr = torch.tensor(np.expand_dims(mask_val_sr[..., 0], axis=-1))
@@ -524,6 +643,8 @@ class LHCODataModule(LightningDataModule):
             self.tensor_conditioning_train_sr = tensor_conditioning_train_sr
             self.tensor_conditioning_val_sr = tensor_conditioning_val_sr
             self.tensor_conditioning_test_sr = tensor_conditioning_test_sr
+            self.mjj_sr = mjj[args_to_keep_sr]
+            self.mjj = mjj[args_to_keep]
 
     def train_dataloader(self):
         return DataLoader(
