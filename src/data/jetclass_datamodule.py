@@ -317,13 +317,22 @@ class JetClassDataModule(LightningDataModule):
                     pylogger.info("From file: %s", self.hparams.conditioning_gen_filename)
                     with h5py.File(self.hparams.conditioning_gen_filename, "r") as f:
                         jet_features_gen = f["jet_features"][:]
+                        part_mask_gen = f["part_mask"][:]
                         index_jet_type = get_feat_index(f["jet_features"].attrs["names_jet_features"], "jet_type")
+                        pylogger.info(
+                            "Filtering conditioning data for generation for jet types: %s",
+                            self.hparams.used_jet_types
+                        )
                         jet_types_mask = np.isin(jet_features_gen[:, index_jet_type], used_jet_types_values)  # noqa: E501
                         conditioning_gen, _ = self._handle_conditioning(
-                            f["jet_features"][jet_types_mask], f["jet_features"].attrs["names_jet_features"], names_labels
+                            jet_features_gen[jet_types_mask],
+                            f["jet_features"].attrs["names_jet_features"],
+                            names_labels
                         )
-                        self.mask_gen = torch.tensor(f["part_mask"][jet_types_mask], dtype=torch.float32)
+                        pylogger.info("Number of jets in conditioning gen data: %s", len(conditioning_gen))
+                        self.mask_gen = torch.tensor(part_mask_gen[jet_types_mask], dtype=torch.float32)
                         self.tensor_conditioning_gen = torch.tensor(conditioning_gen, dtype=torch.float32)
+                        pylogger.info("Done processing the conditioning data.")
                 else:
                     self.mask_gen = None
                     self.tensor_conditioning_gen = None
@@ -532,6 +541,7 @@ class JetClassDataModule(LightningDataModule):
         else:
             categories = np.unique(jet_data[:, 0])
 
+        pylogger.info("Using one-hot encoding for jet types: %s", categories)
         jet_data_one_hot = one_hot_encode(
             jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
         )
