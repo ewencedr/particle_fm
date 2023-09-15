@@ -118,6 +118,43 @@ class JetClassClassifierDataModule(LightningDataModule):
                 y = label_sim
                 y[: len(y) // 2] = 1
 
+            # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
+            pt = (
+                x_features[:, :, idx_part("part_ptrel")]
+                * cond_features[:, idx_cond("jet_pt")][:, None]
+                * pf_mask[:, :, 0]
+            )
+            eta = (
+                x_features[:, :, idx_part("part_etarel")]
+                + cond_features[:, idx_cond("jet_eta")][:, None] * pf_mask[:, :, 0]
+            )
+            rng = np.random.default_rng(1234)
+            phi = (
+                x_features[:, :, idx_part("part_dphi")]
+                + rng.uniform(0, 2 * np.pi, size=(len(pf_mask), 1)) * pf_mask[:, :, 0]
+            )
+            px = pt * np.cos(phi) * pf_mask[:, :, 0]
+            py = pt * np.sin(phi) * pf_mask[:, :, 0]
+            pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
+            energy = (
+                x_features[:, :, idx_part("part_energyrel")]
+                * cond_features[:, idx_cond("jet_energy")][:, None]
+                * pf_mask[:, :, 0]
+            )
+            # ensure that energy >= momentum
+            p = np.sqrt(px**2 + py**2 + pz**2)
+            energy_clipped = np.clip(energy, a_min=p, a_max=None)
+
+            pf_vectors = np.concatenate(
+                [
+                    px[..., None],
+                    py[..., None],
+                    pz[..., None],
+                    energy_clipped[..., None],
+                ],
+                axis=-1,
+            )
+
             # create the features array as needed by ParT
             pf_features = np.concatenate(
                 [
@@ -133,16 +170,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                     )
                     * 0.7,
                     # log ( part_energy )
-                    (
-                        (
-                            np.log(
-                                x_features[:, :, idx_part("part_energyrel")]
-                                * cond_features[:, idx_cond("jet_energy")][:, None]
-                            )
-                        )[..., None]
-                        - 2.0
-                    )
-                    * 0.7,
+                    ((np.log(energy_clipped))[..., None] - 2.0) * 0.7,
                     # log ( part_ptrel )
                     (np.log(x_features[:, :, idx_part("part_ptrel")])[..., None] + 4.7) * 0.7,
                     # log ( part_energyrel )
@@ -207,6 +235,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             permutation = rng.permutation(len(x_features))
             x_features = x_features[permutation]
             pf_features = pf_features[permutation]
+            pf_vectors = pf_vectors[permutation]
             pf_points = pf_points[permutation]
             pf_mask = pf_mask[permutation]
             y = y[permutation]
@@ -215,44 +244,6 @@ class JetClassClassifierDataModule(LightningDataModule):
             # remove inf and nan values
             # TODO: check if this is ok with JetClass...
             pf_features = np.nan_to_num(pf_features, nan=0.0, posinf=0.0, neginf=0.0)
-            vector.register_awkward()
-
-            # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
-            pt = (
-                x_features[:, :, idx_part("part_ptrel")]
-                * cond_features[:, idx_cond("jet_pt")][:, None]
-                * pf_mask[:, :, 0]
-            )
-            eta = (
-                x_features[:, :, idx_part("part_etarel")]
-                + cond_features[:, idx_cond("jet_eta")][:, None] * pf_mask[:, :, 0]
-            )
-            rng = np.random.default_rng(1234)
-            phi = (
-                x_features[:, :, idx_part("part_dphi")]
-                + rng.uniform(0, 2 * np.pi, size=(len(pf_features), 1)) * pf_mask[:, :, 0]
-            )
-            px = pt * np.cos(phi) * pf_mask[:, :, 0]
-            py = pt * np.sin(phi) * pf_mask[:, :, 0]
-            pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
-            energy = (
-                x_features[:, :, idx_part("part_energyrel")]
-                * cond_features[:, idx_cond("jet_energy")][:, None]
-                * pf_mask[:, :, 0]
-            )
-            # ensure that energy >= momentum
-            p = np.sqrt(px**2 + py**2 + pz**2)
-            energy = np.clip(energy, a_min=p, a_max=None)
-
-            pf_vectors = np.concatenate(
-                [
-                    px[..., None],
-                    py[..., None],
-                    pz[..., None],
-                    energy[..., None],
-                ],
-                axis=-1,
-            )
 
         # Swap indices of particle-level arrays to get required shape for
         # ParT/ParticleNet: (n_jets, n_features, n_particles)
