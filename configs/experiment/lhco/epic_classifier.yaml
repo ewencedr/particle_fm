@@ -1,0 +1,52 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=fm_tops
+
+defaults:
+  - override /data: classifier_data.yaml
+  - override /model: epic_classifier.yaml
+  - override /callbacks: default.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+
+
+tags: ["classifier", "LHCO", "EPiC"]
+
+seed: 12345
+
+trainer:
+  min_epochs: 10
+  max_epochs: 300
+  gradient_clip_val: 0.5
+
+model:
+  net_config: 
+    num_sup_sets: 1
+
+callbacks:
+  early_stopping:
+    monitor: val/loss
+    patience: 20
+    mode: min
+    verbose: true
+
+data:
+  #gendatafile: "lhco-xy-10layer-256latent-logpt-new2m_sr-midpoint-300_shuffled"
+  gendatafile: "lhco-xy-10layer-256latent-logpt-nnew_sr-midpoint-300"
+  #gendatafile: "FPCD_LHCO_SR_shuffled"
+
+task_name: "epic_classifier"
+
+logger:
+  wandb:
+    tags: ${tags}
+    project: "LHCO_epic_classifier"
+    group: "lhco_flow_matching"
+    name: ${task_name}
+  comet:
+    project_name: "LHCO_epic_classifier"
+    experiment_name: ${task_name}

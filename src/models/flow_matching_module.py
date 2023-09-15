@@ -13,6 +13,7 @@ from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_encoder, IterativeNormLayer
+from .components.transformer import Transformer
 from .components.losses import (
     ConditionalFlowMatchingLoss,
     ConditionalFlowMatchingOTLoss,
@@ -69,6 +70,7 @@ class CNF(nn.Module):
     """Continuous Normalizing Flow with EPiC Generator or Transformer.
 
     Args:
+        model (str, optional): Model to use. Defaults to "epic".
         features (int): Data features. Defaults to 3.
         num_particles (int, optional): Set cardinality. Defaults to 150.
         frequencies (int, optional): Frequency for time. Basically half the size of the time vector that is added to the model. Defaults to 6.
@@ -87,10 +89,12 @@ class CNF(nn.Module):
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
         sum_scale (float, optional): Factor that is multiplied with the sum pooling. Defaults to 1e-2.
+        net_config (Mapping, optional): Config for Architecture. Defaults to {}.
     """
 
     def __init__(
         self,
+        model: str = "epic",
         features: int = 3,
         num_particles: int = 150,
         frequencies: int = 6,
@@ -109,29 +113,39 @@ class CNF(nn.Module):
         loss_type: str = "FM-OT",
         diff_config: Mapping[str, Any] = {"max_sr": 0.999, "min_sr": 0.02},
         sum_scale: float = 1e-2,
+        net_config: Mapping[str, Any] = {},
     ):
         super().__init__()
         self.latent = latent
         self.add_time_to_input = add_time_to_input
         input_dim = features + 2 * frequencies if self.add_time_to_input else features
 
-        self.net = EPiC_encoder(
-            input_dim=input_dim,
-            feats=features,
-            latent=latent,
-            equiv_layers=layers,
-            hid_d=hidden_dim,
-            activation=activation,
-            wrapper_func=wrapper_func,
-            frequencies=frequencies,
-            num_points=num_particles,
-            t_local_cat=t_local_cat,
-            t_global_cat=t_global_cat,
-            global_cond_dim=global_cond_dim,
-            local_cond_dim=local_cond_dim,
-            dropout=dropout,
-            sum_scale=sum_scale,
-        )
+        if model == "epic":
+            net_config = {
+                "input_dim": input_dim,
+                "feats": features,
+                "latent": latent,
+                "equiv_layers": layers,
+                "hid_d": hidden_dim,
+                "activation": activation,
+                "wrapper_func": wrapper_func,
+                "frequencies": frequencies,
+                "num_points": num_particles,
+                "t_local_cat": t_local_cat,
+                "t_global_cat": t_global_cat,
+                "global_cond_dim": global_cond_dim,
+                "local_cond_dim": local_cond_dim,
+                "dropout": dropout,
+                "sum_scale": sum_scale,
+            }
+            self.net = EPiC_encoder(
+                **net_config,
+            )
+        elif model == "transformer":
+            self.net = Transformer(
+                input_dim=input_dim,
+                **net_config,
+            )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
         self.activation = activation
@@ -329,6 +343,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
         use_normaliser (bool, optional): Use layers that learn to normalise the input and conditioning. Defaults to True.
         normaliser_config (Mapping, optional): Normaliser config. Defaults to None.
+        net_config (Mapping, optional): Config for Architecture. Defaults to {}.
         latent (int, optional): Latent dimension. Defaults to 16.
         t_local_cat (bool, optional): Concat time to local linear layers. Defaults to False.
         t_global_cat (bool, optional): Concat time to global vector. Defaults to False.
@@ -345,6 +360,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         self,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler = None,
+        model: str = "epic",
         features: int = 3,
         hidden_dim: int = 128,
         num_particles: int = 150,
@@ -355,6 +371,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         wrapper_func: str = "weight_norm",
         use_normaliser: bool = False,
         normaliser_config: Mapping = {},
+        net_config: Mapping = {},
         # epic
         latent: int = 16,
         t_local_cat: bool = False,
@@ -380,6 +397,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         for _ in range(n_transforms):
             flows.append(
                 CNF(
+                    model=model,
+                    net_config=net_config,
                     features=features,
                     hidden_dim=hidden_dim,
                     num_particles=num_particles,

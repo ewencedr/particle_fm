@@ -276,6 +276,173 @@ def calculate_jet_features(particle_data):
     return jet_data
 
 
+def get_mjj(jet_x: np.ndarray, jet_y: np.ndarray) -> np.ndarray:
+    """Calculate mjj from constituent data. (pt, y, phi)->(mjj)
+
+    Args:
+        consts (np.ndarray): constituent data. (pt, y, phi)
+
+    Returns:
+        np.ndarray: mjj
+    """
+    p4_jets_x = ef.p4s_from_ptyphims(jet_x)
+    p4_jets_y = ef.p4s_from_ptyphims(jet_y)
+    sum_p4 = p4_jets_x + p4_jets_y
+    mjj = ef.ms_from_p4s(sum_p4)
+    return mjj
+
+
+def get_jet_data(consts: np.ndarray) -> np.ndarray:
+    """Calculate jet data from constituent data. (pt, y, phi)->(pt, y, phi, m)
+
+    Args:
+        consts (np.ndarray): constituent data. (pt, y, phi)
+
+    Returns:
+        np.ndarray: jet data. (pt, y, phi, m)
+    """
+    p4s = ef.p4s_from_ptyphims(consts[..., :3])
+    sum_p4 = np.sum(p4s, axis=-2)
+    jet_data = ef.ptyphims_from_p4s(sum_p4, phi_ref=0)
+    return jet_data
+
+
+def get_nonrel_consts(jets: np.ndarray, particles: np.ndarray) -> np.ndarray:
+    """Calculate the non-relative constituents of a jet.
+
+    Args:
+        jets (np.ndarray): jets with features (pt, eta, phi, mass)
+        particles (np.ndarray): particles with features (pt, eta, phi)
+
+    Returns:
+        np.ndarray: non-rel constituents
+    """
+    pt = np.expand_dims(jets[..., 0], axis=-1)
+    eta = np.expand_dims(jets[..., 1], axis=-1)
+    phi = np.expand_dims(jets[..., 2], axis=-1)
+
+    mask_nonrel = np.expand_dims((particles[..., 0] > 0).astype(int), axis=-1)
+    non_rel_eta = np.expand_dims(particles.copy()[..., 1] + eta, axis=-1)
+    non_rel_phi = np.expand_dims(particles.copy()[..., 2] + phi, axis=-1)
+
+    # wrap phi between -pi and pi
+    non_rel_phi = np.where(
+        non_rel_phi > np.pi,
+        non_rel_phi - 2 * np.pi,
+        non_rel_phi,
+    )
+    non_rel_phi = np.where(
+        non_rel_phi < -np.pi,
+        non_rel_phi + 2 * np.pi,
+        non_rel_phi,
+    )
+    non_rel_pt = np.expand_dims(particles.copy()[..., 0] * pt, axis=-1)
+
+    # fix the masking
+    non_rel_eta = non_rel_eta * mask_nonrel
+    non_rel_phi = non_rel_phi * mask_nonrel
+    particles_nonrel = np.concatenate([non_rel_pt, non_rel_eta, non_rel_phi], axis=-1)
+
+    return particles_nonrel
+
+
+def sort_consts(constituents: np.ndarray, sort_by: str = "pt", high_to_low=True) -> np.ndarray:
+    """Sort constituents by selected feature along last axis. Can sort by pt, eta, phi or shuffle.
+
+    Args:
+        constituents (np.ndarray): constituents with features (pt, eta, phi)
+        sort_by (str, optional): sort by this feature. Defaults to "pt".
+        high_to_low (bool, optional): sort from high to low. Defaults to True.
+    Returns:
+        np.ndarray: sorted constituents
+    """
+
+    pt = constituents[..., 0]
+    eta = constituents[..., 1]
+    phi = constituents[..., 2]
+
+    if sort_by == "pt":
+        args = np.argsort(pt, axis=-1)
+    elif sort_by == "eta":
+        args = np.argsort(eta, axis=-1)
+    elif sort_by == "phi":
+        args = np.argsort(phi, axis=-1)
+    elif sort_by == "shuffle":
+        args = np.random.rand(*pt.shape).argsort(axis=-1)
+    else:
+        raise ValueError(
+            f"sort_by must be one of ['pt', 'eta', 'phi', 'shuffle'], but is {sort_by}"
+        )
+
+    if high_to_low:
+        args = args[..., ::-1]
+
+    sorted_pt = np.take_along_axis(pt, args, axis=-1)
+    sorted_eta = np.take_along_axis(eta, args, axis=-1)
+    sorted_phi = np.take_along_axis(phi, args, axis=-1)
+    return np.stack([sorted_pt, sorted_eta, sorted_phi], axis=-1)
+
+
+def sort_jets(
+    jets: np.ndarray,
+    constiuents: np.ndarray,
+    mask: np.ndarray = None,
+    sort_by="pt",
+    high_to_low=True,
+) -> np.ndarray:
+    """Sort jets by pt, eta, phi, mass or shuffle them.
+
+    Args:
+        jets (np.ndarray): jets with features (pt, eta, phi, mass)
+        constiuents (np.ndarray): constituents of jets with features (pt, eta, phi)
+        mask (np.ndarray, optional): mask with dimension (b, num_particles, 1). Defaults to None.
+        sort_by (str, optional): sort by this feature. Defaults to "pt".
+        high_to_low (bool, optional): sort from high to low. Defaults to True.
+
+    Raises:
+        ValueError: Non valid sort_by value
+
+    Returns:
+        np.ndarray: Sorted jets
+        np.ndarray: Sorted constituents
+        np.ndarray(optional): Sorted mask
+    """
+
+    if sort_by == "pt":
+        sort_dim = jets[..., 0]
+    elif sort_by == "eta":
+        sort_dim = jets[..., 1]
+    elif sort_by == "phi":
+        sort_dim = jets[..., 2]
+    elif sort_by == "mass":
+        sort_dim = jets[..., 3]
+    elif sort_by == "shuffle":
+        # doesn't matter what we use here since we shuffle anyway
+        sort_dim = jets[..., 0]
+    else:
+        raise ValueError(
+            f"sort_by must be one of ['pt', 'eta', 'phi', 'mass', 'shuffle'], but is {sort_by}"
+        )
+
+    if high_to_low:
+        args = np.argsort(sort_dim, axis=1)[:, ::-1]
+    else:
+        args = np.argsort(sort_dim, axis=1)
+
+    if sort_by == "shuffle":
+        # shuffle the indices
+        idx = np.random.rand(*args.shape).argsort(axis=1)
+        args = np.take_along_axis(args, idx, axis=1)
+
+    shuffled_jets = np.take_along_axis(jets, args[..., None], axis=1)
+    shuffled_consts = np.take_along_axis(constiuents, args[..., None, None], axis=1)
+    if mask is not None:
+        shuffled_mask = np.take_along_axis(mask, args[..., None, None], axis=1)
+        return shuffled_jets, shuffled_consts, shuffled_mask
+    else:
+        return shuffled_jets, shuffled_consts
+
+
 def count_parameters(model):
     """Count Parameters of model.
 
