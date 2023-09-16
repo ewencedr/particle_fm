@@ -111,8 +111,8 @@ class LHCOEvaluationCallback(pl.Callback):
 
     def on_train_start(self, trainer, pl_module) -> None:
         # log something, so that metrics exists and the checkpoint callback doesn't crash
-        self.log("w1m_mean", 0.005)
-        self.log("w1p_mean", 0.005)
+        self.log("w1m_mean", 0.005, sync_dist=True)
+        self.log("w1p_mean", 0.005, sync_dist=True)
 
         # set number of jet samples if negative
         if self.num_jet_samples < 0:
@@ -451,35 +451,35 @@ class LHCOEvaluationCallback(pl.Callback):
                 **self.plot_config,
             )
 
-            self.log("w1m_mean", w_dists_x["w1m_mean"])
-            self.log("w1p_mean", w_dists_x["w1p_mean"])
-            self.log("w1m_std", w_dists_x["w1m_std"])
-            self.log("w1p_std", w_dists_x["w1p_std"])
+            self.log("w1m_mean", w_dists_x["w1m_mean"], sync_dist=True)
+            self.log("w1p_mean", w_dists_x["w1p_mean"], sync_dist=True)
+            self.log("w1m_std", w_dists_x["w1m_std"], sync_dist=True)
+            self.log("w1p_std", w_dists_x["w1p_std"], sync_dist=True)
 
-            self.log("w1m_mean_y", w_dists_y["w1m_mean"])
-            self.log("w1p_mean_y", w_dists_y["w1p_mean"])
-            self.log("w1m_std_y", w_dists_y["w1m_std"])
-            self.log("w1p_std_y", w_dists_y["w1p_std"])
+            self.log("w1m_mean_y", w_dists_y["w1m_mean"], sync_dist=True)
+            self.log("w1p_mean_y", w_dists_y["w1p_mean"], sync_dist=True)
+            self.log("w1m_std_y", w_dists_y["w1m_std"], sync_dist=True)
+            self.log("w1p_std_y", w_dists_y["w1p_std"], sync_dist=True)
 
-            self.log("w1pt_jet_mean", w_dists_jet_x["w1pt_jet_mean"])
-            self.log("w1pt_jet_std", w_dists_jet_x["w1pt_jet_std"])
-            self.log("w1eta_jet_mean", w_dists_jet_x["w1eta_jet_mean"])
-            self.log("w1eta_jet_std", w_dists_jet_x["w1eta_jet_std"])
-            self.log("w1phi_jet_mean", w_dists_jet_x["w1phi_jet_mean"])
-            self.log("w1phi_jet_std", w_dists_jet_x["w1phi_jet_std"])
-            self.log("w1mass_jet_mean", w_dists_jet_x["w1mass_jet_mean"])
-            self.log("w1mass_jet_std", w_dists_jet_x["w1mass_jet_std"])
+            self.log("w1pt_jet_mean", w_dists_jet_x["w1pt_jet_mean"], sync_dist=True)
+            self.log("w1pt_jet_std", w_dists_jet_x["w1pt_jet_std"], sync_dist=True)
+            self.log("w1eta_jet_mean", w_dists_jet_x["w1eta_jet_mean"], sync_dist=True)
+            self.log("w1eta_jet_std", w_dists_jet_x["w1eta_jet_std"], sync_dist=True)
+            self.log("w1phi_jet_mean", w_dists_jet_x["w1phi_jet_mean"], sync_dist=True)
+            self.log("w1phi_jet_std", w_dists_jet_x["w1phi_jet_std"], sync_dist=True)
+            self.log("w1mass_jet_mean", w_dists_jet_x["w1mass_jet_mean"], sync_dist=True)
+            self.log("w1mass_jet_std", w_dists_jet_x["w1mass_jet_std"], sync_dist=True)
 
-            self.log("w1pt_jet_mean_y", w_dists_jet_y["w1pt_jet_mean"])
-            self.log("w1pt_jet_std_y", w_dists_jet_y["w1pt_jet_std"])
-            self.log("w1eta_jet_mean_y", w_dists_jet_y["w1eta_jet_mean"])
-            self.log("w1eta_jet_std_y", w_dists_jet_y["w1eta_jet_std"])
-            self.log("w1phi_jet_mean_y", w_dists_jet_y["w1phi_jet_mean"])
-            self.log("w1phi_jet_std_y", w_dists_jet_y["w1phi_jet_std"])
-            self.log("w1mass_jet_mean_y", w_dists_jet_y["w1mass_jet_mean"])
-            self.log("w1mass_jet_std_y", w_dists_jet_y["w1mass_jet_std"])
+            self.log("w1pt_jet_mean_y", w_dists_jet_y["w1pt_jet_mean"], sync_dist=True)
+            self.log("w1pt_jet_std_y", w_dists_jet_y["w1pt_jet_std"], sync_dist=True)
+            self.log("w1eta_jet_mean_y", w_dists_jet_y["w1eta_jet_mean"], sync_dist=True)
+            self.log("w1eta_jet_std_y", w_dists_jet_y["w1eta_jet_std"], sync_dist=True)
+            self.log("w1phi_jet_mean_y", w_dists_jet_y["w1phi_jet_mean"], sync_dist=True)
+            self.log("w1phi_jet_std_y", w_dists_jet_y["w1phi_jet_std"], sync_dist=True)
+            self.log("w1mass_jet_mean_y", w_dists_jet_y["w1mass_jet_mean"], sync_dist=True)
+            self.log("w1mass_jet_std_y", w_dists_jet_y["w1mass_jet_std"], sync_dist=True)
 
-            self.log("max_consts_gen", float(max_consts_gen))
+            self.log("max_consts_gen", float(max_consts_gen), sync_dist=True)
 
             # Log plots
             img_path1 = f"{self.image_path}{plot_name1}.png"
