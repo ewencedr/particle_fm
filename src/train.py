@@ -84,6 +84,10 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         log.info("Logging hyperparameters!")
         utils.log_hyperparameters(object_dict)
 
+    if cfg.get("compile"):
+        log.info("Compiling model!")
+        model = torch.compile(model, backend="aot_eager")
+
     if cfg.get("train"):
         log.info("Starting training!")
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
