@@ -28,7 +28,7 @@ model:
   global_cond_dim: 5 # needs to be calculated when using conditioning
   local_cond_dim: 5
   layers: 12
-  hidden_dim: 150
+  hidden_dim: 256
   latent: 256
   #scheduler:
   #  warmup: ${trainer.min_epochs}

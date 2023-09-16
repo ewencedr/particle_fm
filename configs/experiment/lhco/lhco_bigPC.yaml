@@ -19,17 +19,18 @@ tags: ["flow_matching", "LHCO", "bigPC"]
 seed: 12345
 
 trainer:
-  min_epochs: 100
-  max_epochs: 1500
+  min_epochs: 150
+  max_epochs: 3000
   gradient_clip_val: 0.5
-  layers: 8
-  latent: 256
-  hidden_dim: 256
+
 
 model:
   num_particles: 558
   global_cond_dim: 10 # needs to be calculated when using conditioning
   local_cond_dim: 10
+  layers: 8
+  latent: 256
+  hidden_dim: 256
   scheduler:
     warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}
@@ -46,7 +47,7 @@ data:
   val_fraction: 0.05
   test_fraction: 0.35
   file_suffix_processed_data: "_masssorted"
-  log_pt: True
+  log_pt: False
   pt_standardization: False
   multiplicity_conditioning: True
 
