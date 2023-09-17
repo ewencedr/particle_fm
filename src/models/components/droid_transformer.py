@@ -532,14 +532,17 @@ class FullTransformerEncoder(nn.Module):
 
     def forward(
         self,
+        t: T.Tensor,
         x: T.Tensor,
-        mask: Optional[T.BoolTensor] = None,
         ctxt: T.Tensor | None = None,
+        mask: Optional[T.BoolTensor] = None,
         attn_bias: T.Tensor | None = None,
         attn_mask: Optional[T.BoolTensor] = None,
     ) -> T.Tensor:
         """Pass the input through all layers sequentially."""
+
         if self.ctxt_dim:
+            ctxt = T.cat([t[:, 0], ctxt], dim=-1)
             ctxt = self.ctxt_emdb(ctxt)
         if self.edge_dim:
             attn_bias = self.edge_embd(attn_bias, ctxt)
@@ -698,12 +701,15 @@ class FullCrossAttentionEncoder(nn.Module):
 
     def forward(
         self,
+        t: T.Tensor,
         x: T.Tensor,
-        mask: Optional[T.BoolTensor] = None,
         ctxt: T.Tensor | None = None,
+        mask: Optional[T.BoolTensor] = None,
     ) -> T.Tensor:
         """Pass the input through all layers sequentially."""
+        mask = mask.squeeze(-1).bool()
         if self.ctxt_dim:
+            ctxt = T.cat([t[:, 0], ctxt], dim=-1)
             ctxt = self.ctxt_emdb(ctxt)
         x = self.node_embd(x, ctxt)
         x = self.cae(x, mask=mask, ctxt=ctxt)
@@ -1010,3 +1016,43 @@ class DenseNetwork(nn.Module):
         if self.do_out:
             string += str(self.outp_dim)
         return string
+
+
+def get_act(name: str) -> nn.Module:
+    """Return a pytorch activation function given a name."""
+    if isinstance(name, partial):
+        return name()
+    if name == "relu":
+        return nn.ReLU()
+    if name == "elu":
+        return nn.ELU()
+    if name == "lrlu":
+        return nn.LeakyReLU(0.1)
+    if name == "silu" or name == "swish":
+        return nn.SiLU()
+    if name == "selu":
+        return nn.SELU()
+    if name == "softmax":
+        return nn.Softmax()
+    if name == "gelu":
+        return nn.GELU()
+    if name == "tanh":
+        return nn.Tanh()
+    if name == "softmax":
+        return nn.Softmax()
+    if name == "sigmoid":
+        return nn.Sigmoid()
+    raise ValueError("No activation function with name: ", name)
+
+
+def get_nrm(name: str, outp_dim: int) -> nn.Module:
+    """Return a 1D pytorch normalisation layer given a name and a output size
+    Returns None object if name is none."""
+    if name == "batch":
+        return nn.BatchNorm1d(outp_dim)
+    if name == "layer":
+        return nn.LayerNorm(outp_dim)
+    if name == "none":
+        return None
+    else:
+        raise ValueError("No normalistation with name: ", name)
