@@ -27,6 +27,7 @@ from .components.time_emb import CosineEncoding, GaussianFourierProjection
 logger = get_pylogger("fm_module")
 
 
+# TODO put EPiC model config also in separate dictionary (net_config)
 class ode_wrapper(torch.nn.Module):
     """Wraps model to ode solver compatible format. Also important for solving various types of
     ODEs.
