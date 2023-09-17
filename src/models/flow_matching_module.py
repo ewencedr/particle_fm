@@ -55,7 +55,7 @@ class ode_wrapper(torch.nn.Module):
         if self.loss_type == "diffusion":
             self.diff_sched = VPDiffusionSchedule(**diff_config)
 
-    def forward(self, t, x):
+    def forward(self, t, x, *args, **kwargs):
         if self.loss_type == "diffusion":
             expanded_shape = [-1] + [1] * (x.dim() - 1)
             _, noise_rates = self.diff_sched(t.view(expanded_shape))
