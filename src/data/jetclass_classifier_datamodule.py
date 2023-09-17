@@ -225,7 +225,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             if self.hparams.kin_only:
                 logger.info("Using only kinematic features.")
                 pf_features = pf_features[:, :, :7]
-                self.names_pf_features = self.names_pf_features[:4]
+                self.names_pf_features = self.names_pf_features[:7]
 
             logger.info(f"pf_features: shape={pf_features.shape}, {self.names_pf_features}")
             logger.info(f"pf_points: shape={pf_points.shape}")

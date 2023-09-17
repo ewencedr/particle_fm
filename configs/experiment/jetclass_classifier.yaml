@@ -20,9 +20,12 @@ run_note: ""
 
 seed: 160397
 
+data:
+  kin_only: true
+
 trainer:
   min_epochs: 1
-  max_epochs: 10
+  max_epochs: 100
   gradient_clip_val: 0.5
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
@@ -31,7 +34,7 @@ trainer:
 callbacks: null
 
 model:
-  input_dims: 17
+  input_dims: 7
   num_classes: 2
 #   num_particles: 128
 #   global_cond_dim: 13 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
