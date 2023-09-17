@@ -25,6 +25,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         num_workers: int = 0,
         pin_memory: bool = False,
         train_val_test_split: Tuple[int, int, int] = (0.6, 0.2, 0.2),
+        kin_only: bool = False,
         **kwargs: Any,
     ):
         super().__init__()
@@ -83,11 +84,8 @@ class JetClassClassifierDataModule(LightningDataModule):
             def idx_cond(feat_name):
                 return cond_names.index(feat_name)
 
-            logger.info("part_names:", part_names)
-            logger.info("cond_names:", cond_names)
-
-            logger.info("part index (part_etarel):", idx_part("part_etarel"))
-            logger.info("cond index (jet_type_label_Tbqq):", idx_cond("jet_type_label_Tbqq"))
+            logger.info(f"part_names: {part_names}")
+            logger.info(f"cond_names: {cond_names}")
 
             data_gen = h5file["part_data_gen"][:]
             mask_gen = h5file["part_mask_gen"][:]
@@ -223,6 +221,11 @@ class JetClassClassifierDataModule(LightningDataModule):
                 "part_etarel",
                 "part_dphi",
             ]
+
+            if self.hparams.kin_only:
+                logger.info("Using only kinematic features.")
+                pf_features = pf_features[:, :, :7]
+                self.names_pf_features = self.names_pf_features[:4]
 
             logger.info(f"pf_features: shape={pf_features.shape}, {self.names_pf_features}")
             logger.info(f"pf_points: shape={pf_points.shape}")

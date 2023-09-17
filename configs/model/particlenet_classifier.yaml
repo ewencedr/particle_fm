@@ -1,0 +1,24 @@
+_target_: src.models.part_classifier.ParticleNetPL
+
+conv_params:
+    - [16, [64, 64, 64]]
+    - [16, [128, 128, 128]]
+    - [16, [256, 256, 256]]
+fc_params: [[256, 0.1]]
+input_dims: null
+num_classes: 10
+use_fusion: False
+use_fts_bn: True
+use_counts: True
+for_inference: False
+
+lr: 0.001
+
+# optimizer:
+#   _target_: torch.optim.Adam
+#   _partial_: true
+#   lr: 0.001
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ConstantLR
+  _partial_: true

@@ -3,6 +3,7 @@ import sys
 
 import lightning as L
 import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
@@ -35,7 +36,7 @@ part_default_kwargs = dict(
 )
 
 
-class ParticleTransformerPL(L.LightningModule):
+class ParticleTransformerPL(pl.LightningModule):
     """Pytorch-lightning wrapper for ParticleTransformer."""
 
     def __init__(self, **kwargs) -> None:
@@ -231,11 +232,19 @@ particlenet_default_kwargs = dict(
 )
 
 
-class ParticleNetPL(L.LightningModule):
+class ParticleNetPL(pl.LightningModule):
     """Pytorch-lightning wrapper for ParticleNet."""
 
     def __init__(self, **kwargs) -> None:
         super().__init__()
+        #
+        self.opt = kwargs.get("optimizer", None)
+        kwargs.pop("optimizer", None)
+        self.scheduler = kwargs.get("scheduler", None)
+        kwargs.pop("scheduler", None)
+        self.lr = kwargs.get("lr", 0.001)
+        kwargs.pop("lr", None)
+
         self.mod = ParticleNet(**kwargs)
         self.loss_func = torch.nn.CrossEntropyLoss()
         # self.data_config = data_config
