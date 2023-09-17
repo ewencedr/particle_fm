@@ -540,7 +540,7 @@ class FullTransformerEncoder(nn.Module):
         attn_mask: Optional[T.BoolTensor] = None,
     ) -> T.Tensor:
         """Pass the input through all layers sequentially."""
-
+        mask = mask.squeeze(-1).bool()
         if self.ctxt_dim:
             ctxt = T.cat([t[:, 0], ctxt], dim=-1)
             ctxt = self.ctxt_emdb(ctxt)
