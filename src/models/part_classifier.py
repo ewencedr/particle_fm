@@ -48,6 +48,7 @@ class ParticleTransformerPL(pl.LightningModule):
         kwargs.pop("scheduler", None)
         self.lr = kwargs.get("lr", 0.001)
         kwargs.pop("lr", None)
+        kwargs.pop("input_dims", None)  # it's `input_dim` in ParT
 
         self.mod = ParticleTransformer(**kwargs)
         self.loss_func = torch.nn.CrossEntropyLoss()
@@ -253,6 +254,7 @@ class ParticleNetPL(pl.LightningModule):
         self.save_hyperparameters(logger=False)
         self.lr = kwargs.get("lr", 0.001)
         kwargs.pop("lr", None)
+        kwargs.pop("input_dim", None)  # it's `input_dim` in ParticleNet
 
         self.mod = ParticleNet(**kwargs)
         self.loss_func = torch.nn.CrossEntropyLoss()
