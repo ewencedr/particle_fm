@@ -1,0 +1,33 @@
+_target_: src.models.part_classifier.ParticleTransformerPL
+
+input_dim: 7
+num_classes: 10
+# network configurations
+pair_input_dim: 4
+use_pre_activation_pair: False
+embed_dims: [128, 512, 128]
+pair_embed_dims: [64, 64, 64]
+num_heads: 8
+num_layers: 8
+num_cls_layers: 2
+block_params: null
+cls_block_params:
+  dropout: 0
+  attn_dropout: 0
+  activation_dropout: 0
+fc_params: []
+activation: "gelu"
+# misc
+trim: True
+for_inference: False
+
+lr: 0.001
+
+# optimizer:
+#   _target_: torch.optim.Adam
+#   _partial_: true
+#   lr: 0.001
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ConstantLR
+  _partial_: true

@@ -6,6 +6,7 @@
 defaults:
   - override /data: classifier_data_jetclass.yaml
   - override /model: particlenet_classifier.yaml
+  # - override /model: ParT_classifier.yaml
   - override /trainer: ddp.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -34,7 +35,8 @@ trainer:
 callbacks: null
 
 model:
-  input_dims: 7
+  input_dims: 7  # ParticleNet
+  # input_dim: 7  # ParT
   num_classes: 2
 #   num_particles: 128
 #   global_cond_dim: 13 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
