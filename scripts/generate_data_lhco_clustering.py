@@ -121,7 +121,7 @@ def main(params):
     )
 
     print("Generating data big PC")
-    # torch.manual_seed(9999)
+    torch.manual_seed(9999)
     data, generation_time = generate_data(
         model,
         num_jet_samples=len(mask),
