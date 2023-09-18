@@ -7,7 +7,7 @@ defaults:
   - override /data: jetclass.yaml
   - override /model: flow_matching.yaml
   - override /callbacks: jetclass.yaml
-  - override /trainer: gpu.yaml
+  - override /trainer: ddp.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
