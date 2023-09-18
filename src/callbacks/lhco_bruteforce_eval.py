@@ -1,13 +1,10 @@
 import warnings
 from typing import Callable, Mapping, Optional
 
-import awkward as ak
-import fastjet as fj
 import h5py
 import numpy as np
 import pytorch_lightning as pl
 import torch
-import vector
 import wandb
 
 from src.data.components.metrics import (
@@ -22,7 +19,7 @@ from src.schedulers.logging_scheduler import (
     nolog10000,
 )
 from src.utils.data_generation import generate_data
-from src.utils.lhco_utils import plot_unprocessed_data_lhco, sort_by_pt
+from src.utils.lhco_utils import plot_unprocessed_data_lhco, cluster_data
 from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
 from src.utils.pylogger import get_pylogger
 
@@ -246,74 +243,12 @@ class LHCOEvaluationCallback(pl.Callback):
 
             # Clustering
 
-            # to awkard array
-            zrs = np.zeros((data_full.shape[0], data_full.shape[1], 1))
-            data_with_mass = np.concatenate((data_full, zrs), axis=2)
-            awkward_data = ak.from_numpy(data_with_mass)
-
-            # tell awkward that the data is in eta, phi, pt, mass format
-            vector.register_awkward()
-            unmasked_data = ak.zip(
-                {
-                    "pt": awkward_data[:, :, 0],
-                    "eta": awkward_data[:, :, 1],
-                    "phi": awkward_data[:, :, 2],
-                    "mass": awkward_data[:, :, 3],
-                },
-                with_name="Momentum4D",
+            consts, max_consts_gen = cluster_data(
+                data_full,
+                max_jets=2,
+                max_consts=trainer.datamodule.hparams.num_particles,
+                return_max_consts_gen=True,
             )
-
-            # remove the padded data points
-            data = ak.drop_none(ak.mask(unmasked_data, unmasked_data.pt != 0))
-
-            jetdef = fj.JetDefinition(fj.antikt_algorithm, 1.0)
-
-            cluster = fj.ClusterSequence(data, jetdef)
-
-            # get jets and constituents
-            jets_out = cluster.inclusive_jets()
-            consts_out = cluster.constituents()
-
-            # sort jets and constituents by pt
-            jets_sorted, idxs = sort_by_pt(jets_out, return_indices=True)
-            consts_sorted_jets = consts_out[idxs]
-            consts_sorted = sort_by_pt(consts_sorted_jets)
-
-            # only take the first 2 highest pt jets
-            nr_jets = 2
-            consts_awk = consts_sorted[:, :nr_jets]
-
-            # get max. number of constituents in an event
-            max_consts_gen = int(ak.max(ak.num(consts_awk, axis=-1)))
-            max_consts = trainer.datamodule.hparams.num_particles
-
-            # pad the data with zeros to make them all the same length
-            zero_padding = ak.zip(
-                {"pt": 0.0, "eta": 0.0, "phi": 0.0, "mass": 0.0}, with_name="Momentum4D"
-            )
-            padded_consts1 = ak.fill_none(
-                ak.pad_none(consts_awk, max_consts, clip=True, axis=-1), zero_padding, axis=-1
-            )
-
-            zero_padding_jet = ak.zip(
-                {
-                    "pt": [0.0] * max_consts,
-                    "eta": [0.0] * max_consts,
-                    "phi": [0.0] * max_consts,
-                    "mass": [0.0] * max_consts,
-                },
-                with_name="Momentum4D",
-            )
-            padded_consts = ak.fill_none(
-                ak.pad_none(padded_consts1, nr_jets, clip=True, axis=1), zero_padding_jet, axis=1
-            )
-
-            # go back to numpy arrays
-            pt, eta, phi, mass = ak.unzip(padded_consts)
-            pt_np = ak.to_numpy(pt)
-            eta_np = ak.to_numpy(eta)
-            phi_np = ak.to_numpy(phi)
-            consts = np.stack((pt_np, eta_np, phi_np), axis=-1)
 
             # calculate mask for jet constituents
             mask = np.expand_dims((consts[..., 0] > 0).astype(int), axis=-1)

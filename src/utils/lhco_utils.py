@@ -201,7 +201,11 @@ def get_jet_data(consts: np.ndarray) -> np.ndarray:
 
 
 def cluster_data(
-    particle_data: np.ndarray, max_jets: int = 2, max_consts: int = 558, verbose: bool = False
+    particle_data: np.ndarray,
+    max_jets: int = 2,
+    max_consts: int = 558,
+    verbose: bool = False,
+    return_max_consts_gen: bool = False,
 ) -> np.ndarray:
     """Cluster particle data to jets. The data is clustered with the anti-kt algorithm with R=1.0.
 
@@ -210,6 +214,7 @@ def cluster_data(
         max_jets (int, optional): Maximum number of highest pt clustered jets that will be saved. For less jets, the data will be zero-padded. Defaults to 2.
         max_consts (int, optional): Maximum number of constituents that will be saved in jet. For less constituents, the data will be zero-padded. Defaults to 558.
         verbose (bool, optional): Defaults to False.
+        return_max_consts_gen (bool, optional): If True, the maximum number of constituents in an event is returned. Defaults to False.
 
     Returns:
         np.ndarray: Clustered constituents in shape (batch, max_jets, max_consts, features) with features = (pt, eta, phi)
@@ -285,4 +290,7 @@ def cluster_data(
     phi_np = ak.to_numpy(phi)
     consts = np.stack((pt_np, eta_np, phi_np), axis=-1)
 
-    return consts
+    if return_max_consts_gen:
+        return consts, max_consts_gen
+    else:
+        return consts
