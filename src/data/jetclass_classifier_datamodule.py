@@ -28,6 +28,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         kin_only: bool = False,
         used_flavor: Tuple[str, ...] = None,
         debug_sim_only: bool = False,
+        number_of_jets: int = None,
         **kwargs: Any,
     ):
         """
@@ -103,14 +104,14 @@ class JetClassClassifierDataModule(LightningDataModule):
             logger.info(f"part_names: {part_names}")
             logger.info(f"cond_names: {cond_names}")
 
-            data_gen = h5file["part_data_gen"][:]
-            mask_gen = h5file["part_mask_gen"][:]
-            cond_gen = h5file["cond_data_gen"][:]
+            data_gen = h5file["part_data_gen"][: self.hparams.number_of_jets]
+            mask_gen = h5file["part_mask_gen"][: self.hparams.number_of_jets]
+            cond_gen = h5file["cond_data_gen"][: self.hparams.number_of_jets]
             label_gen = np.ones(len(data_gen))
 
-            data_sim = h5file["part_data_sim"][:]
-            mask_sim = h5file["part_mask_sim"][:]
-            cond_sim = h5file["cond_data_sim"][:]
+            data_sim = h5file["part_data_sim"][: self.hparams.number_of_jets]
+            mask_sim = h5file["part_mask_sim"][: self.hparams.number_of_jets]
+            cond_sim = h5file["cond_data_sim"][: self.hparams.number_of_jets]
             label_sim = np.zeros(len(data_sim))
 
             x_features = np.concatenate([data_gen, data_sim])
