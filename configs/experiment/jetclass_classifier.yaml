@@ -21,11 +21,12 @@ run_note: ""
 seed: 160397
 
 vars:
-  epochs: 10
-  warmup: 2
+  epochs: 200
+  warmup: 10
 
 data:
   kin_only: true
+  used_flavor: QCD
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
@@ -37,6 +38,8 @@ model:
   scheduler:
     warmup: ${vars.warmup}
     max_iters: ${vars.epochs}
+  optimizer:
+    lr: 0.001
 
   #early_stopping:
   #  monitor: "val/loss"

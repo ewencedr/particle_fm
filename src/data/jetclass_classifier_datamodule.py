@@ -21,13 +21,26 @@ class JetClassClassifierDataModule(LightningDataModule):
         self,
         data_dir: str = "data/",
         data_file: str = None,
-        batch_size: int = 256,
+        batch_size: int = 128,
         num_workers: int = 0,
         pin_memory: bool = False,
         train_val_test_split: Tuple[int, int, int] = (0.6, 0.2, 0.2),
         kin_only: bool = False,
+        used_flavor: Tuple[str, ...] = None,
         **kwargs: Any,
     ):
+        """
+        Args:
+            data_dir: Path to the data directory (not used but there for backwards compatibility).
+            data_file: Path to the data file.
+            batch_size: Batch size.
+            num_workers: Number of workers for the data loaders.
+            pin_memory: Whether to pin memory for the data loaders.
+            train_val_test_split: Fraction of data to use for train, val, test.
+            kin_only: Whether to use only kinematic features.
+            used_flavor: Which flavor to use. If None, use all flavors.
+            kwargs: Additional arguments.
+        """
         super().__init__()
         self.save_hyperparameters()
         if data_file is None:
@@ -104,6 +117,16 @@ class JetClassClassifierDataModule(LightningDataModule):
             pf_points = x_features[:, :, :3]
             pf_mask = np.concatenate([mask_gen, mask_sim])
             y = np.concatenate([label_gen, label_sim])
+
+            if self.hparams.used_flavor is not None:
+                logger.info(f"Using only the following flavor: {self.hparams.used_flavor}")
+                idx = idx_cond(f"jet_type_label_{self.hparams.used_flavor}")
+                mask_sel_jet = cond_features[:, idx] == 1
+                x_features = x_features[mask_sel_jet]
+                cond_features = cond_features[mask_sel_jet]
+                pf_points = pf_points[mask_sel_jet]
+                pf_mask = pf_mask[mask_sel_jet]
+                y = y[mask_sel_jet]
 
             if debug_sim_only:
                 # use only sim for debugging
