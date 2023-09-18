@@ -1,7 +1,7 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=jetclass
+# python train.py experiment=jetclass_classifier
 
 defaults:
   - override /data: classifier_data_jetclass.yaml
@@ -17,9 +17,7 @@ defaults:
 # ckpt_path: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-36-26/checkpoints/last-EMA.ckpt
 
 tags: ["fm-classifier_test", "JetClass", "ClassifierTest"]
-
 run_note: ""
-
 seed: 160397
 
 vars:
@@ -29,11 +27,6 @@ vars:
 data:
   kin_only: true
 
-trainer:
-  min_epochs: 1
-  max_epochs: ${vars.epochs}
-  gradient_clip_val: 0.5
-
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
 
@@ -41,13 +34,6 @@ model:
   input_dims: 7  # ParticleNet
   # input_dim: 7  # ParT
   num_classes: 2
-#   num_particles: 128
-#   global_cond_dim: 13 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
-#   local_cond_dim: 0
-#   features: 4  # = 3 + number of `additional_part_features` (see below)
-#   layers: 13 # default is 6
-#   hidden_dim: 250 # default is 128
-#   latent: 15 # default is 10
   scheduler:
     warmup: ${vars.warmup}
     max_iters: ${vars.epochs}
@@ -58,6 +44,11 @@ model:
   #  mode: "min"
 
 task_name: "jetclass"
+
+trainer:
+  min_epochs: 1
+  max_epochs: ${vars.epochs}
+  gradient_clip_val: 0.5
 
 logger:
   wandb:
