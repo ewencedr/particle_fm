@@ -313,25 +313,28 @@ class ParticleNetPL(pl.LightningModule):
         self.train_acc = np.array(self.train_acc_list)
 
     def validation_step(self, batch, batch_nb):
-        self.mod.for_inference = True
         self.eval()
 
         pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
         label = jet_labels.long().to("cuda")
-        model_output = self(
-            points=pf_points,
-            features=pf_features.to("cuda"),
-            lorentz_vectors=None,
-            mask=pf_mask.to("cuda"),
-        )
+
+        with torch.no_grad():
+            model_output = self(
+                points=pf_points,
+                features=pf_features.to("cuda"),
+                lorentz_vectors=None,
+                mask=pf_mask.to("cuda"),
+            )
 
         key = str(self.validation_cnt)
+
+        model_scores = torch.softmax(model_output, dim=1)
 
         if batch_nb == 0:
             self.validation_cnt += 1
             key = str(self.validation_cnt)
             self.validation_output[key] = {
-                "model_predictions": model_output.detach().cpu().numpy(),
+                "model_predictions": model_scores.detach().cpu().numpy(),
                 "labels": label.detach().cpu().numpy(),
                 "global_step": self.trainer.global_step,
             }
@@ -339,7 +342,7 @@ class ParticleNetPL(pl.LightningModule):
             self.validation_output[key]["model_predictions"] = np.concatenate(
                 [
                     self.validation_output[key]["model_predictions"],
-                    model_output.detach().cpu().numpy(),
+                    model_scores.detach().cpu().numpy(),
                 ]
             )
             self.validation_output[key]["labels"] = np.concatenate(
