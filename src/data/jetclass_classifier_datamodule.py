@@ -27,6 +27,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         train_val_test_split: Tuple[int, int, int] = (0.6, 0.2, 0.2),
         kin_only: bool = False,
         used_flavor: Tuple[str, ...] = None,
+        debug_sim_only: bool = False,
         **kwargs: Any,
     ):
         """
@@ -39,6 +40,8 @@ class JetClassClassifierDataModule(LightningDataModule):
             train_val_test_split: Fraction of data to use for train, val, test.
             kin_only: Whether to use only kinematic features.
             used_flavor: Which flavor to use. If None, use all flavors.
+            debug_sim_only: Whether to use only sim data for debugging (half of the
+            real data will be labelled as fake).
             kwargs: Additional arguments.
         """
         super().__init__()
@@ -52,7 +55,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         """Prepare the data."""
         pass
 
-    def setup(self, stage: Optional[str] = None, debug_sim_only=False) -> None:
+    def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
 
         This method is called by Lightning before `trainer.fit()`,
@@ -128,7 +131,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 pf_mask = pf_mask[mask_sel_jet]
                 y = y[mask_sel_jet]
 
-            if debug_sim_only:
+            if self.hparams.debug_sim_only:
                 # use only sim for debugging
                 logger.warning("Using only sim data for debugging.")
                 logger.warning("HALF OF THE REAL DATA WILL BE LABELLED AS FAKE.")
