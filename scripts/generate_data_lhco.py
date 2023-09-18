@@ -117,7 +117,7 @@ def main(params):
     )
 
     print("Generating data first jet")
-    torch.manual_seed(9999)
+    # torch.manual_seed(9999)
     data_x, generation_time_x = generate_data(
         model,
         num_jet_samples=len(mask_x),
@@ -136,7 +136,7 @@ def main(params):
     )
 
     print("Generating data second jet")
-    torch.manual_seed(9999)
+    # torch.manual_seed(9999)
     data_y, generation_time_y = generate_data(
         model,
         num_jet_samples=len(mask_y),
