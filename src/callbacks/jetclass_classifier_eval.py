@@ -2,11 +2,13 @@
 import os
 from typing import Callable
 
+import cplt
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from sklearn.metrics import roc_auc_score, roc_curve
 
 from src.utils.pylogger import get_pylogger
 
@@ -47,14 +49,17 @@ class JetClassClassifierEvaluationCallback(pl.Callback):
         is_fake = val_dict["labels"] == 1
         p_fake = val_dict["model_predictions"][:, 1]
 
+        roc_auc = roc_auc_score(val_dict["labels"], p_fake)
+
         hist_kwargs = dict(bins=np.linspace(0, 1, 50), histtype="step", density=True)
 
         ax.hist(p_fake[is_fake], label="fake", **hist_kwargs, color="darkred")
         ax.hist(p_fake[~is_fake], label="real", **hist_kwargs, color="darkblue")
         ax.set_xlabel("$p_\\mathrm{fake}$")
         ax.set_ylabel("Normalized")
-        ax.legend(frameon=False)
+        ax.legend(frameon=False, loc="upper right")
         ax.set_yscale("log")
+        cplt.utils.decorate_ax(ax, text=f"AUC: {roc_auc:.3f}")
         fig.tight_layout()
         plot_filename = f"{plot_dir}/p_fake_{trainer.current_epoch}_{val_cnt}.png"
         fig.savefig(plot_filename, dpi=300)
