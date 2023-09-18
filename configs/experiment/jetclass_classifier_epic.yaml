@@ -1,0 +1,69 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=jetclass_classifier
+
+defaults:
+  - override /data: classifier_data_jetclass.yaml
+  # - override /model: particlenet_classifier.yaml
+  # - override /model: ParT_classifier.yaml
+  - override /model: epic_classifier_jetclass.yaml
+  - override /callbacks: jetclass_classifier_epic.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+# add here checkpoint to continue training
+# ckpt_path: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-36-26/checkpoints/last-EMA.ckpt
+
+tags: ["fm-classifier_test", "JetClass", "ClassifierTest"]
+run_note: ""
+seed: 160397
+
+vars:
+  epochs: 500
+  warmup: 10
+  val_check_interval: null
+
+data:
+  kin_only: true
+  number_of_jets: 1000
+  use_weaver_axes_convention: false
+  # debug_sim_only: true
+  # used_flavor: QCD
+
+# setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
+# load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
+
+# model:
+#   input_dims: 7  # ParticleNet
+#   input_dim: 7  # ParT
+#   num_classes: 2
+#   scheduler:
+#     warmup: ${vars.warmup}
+#     max_iters: ${vars.epochs}
+#   optimizer:
+#     lr: 0.0001
+
+  #early_stopping:
+  #  monitor: "val/loss"
+  #  patience: 2000
+  #  mode: "min"
+
+task_name: "jetclass_classifier"
+
+trainer:
+  min_epochs: 1
+  max_epochs: ${vars.epochs}
+  val_check_interval: ${vars.val_check_interval}
+  gradient_clip_val: 0.5
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "flow_matching_jetclass"
+    name: ${task_name}
+  comet:
+    experiment_name: null
+    project_name: "flow-matching-classifierTest"

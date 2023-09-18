@@ -29,6 +29,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         used_flavor: Tuple[str, ...] = None,
         debug_sim_only: bool = False,
         number_of_jets: int = None,
+        use_weaver_axes_convention: bool = True,
         **kwargs: Any,
     ):
         """
@@ -277,11 +278,12 @@ class JetClassClassifierDataModule(LightningDataModule):
 
         # Swap indices of particle-level arrays to get required shape for
         # ParT/ParticleNet: (n_jets, n_features, n_particles)
-        x_features = np.swapaxes(x_features, 1, 2)
-        pf_features = np.swapaxes(pf_features, 1, 2)
-        pf_vectors = np.swapaxes(pf_vectors, 1, 2)
-        pf_mask = np.swapaxes(pf_mask, 1, 2)
-        pf_points = np.swapaxes(pf_points, 1, 2)
+        if self.hparams.use_weaver_axes_convention:
+            x_features = np.swapaxes(x_features, 1, 2)
+            pf_features = np.swapaxes(pf_features, 1, 2)
+            pf_vectors = np.swapaxes(pf_vectors, 1, 2)
+            pf_mask = np.swapaxes(pf_mask, 1, 2)
+            pf_points = np.swapaxes(pf_points, 1, 2)
 
         self.cond = cond_features
         self.names_cond = cond_names
