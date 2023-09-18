@@ -12,13 +12,18 @@ use_fts_bn: True
 use_counts: True
 for_inference: False
 
-lr: 0.001
-
-# optimizer:
-#   _target_: torch.optim.Adam
-#   _partial_: true
-#   lr: 0.001
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.00005
 
 scheduler:
-  _target_: torch.optim.lr_scheduler.ConstantLR
+  _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
   _partial_: true
+  warmup: 5
+  max_iters: 100
+
+# scheduler:
+#   _target_: torch.optim.lr_scheduler.ConstantLR
+#   _partial_: true

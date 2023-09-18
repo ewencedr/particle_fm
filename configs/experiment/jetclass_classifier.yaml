@@ -7,6 +7,7 @@ defaults:
   - override /data: classifier_data_jetclass.yaml
   - override /model: particlenet_classifier.yaml
   # - override /model: ParT_classifier.yaml
+  - override /callbacks: jetclass_classifier.yaml
   - override /trainer: ddp.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -21,18 +22,20 @@ run_note: ""
 
 seed: 160397
 
+vars:
+  epochs: 10
+  warmup: 2
+
 data:
   kin_only: true
 
 trainer:
   min_epochs: 1
-  max_epochs: 100
+  max_epochs: ${vars.epochs}
   gradient_clip_val: 0.5
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
-
-callbacks: null
 
 model:
   input_dims: 7  # ParticleNet
@@ -45,9 +48,9 @@ model:
 #   layers: 13 # default is 6
 #   hidden_dim: 250 # default is 128
 #   latent: 15 # default is 10
-#   scheduler:
-#     warmup: 50
-#     max_iters: 1000
+  scheduler:
+    warmup: ${vars.warmup}
+    max_iters: ${vars.epochs}
 
   #early_stopping:
   #  monitor: "val/loss"

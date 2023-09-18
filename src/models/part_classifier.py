@@ -243,13 +243,14 @@ particlenet_default_kwargs = dict(
 class ParticleNetPL(pl.LightningModule):
     """Pytorch-lightning wrapper for ParticleNet."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(
+        self,
+        optimizer: torch.optim.Optimizer,
+        scheduler: torch.optim.lr_scheduler = None,
+        **kwargs,
+    ) -> None:
         super().__init__()
-        #
-        self.opt = kwargs.get("optimizer", None)
-        kwargs.pop("optimizer", None)
-        self.scheduler = kwargs.get("scheduler", None)
-        kwargs.pop("scheduler", None)
+        self.save_hyperparameters(logger=False)
         self.lr = kwargs.get("lr", 0.001)
         kwargs.pop("lr", None)
 
@@ -416,9 +417,24 @@ class ParticleNetPL(pl.LightningModule):
         self.dev = dev
 
     def configure_optimizers(self):
-        # optimizer, scheduler = optim(self.opt_args, self, self.dev)
-        # User adamw optimizer
-        # TODO: use more sophisticated optimizer and scheduler?
-        # compare to the standard ParT fine-tuning
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
-        return optimizer
+        """Choose what optimizers and learning-rate schedulers to use in your optimization.
+        Normally you'd need one. But in the case of GANs or similar you might have multiple.
+
+        Examples:
+            https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
+        """
+        optimizer = self.hparams.optimizer(params=self.parameters())
+        if self.hparams.scheduler is not None:
+            scheduler = self.hparams.scheduler(optimizer=optimizer)
+            opt = {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": "val/loss",
+                    "interval": "epoch",
+                    "frequency": 1,
+                },
+            }
+        else:
+            opt = {"optimizer": optimizer}
+        return opt
