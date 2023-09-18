@@ -21,12 +21,13 @@ run_note: ""
 seed: 160397
 
 vars:
-  epochs: 20
+  epochs: 200
   warmup: 10
+  val_check_interval: null
 
 data:
   kin_only: true
-  number_of_jets: 1000
+  # number_of_jets: 1000
   # debug_sim_only: true
   # used_flavor: QCD
 
@@ -35,13 +36,13 @@ data:
 
 model:
   input_dims: 7  # ParticleNet
-  # input_dim: 7  # ParT
+  input_dim: 7  # ParT
   num_classes: 2
   scheduler:
     warmup: ${vars.warmup}
     max_iters: ${vars.epochs}
   optimizer:
-    lr: 0.0005
+    lr: 0.001
 
   #early_stopping:
   #  monitor: "val/loss"
@@ -53,6 +54,7 @@ task_name: "jetclass_classifier"
 trainer:
   min_epochs: 1
   max_epochs: ${vars.epochs}
+  val_check_interval: ${vars.val_check_interval}
   gradient_clip_val: 0.5
 
 logger:
