@@ -27,6 +27,10 @@ class JetClassClassifierEvaluationCallback(pl.Callback):
         super().__init__()
 
     def on_validation_epoch_end(self, trainer, pl_module):
+        pylogger.info(
+            f"Running JetClassClassifierEvaluationCallback epoch: {trainer.current_epoch} step:"
+            f" {trainer.global_step}"
+        )
         # get loggers
         for logger in trainer.loggers:
             if isinstance(logger, pl.loggers.CometLogger):
@@ -45,10 +49,12 @@ class JetClassClassifierEvaluationCallback(pl.Callback):
 
         hist_kwargs = dict(bins=np.linspace(0, 1, 50), histtype="step", density=True)
 
-        ax.hist(p_fake[is_fake], label="fake", **hist_kwargs)
-        ax.hist(p_fake[~is_fake], label="real", **hist_kwargs)
+        ax.hist(p_fake[is_fake], label="fake", **hist_kwargs, color="darkred")
+        ax.hist(p_fake[~is_fake], label="real", **hist_kwargs, color="darkblue")
         ax.set_xlabel("$p_\\mathrm{fake}$")
+        ax.set_ylabel("Normalized")
         ax.legend(frameon=False)
+        ax.set_yscale("log")
         fig.tight_layout()
         plot_filename = f"{plot_dir}/p_fake_{trainer.current_epoch}_{val_cnt}.png"
         fig.savefig(plot_filename, dpi=300)
