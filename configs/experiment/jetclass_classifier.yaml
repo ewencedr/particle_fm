@@ -8,7 +8,7 @@ defaults:
   - override /model: particlenet_classifier.yaml
   # - override /model: ParT_classifier.yaml
   - override /callbacks: jetclass_classifier.yaml
-  - override /trainer: ddp.yaml
+  - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -21,12 +21,12 @@ run_note: ""
 seed: 160397
 
 vars:
-  epochs: 200
+  epochs: 20
   warmup: 10
 
 data:
   kin_only: true
-  number_of_used_jets: 1000
+  number_of_jets: 1000
   # debug_sim_only: true
   # used_flavor: QCD
 
@@ -48,7 +48,7 @@ model:
   #  patience: 2000
   #  mode: "min"
 
-task_name: "jetclass"
+task_name: "jetclass_classifier"
 
 trainer:
   min_epochs: 1

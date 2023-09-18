@@ -1,0 +1,4 @@
+# Generate data, calculate plots and metrics and log them to the logger
+jetclass_eval_classifier:
+  _target_: src.callbacks.jetclass_classifier_eval.JetClassClassifierEvaluationCallback
+  every_n_epochs: 2 # evaluate every n epochs
