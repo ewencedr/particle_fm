@@ -105,10 +105,15 @@ def main():
     print(OmegaConf.to_yaml(cfg))
     print(100 * "-")
 
-    cfg.data.conditioning_gen_filename = args.cond_gen_file
+    if args.cond_gen_file != "use_truth_cond":
+        cfg.data.conditioning_gen_filename = args.cond_gen_file
 
     datamodule = hydra.utils.instantiate(cfg.data)
     datamodule.setup()
+
+    if args.cond_gen_file == "use_truth_cond":
+        datamodule.mask_gen = datamodule.mask_test
+        datamodule.tensor_conditioning_gen = datamodule.tensor_conditioning_test
 
     # load the model from the checkpoint
     model = hydra.utils.instantiate(cfg.model)
