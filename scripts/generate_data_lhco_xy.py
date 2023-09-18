@@ -107,18 +107,27 @@ def main(params):
     model_y = model_y.load_from_checkpoint(ckpt_y)
     print(f"Model loaded from {ckpt_y}")
 
-    if use_signal_region:
-        cond_x = datamodule_x.jet_data_sr_raw
-        mask_x = datamodule_x.mask_sr_raw
-        cond_y = datamodule_y.jet_data_sr_raw
-        mask_y = datamodule_y.mask_sr_raw
-        mjj = datamodule_x.mjj_sr
-    else:
-        cond_x = datamodule_x.jet_data_raw[:120_000]
-        mask_x = datamodule_x.mask_raw[:120_000]
+    if params.conditioning_file == "data":
+        if use_signal_region:
+            cond_x = datamodule_x.jet_data_sr_raw
+            mask_x = datamodule_x.mask_sr_raw
+            cond_y = datamodule_y.jet_data_sr_raw
+            mask_y = datamodule_y.mask_sr_raw
+            mjj = datamodule_x.mjj_sr
+        else:
+            cond_x = datamodule_x.jet_data_raw[:120_000]
+            mask_x = datamodule_x.mask_raw[:120_000]
         cond_y = datamodule_y.jet_data_raw[:120_000]
         mask_y = datamodule_y.mask_raw[:120_000]
         mjj = datamodule_x.mjj[:120_000]
+
+    else:
+        with h5py.File(params.conditioning_file, "r") as f:
+            cond_x = f["jet_features"][:]
+            mask_x = f["mask"][:]
+            cond_y = f["jet_features"][:]
+            mask_y = f["mask"][:]
+            mjj = f["mjj"][:]
 
     normalized_cond_x = normalize_tensor(
         torch.Tensor(cond_x).clone(),
@@ -516,6 +525,13 @@ if __name__ == "__main__":
         "-sr",
         default="True",
         help="sample in signal region",
+    )
+
+    parser.add_argument(
+        "--conditioning_file",
+        "-cond",
+        default="data",
+        help="file containing the conditioning data",
     )
 
     params = parser.parse_args()

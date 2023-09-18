@@ -90,22 +90,28 @@ def main(params):
     model = model.load_from_checkpoint(ckpt)
     print(f"Model loaded from {ckpt}")
 
-    if use_signal_region:
-        cond = datamodule.jet_data_sr_raw
-        mask = datamodule.mask_sr_raw
-        # cond_x = datamodule.jet_data_sr_raw[:, 0]
-        # mask_x = datamodule.mask_sr_raw[:, 0]
-        # cond_y = datamodule.jet_data_sr_raw[:, 1]
-        # mask_y = datamodule.mask_sr_raw[:, 1]
-        mjj = datamodule.mjj_sr
+    if params.conditioning_file == "data":
+        if use_signal_region:
+            cond = datamodule.jet_data_sr_raw
+            mask = datamodule.mask_sr_raw
+            # cond_x = datamodule.jet_data_sr_raw[:, 0]
+            # mask_x = datamodule.mask_sr_raw[:, 0]
+            # cond_y = datamodule.jet_data_sr_raw[:, 1]
+            # mask_y = datamodule.mask_sr_raw[:, 1]
+            mjj = datamodule.mjj_sr
+        else:
+            cond = datamodule.jet_data_raw
+            mask = datamodule.mask_raw
+            # cond_x = datamodule.jet_data_raw[:, 0]
+            # mask_x = datamodule.mask_raw[:, 0]
+            # cond_y = datamodule.jet_data_raw[:, 1]
+            # mask_y = datamodule.mask_raw[:, 1]
+            mjj = datamodule.mjj
     else:
-        cond = datamodule.jet_data_raw
-        mask = datamodule.mask_raw
-        # cond_x = datamodule.jet_data_raw[:, 0]
-        # mask_x = datamodule.mask_raw[:, 0]
-        # cond_y = datamodule.jet_data_raw[:, 1]
-        # mask_y = datamodule.mask_raw[:, 1]
-        mjj = datamodule.mjj
+        with h5py.File(params.conditioning_file, "r") as f:
+            cond = f["jet_features"][:]
+            mask = f["mask"][:]
+            mjj = f["mjj"][:]
 
     normalized_cond = normalize_tensor(
         torch.Tensor(cond).clone(),
@@ -364,6 +370,13 @@ if __name__ == "__main__":
         "-sr",
         default="True",
         help="sample in signal region",
+    )
+
+    parser.add_argument(
+        "--conditioning_file",
+        "-cond",
+        default="data",
+        help="file containing the conditioning data",
     )
 
     params = parser.parse_args()
