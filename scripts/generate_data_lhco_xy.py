@@ -108,6 +108,7 @@ def main(params):
     print(f"Model loaded from {ckpt_y}")
 
     if params.conditioning_file == "data":
+        print(f"Use data as conditioning data")
         if use_signal_region:
             cond_x = datamodule_x.jet_data_sr_raw
             mask_x = datamodule_x.mask_sr_raw
@@ -122,12 +123,22 @@ def main(params):
         mjj = datamodule_x.mjj[:120_000]
 
     else:
+        print(f"Use {params.conditioning_file} as conditioning data")
         with h5py.File(params.conditioning_file, "r") as f:
-            cond_x = f["jet_features"][:]
-            mask_x = f["mask"][:]
-            cond_y = f["jet_features"][:]
-            mask_y = f["mask"][:]
+            cond_x = f["jet_features_x"][:]
+            mask_x = f["mask_x"][:]
+            cond_y = f["jet_features_y"][:]
+            mask_y = f["mask_y"][:]
             mjj = f["mjj"][:]
+
+            cond_x = cond_x[:, : datamodule_x.jet_data_sr_raw.shape[-1]]
+            cond_y = cond_y[:, : datamodule_y.jet_data_sr_raw.shape[-1]]
+
+            print(f"cond x shape: {cond_x.shape}")
+            print(f"cond y shape: {cond_y.shape}")
+            print(f"mask x shape: {mask_x.shape}")
+            print(f"mask y shape: {mask_y.shape}")
+            print(f"mjj shape: {mjj.shape}")
 
     normalized_cond_x = normalize_tensor(
         torch.Tensor(cond_x).clone(),

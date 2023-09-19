@@ -90,6 +90,7 @@ def main(params):
     print(f"Model loaded from {ckpt}")
 
     if params.conditioning_file == "data":
+        print(f"Use data as conditioning data")
         if use_signal_region:
             cond_x = datamodule.jet_data_sr_raw[:, 0]
             mask_x = datamodule.mask_sr_raw[:, 0]
@@ -103,11 +104,12 @@ def main(params):
             mask_y = datamodule.mask_raw[:, 1]
             mjj = datamodule.mjj
     else:
+        print(f"Use {params.conditioning_file} as conditioning data")
         with h5py.File(params.conditioning_file, "r") as f:
-            cond_x = f["jet_features"][:]
-            mask_x = f["mask"][:]
-            cond_y = f["jet_features"][:]
-            mask_y = f["mask"][:]
+            cond_x = f["jet_features_x"][:]
+            mask_x = f["mask_x"][:]
+            cond_y = f["jet_features_y"][:]
+            mask_y = f["mask_y"][:]
             mjj = f["mjj"][:]
 
     normalized_cond_x = normalize_tensor(
