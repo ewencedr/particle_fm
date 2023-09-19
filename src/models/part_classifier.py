@@ -270,6 +270,8 @@ class ParticleNetPL(pl.LightningModule):
 
         cfg = copy.deepcopy(particlenet_default_kwargs)
         cfg["input_dims"] = kwargs["input_dims"]
+        cfg["fc_params"] = kwargs["fc_params"]
+        cfg["conv_params"] = kwargs["conv_params"]
 
         self.mod = ParticleNet(**cfg)
         if kwargs.get("load_pretrained", False):
