@@ -10,7 +10,7 @@ defaults:
   # - ema.yaml
   # - jetclass_eval_test.yaml  # ignore for now since crashes with sigterm 15
   # - jetclass_eval.yaml
-  - jetclass_eval_classifier.yaml
+  # - jetclass_eval_classifier.yaml
   - _self_
 
 model_checkpoint:

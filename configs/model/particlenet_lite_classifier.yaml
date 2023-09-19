@@ -2,14 +2,14 @@ _target_: src.models.part_classifier.ParticleNetPL
 
 conv_params:
     # ParticleNet
-    - [16, [64, 64, 64]]
-    - [16, [128, 128, 128]]
-    - [16, [256, 256, 256]]
+    # - [16, [64, 64, 64]]
+    # - [16, [128, 128, 128]]
+    # - [16, [256, 256, 256]]
     # ParticleNet-Lite
-    # - [7, [32, 32, 32]]
-    # - [7, [64, 64, 64]]
-fc_params: [[256, 0.1]] # ParticleNet
-# fc_params: [[128, 0.1]] # ParticleNet-Lite
+    - [7, [32, 32, 32]]
+    - [7, [64, 64, 64]]
+# fc_params: [[256, 0.1]] # ParticleNet
+fc_params: [[128, 0.1]] # ParticleNet-Lite
 input_dims: null
 num_classes: 10
 use_fusion: False

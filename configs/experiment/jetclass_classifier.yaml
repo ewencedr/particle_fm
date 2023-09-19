@@ -5,7 +5,8 @@
 
 defaults:
   - override /data: classifier_data_jetclass.yaml
-  - override /model: particlenet_classifier.yaml
+  # - override /model: particlenet_classifier.yaml
+  - override /model: particlenet_lite_classifier.yaml
   # - override /model: ParT_classifier.yaml
   - override /callbacks: jetclass_classifier.yaml
   - override /trainer: gpu.yaml
@@ -27,8 +28,10 @@ vars:
 
 data:
   kin_only: true
-  # number_of_jets: 1000
-  # debug_sim_only: true
+  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000-truth_cond.h5
+  number_of_jets: 200000
+  debug_sim_only: true
   # used_flavor: QCD
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
@@ -38,6 +41,7 @@ model:
   input_dims: 7  # ParticleNet
   input_dim: 7  # ParT
   num_classes: 2
+  # load_pretrained: true
   scheduler:
     warmup: ${vars.warmup}
     max_iters: ${vars.epochs}
