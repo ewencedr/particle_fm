@@ -375,45 +375,13 @@ class ParticleNetPL(pl.LightningModule):
         self.log("train_acc", self.train_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_auc", self.train_auc, on_step=True, on_epoch=True, prog_bar=True)
 
-        # return loss or backpropagation will fail
         return loss
-
-    # def training_step(self, batch, batch_nb):
-    #     self.mod.for_inference = False
-    #     self.train()
-    #     # X, y, _ = batch
-    #     pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
-    #     label = jet_labels.long().to("cuda")
-    #     model_output = self(
-    #         points=pf_points,
-    #         features=pf_features.to("cuda"),
-    #         lorentz_vectors=None,
-    #         mask=pf_mask.to("cuda"),
-    #     )
-    #     with torch.cuda.amp.autocast():
-    #         logits = _flatten_preds(model_output)
-    #         loss = self.loss_func(logits, label)
-    #     _, preds = logits.max(1)
-    #     correct = (preds == label).sum().item()
-    #     accuracy = correct / label.size(0)
-    #     self.log("train_loss", loss, on_step=True, on_epoch=True)
-    #     self.log("train_acc", accuracy, on_step=True, on_epoch=True)
-    #     self.train_loss_list.append(loss.detach().cpu().numpy())
-    #     self.train_acc_list.append(accuracy)
-    #     return loss
 
     def on_train_epoch_end(self):
         print(f"Epoch {self.trainer.current_epoch} finished.", end="\r")
 
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-        """Perform a single validation step on a batch of data from the validation set.
-
-        :param batch: A batch of data (a tuple) containing the input tensor of images and target
-            labels.
-        :param batch_idx: The index of the current batch.
-        """
         loss, preds, targets = self.model_step(batch)
-
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(preds, targets)
@@ -434,14 +402,8 @@ class ParticleNetPL(pl.LightningModule):
         self.log("val_auc_best", self.val_auc_best.compute(), sync_dist=True, prog_bar=True)
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-        """Perform a single test step on a batch of data from the test set.
-
-        :param batch: A batch of data (a tuple) containing the input tensor of images and target
-            labels.
-        :param batch_idx: The index of the current batch.
-        """
+        """Perform a single test step on a batch of data from the test set."""
         loss, preds, targets = self.model_step(batch)
-
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)
@@ -482,90 +444,6 @@ class ParticleNetPL(pl.LightningModule):
         self.train_loss = np.array(self.train_loss_list)
         self.train_acc = np.array(self.train_acc_list)
 
-    # def validation_step(self, batch, batch_nb):
-    #     self.eval()
-
-    #     pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
-    #     label = jet_labels.long().to("cuda")
-
-    #     with torch.no_grad():
-    #         model_output = self(
-    #             points=pf_points,
-    #             features=pf_features.to("cuda"),
-    #             lorentz_vectors=None,
-    #             mask=pf_mask.to("cuda"),
-    #         )
-
-    #     key = str(self.validation_cnt)
-
-    #     model_scores = torch.softmax(model_output, dim=1)
-
-    #     if batch_nb == 0:
-    #         self.validation_cnt += 1
-    #         key = str(self.validation_cnt)
-    #         self.validation_output[key] = {
-    #             "model_predictions": model_scores.detach().cpu().numpy(),
-    #             "labels": label.detach().cpu().numpy(),
-    #             "global_step": self.trainer.global_step,
-    #         }
-    #     else:
-    #         self.validation_output[key]["model_predictions"] = np.concatenate(
-    #             [
-    #                 self.validation_output[key]["model_predictions"],
-    #                 model_scores.detach().cpu().numpy(),
-    #             ]
-    #         )
-    #         self.validation_output[key]["labels"] = np.concatenate(
-    #             [self.validation_output[key]["labels"], label.detach().cpu().numpy()]
-    #         )
-
-    #     with torch.cuda.amp.autocast():
-    #         logits = _flatten_preds(model_output)
-    #         loss = self.loss_func(logits, label)
-    #     _, preds = logits.max(1)
-    #     correct = (preds == label).sum().item()
-    #     accuracy = correct / label.size(0)
-    #     self.log("val_loss", loss, on_step=True, on_epoch=True)
-    #     self.log("val_acc", accuracy, on_step=True, on_epoch=True)
-    #     self.val_loss_list.append(loss.detach().cpu().numpy())
-    #     self.val_acc_list.append(accuracy)
-
-    #     return loss
-
-    # def on_validation_epoch_end(self):
-    #     self.val_loss = np.array(self.val_loss_list)
-    #     self.val_acc = np.array(self.val_acc_list)
-    #     each_me = copy.deepcopy(self.trainer.callback_metrics)
-    #     curr_step = str(self.trainer.global_step)
-    #     if curr_step not in self.metrics_dict:
-    #         self.metrics_dict[curr_step] = {}
-    #     for k, v in each_me.items():
-    #         self.metrics_dict[curr_step][k] = v.detach().cpu().numpy()
-
-    # def test_step(self, batch, batch_nb):
-    #     pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
-    #     label = jet_labels.long().to("cuda")
-    #     self.mod.for_inference = True
-    #     self.eval()
-    #     model_output = self(
-    #         points=pf_points,
-    #         features=pf_features.to("cuda"),
-    #         lorentz_vectors=None,
-    #         mask=pf_mask.to("cuda"),
-    #     )
-    #     # with torch.cuda.amp.autocast():
-    #     #     logits = _flatten_preds(model_output)
-    #     #     loss = self.loss_func(logits, label)
-    #     # _, preds = logits.max(1)
-    #     # correct = (preds == label).sum().item()
-    #     # accuracy = correct / label.size(0)
-    #     self.test_output_list.append(model_output.detach().cpu().numpy())
-    #     self.test_labels_list.append(label.detach().cpu().numpy())
-
-    # def on_test_end(self):
-    #     self.test_output = np.concatenate(self.test_output_list)
-    #     self.test_labels = np.concatenate(self.test_labels_list)
-
     # def set_learning_rates(self, lr_fc=0.001, lr=0.0001):
     #     """Set the learning rates for the fc layer and the rest of the model."""
     #     self.lr_fc = lr_fc
@@ -586,33 +464,6 @@ class ParticleNetPL(pl.LightningModule):
             self.mod.fc = nn.Sequential(*fcs)
         else:
             self.mod.fc = None
-
-    # def set_args_for_optimizer(self, args, dev):
-    #     self.opt_args = args
-    #     self.dev = dev
-
-    # def configure_optimizers(self):
-    #     """Choose what optimizers and learning-rate schedulers to use in your optimization.
-    #     Normally you'd need one. But in the case of GANs or similar you might have multiple.
-
-    #     Examples:
-    #         https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
-    #     """
-    #     optimizer = self.hparams.optimizer(params=self.parameters())
-    #     if self.hparams.scheduler is not None:
-    #         scheduler = self.hparams.scheduler(optimizer=optimizer)
-    #         opt = {
-    #             "optimizer": optimizer,
-    #             "lr_scheduler": {
-    #                 "scheduler": scheduler,
-    #                 "monitor": "val/loss",
-    #                 "interval": "epoch",
-    #                 "frequency": 1,
-    #             },
-    #         }
-    #     else:
-    #         opt = {"optimizer": optimizer}
-    #     return opt
 
 
 class EPiCClassifierLitModule(LightningModule):
