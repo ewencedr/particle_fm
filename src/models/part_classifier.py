@@ -279,29 +279,15 @@ class ParticleNetPL(pl.LightningModule):
                 ckpt = torch.load(PARTICLENET_KIN_MODEL_PATH, map_location="cuda")
                 self.load_state_dict(ckpt)
 
-        self.loss_func = torch.nn.CrossEntropyLoss()
+        # TODO: can we go back to this instead of BCE? (i.e. is it equivalent to just
+        # using one of the two output nodes and put it into BCE)
+        # self.loss_func = torch.nn.CrossEntropyLoss()
         # self.data_config = data_config
         self.fc_params = kwargs["fc_params"]
         self.num_classes = kwargs.get("num_classes", 2)
         self.last_embed_dim = kwargs["conv_params"][-1][-1][0]
 
         self.reinitialise_fc()
-        # self.set_learning_rates()
-        self.test_output_list = []
-        self.test_labels_list = []
-        self.test_output = None
-        self.test_labels = None
-
-        self.train_loss_list = []
-        self.train_acc_list = []
-        self.val_loss_list = []
-        self.val_acc_list = []
-
-        self.validation_cnt = 0
-        self.validation_output = {}
-
-        self.metrics_dict = {}
-
         # loss function
         self.criterion = torch.nn.BCEWithLogitsLoss()
 
@@ -403,7 +389,8 @@ class ParticleNetPL(pl.LightningModule):
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single test step on a batch of data from the test set."""
-        loss, preds, targets = self.model_step(batch)
+        loss, logits, targets = self.model_step(batch)
+        preds = torch.sigmoid(logits)
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)
