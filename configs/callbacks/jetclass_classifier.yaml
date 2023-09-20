@@ -15,10 +15,11 @@ defaults:
 
 model_checkpoint:
   dirpath: ${paths.output_dir}/checkpoints
-  filename: "epoch_{epoch:03d}_loss_{val_loss:.5f}"
+  filename: "loss_{val_loss:.5f}_epoch_{epoch:03d}"
   monitor: "val_loss"
   mode: "min"
   save_last: True
+  every_n_epochs: 5
   auto_insert_metric_name: False
   metric_map:
     "val_loss": "loss"
