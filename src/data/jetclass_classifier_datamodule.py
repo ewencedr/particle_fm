@@ -323,7 +323,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             torch.tensor(self.pf_vectors_train, dtype=torch.float32),
             torch.tensor(self.pf_mask_train, dtype=torch.float32),
             torch.tensor(self.cond_train, dtype=torch.float32),
-            torch.tensor(self.y_train, dtype=torch.float32),
+            torch.nn.functional.one_hot(torch.tensor(self.y_train, dtype=torch.int64)),
         )
         self.data_val = TensorDataset(
             torch.tensor(self.pf_points_val, dtype=torch.float32),
@@ -331,7 +331,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             torch.tensor(self.pf_vectors_val, dtype=torch.float32),
             torch.tensor(self.pf_mask_val, dtype=torch.float32),
             torch.tensor(self.cond_val, dtype=torch.float32),
-            torch.tensor(self.y_val, dtype=torch.float32),
+            torch.nn.functional.one_hot(torch.tensor(self.y_val, dtype=torch.int64)),
         )
         self.data_test = TensorDataset(
             torch.tensor(self.pf_points_test, dtype=torch.float32),
@@ -339,7 +339,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             torch.tensor(self.pf_vectors_test, dtype=torch.float32),
             torch.tensor(self.pf_mask_test, dtype=torch.float32),
             torch.tensor(self.cond_test, dtype=torch.float32),
-            torch.tensor(self.y_test, dtype=torch.float32),
+            torch.nn.functional.one_hot(torch.tensor(self.y_test, dtype=torch.int64)),
         )
 
     def train_dataloader(self):

@@ -290,7 +290,7 @@ class ParticleNetPL(pl.LightningModule):
 
         self.reinitialise_fc()
         # loss function
-        self.criterion = torch.nn.BCEWithLogitsLoss()
+        self.criterion = torch.nn.CrossEntropyLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="binary")
@@ -335,14 +335,13 @@ class ParticleNetPL(pl.LightningModule):
         pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
         labels = jet_labels.squeeze()
         logits = self.forward(
-            points=pf_points,
+            points=pf_points.to("cuda"),
             features=pf_features.to("cuda"),
             lorentz_vectors=None,
             mask=pf_mask.to("cuda"),
-        )[:, 1]
-        loss = self.criterion(logits, labels)
-        preds = logits
-        return loss, preds, labels
+        )
+        loss = self.criterion(logits.to("cuda"), labels.float().to("cuda"))
+        return loss, logits, labels
 
     def training_step(self, batch, batch_idx: int) -> torch.Tensor:
         """Perform a single training step on a batch of data from the training set.
@@ -352,12 +351,12 @@ class ParticleNetPL(pl.LightningModule):
         :param batch_idx: The index of the current batch.
         :return: A tensor of losses between model predictions and targets.
         """
-        loss, preds, targets = self.model_step(batch)
+        loss, logits, targets = self.model_step(batch)
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_acc(preds, targets)
-        self.train_auc(preds, targets)
+        self.train_acc(logits, targets)
+        self.train_auc(logits, targets)
         self.log("train_loss", self.train_loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_acc", self.train_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_auc", self.train_auc, on_step=True, on_epoch=True, prog_bar=True)
@@ -368,11 +367,11 @@ class ParticleNetPL(pl.LightningModule):
         print(f"Epoch {self.trainer.current_epoch} finished.", end="\r")
 
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-        loss, preds, targets = self.model_step(batch)
+        loss, logits, targets = self.model_step(batch)
         # update and log metrics
         self.val_loss(loss)
-        self.val_acc(preds, targets)
-        self.val_auc(preds, targets)
+        self.val_acc(logits, targets)
+        self.val_auc(logits, targets)
         self.log("val_loss", self.val_loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log("val_acc", self.val_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("val_auc", self.val_auc, on_step=True, on_epoch=True, prog_bar=True)
@@ -388,10 +387,16 @@ class ParticleNetPL(pl.LightningModule):
         self.log("val_acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val_auc_best", self.val_auc_best.compute(), sync_dist=True, prog_bar=True)
 
+    def on_test_start(self):
+        self.test_loop_preds_list = []
+        self.test_loop_labels_list = []
+
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single test step on a batch of data from the test set."""
         loss, logits, targets = self.model_step(batch)
-        preds = torch.sigmoid(logits)
+        preds = torch.softmax(logits, dim=1)
+        self.test_loop_preds_list.append(preds.detach().cpu().numpy())
+        self.test_loop_labels_list.append(targets.detach().cpu().numpy())
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)
@@ -400,31 +405,9 @@ class ParticleNetPL(pl.LightningModule):
         self.log("test_acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("test_auc", self.test_auc, on_step=True, on_epoch=True, prog_bar=True)
 
-    def evaluate(self, test_loader):
-        self.test_preds_list = []
-        self.test_labels_list = []
-
-        for batch in tqdm(test_loader):
-            pf_points, pf_features, pf_vectors, pf_mask, cond, targets = batch
-            output = self.forward(
-                points=pf_points,
-                features=pf_features,
-                lorentz_vectors=None,
-                mask=pf_mask,
-            )
-
-            preds = output
-            loss = self.criterion(output[:, 1], targets)
-            # update and log metrics
-            self.test_loss(loss)
-            self.test_acc(preds[:, 1], targets)
-            self.test_auc(preds[:, 1], targets)
-
-            preds = torch.softmax(output, dim=1)
-            self.test_preds_list.append(preds.detach().cpu().numpy())
-            self.test_labels_list.append(targets.detach().cpu().numpy())
-        self.test_preds = np.concatenate(self.test_preds_list)
-        self.test_labels = np.concatenate(self.test_labels_list)
+    def on_test_end(self):
+        self.test_loop_preds = np.concatenate(self.test_loop_preds_list)
+        self.test_loop_labels = np.concatenate(self.test_loop_labels_list)
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
@@ -454,9 +437,9 @@ class ParticleNetPL(pl.LightningModule):
             }
         return {"optimizer": optimizer}
 
-    def on_train_end(self):
-        self.train_loss = np.array(self.train_loss_list)
-        self.train_acc = np.array(self.train_acc_list)
+    # def on_train_end(self):
+    #     self.train_loss = np.array(self.train_loss_list)
+    #     self.train_acc = np.array(self.train_acc_list)
 
     # def set_learning_rates(self, lr_fc=0.001, lr=0.0001):
     #     """Set the learning rates for the fc layer and the rest of the model."""
