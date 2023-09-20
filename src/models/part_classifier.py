@@ -2,10 +2,11 @@ import copy
 import sys
 
 import lightning as L
+import lightning.pytorch as pl
 import numpy as np
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 sys.path.insert(0, "/home/birkjosc/repositories/weaver-core")
 from typing import Any, Dict, Tuple
@@ -398,6 +399,32 @@ class ParticleNetPL(pl.LightningModule):
         self.log("test_loss", self.test_loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log("test_acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("test_auc", self.test_auc, on_step=True, on_epoch=True, prog_bar=True)
+
+    def evaluate(self, test_loader):
+        self.test_preds_list = []
+        self.test_labels_list = []
+
+        for batch in tqdm(test_loader):
+            pf_points, pf_features, pf_vectors, pf_mask, cond, targets = batch
+            output = self.forward(
+                points=pf_points,
+                features=pf_features,
+                lorentz_vectors=None,
+                mask=pf_mask,
+            )
+
+            preds = output
+            loss = self.criterion(output[:, 1], targets)
+            # update and log metrics
+            self.test_loss(loss)
+            self.test_acc(preds[:, 1], targets)
+            self.test_auc(preds[:, 1], targets)
+
+            preds = torch.softmax(output, dim=1)
+            self.test_preds_list.append(preds.detach().cpu().numpy())
+            self.test_labels_list.append(targets.detach().cpu().numpy())
+        self.test_preds = np.concatenate(self.test_preds_list)
+        self.test_labels = np.concatenate(self.test_labels_list)
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
