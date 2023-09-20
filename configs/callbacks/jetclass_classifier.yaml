@@ -19,8 +19,8 @@ model_checkpoint:
   monitor: "val_loss"
   mode: "min"
   save_last: True
-  every_n_epochs: 5
   auto_insert_metric_name: False
+  save_top_k: 15 # save k best models (determined by above metric)
   metric_map:
     "val_loss": "loss"
 
