@@ -2,8 +2,8 @@ import copy
 import sys
 
 import lightning as L
-import lightning.pytorch as pl
 import numpy as np
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from tqdm import tqdm
@@ -80,122 +80,118 @@ class ParticleTransformerPL(pl.LightningModule):
 
         self.metrics_dict = {}
 
+        # loss function
+        self.criterion = torch.nn.CrossEntropyLoss()
+
+        # metric objects for calculating and averaging accuracy across batches
+        self.train_acc = Accuracy(task="binary")
+        self.val_acc = Accuracy(task="binary")
+        self.test_acc = Accuracy(task="binary")
+        self.train_auc = AUROC(task="binary")
+        self.val_auc = AUROC(task="binary")
+        self.test_auc = AUROC(task="binary")
+
+        # for averaging loss across batches
+        self.train_loss = MeanMetric()
+        self.val_loss = MeanMetric()
+        self.test_loss = MeanMetric()
+
+        # for tracking best so far validation accuracy
+        self.val_acc_best = MaxMetric()
+        self.val_auc_best = MaxMetric()
+
     def forward(self, points, features, lorentz_vectors, mask):
         return self.mod(features, v=lorentz_vectors, mask=mask)
 
-    def training_step(self, batch, batch_nb):
-        self.mod.for_inference = False
-        self.train()
-        # X, y, _ = batch
+    def model_step(self, batch) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Perform a single model step on a batch of data.
+
+        :param batch: A batch of data (a tuple) containing the input tensor of images and target labels.
+
+        :return: A tuple containing (in order):
+            - A tensor of losses.
+            - A tensor of predictions.
+            - A tensor of target labels.
+        """
         pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
-        label = jet_labels.long().to("cuda")
-        model_output = self(
+        labels = jet_labels.squeeze()
+        logits = self.forward(
             points=None,
             features=pf_features.to("cuda"),
             lorentz_vectors=pf_vectors.to("cuda"),
             mask=pf_mask.to("cuda"),
         )
-        with torch.cuda.amp.autocast():
-            logits = _flatten_preds(model_output)
-            loss = self.loss_func(logits, label)
-        _, preds = logits.max(1)
-        correct = (preds == label).sum().item()
-        accuracy = correct / label.size(0)
-        self.log("train_loss", loss, on_step=True, on_epoch=True)
-        self.log("train_acc", accuracy, on_step=True, on_epoch=True)
-        self.train_loss_list.append(loss.detach().cpu().numpy())
-        self.train_acc_list.append(accuracy)
+        loss = self.criterion(logits.to("cuda"), labels.float().to("cuda"))
+        return loss, logits, labels
+
+    def training_step(self, batch, batch_idx: int) -> torch.Tensor:
+        """Perform a single training step on a batch of data from the training set.
+
+        :param batch: A batch of data (a tuple) containing the input tensor of images and target
+            labels.
+        :param batch_idx: The index of the current batch.
+        :return: A tensor of losses between model predictions and targets.
+        """
+        loss, logits, targets = self.model_step(batch)
+
+        # update and log metrics
+        self.train_loss(loss)
+        self.train_acc(logits, targets)
+        self.train_auc(logits, targets)
+        self.log("train_loss", self.train_loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train_acc", self.train_acc, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train_auc", self.train_auc, on_step=True, on_epoch=True, prog_bar=True)
+
         return loss
 
     def on_train_epoch_end(self):
         print(f"Epoch {self.trainer.current_epoch} finished.", end="\r")
 
     def on_train_end(self):
-        self.train_loss = np.array(self.train_loss_list)
-        self.train_acc = np.array(self.train_acc_list)
+        pass
 
-    def validation_step(self, batch, batch_nb):
-        # self.mod.for_inference = True
-        # self.eval()
+    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+        loss, logits, targets = self.model_step(batch)
+        # update and log metrics
+        self.val_loss(loss)
+        self.val_acc(logits, targets)
+        self.val_auc(logits, targets)
+        self.log("val_loss", self.val_loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("val_acc", self.val_acc, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("val_auc", self.val_auc, on_step=True, on_epoch=True, prog_bar=True)
 
-        pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
-        label = jet_labels.long().to("cuda")
-        with torch.no_grad():
-            model_output = self(
-                points=None,
-                features=pf_features.to("cuda"),
-                lorentz_vectors=pf_vectors.to("cuda"),
-                mask=pf_mask.to("cuda"),
-            )
-        model_scores = torch.softmax(model_output, dim=1)
+    def on_validation_epoch_end(self) -> None:
+        """Lightning hook that is called when a validation epoch ends."""
+        acc = self.val_acc.compute()  # get current val acc
+        self.val_acc_best(acc)  # update best so far val acc
+        # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
+        # otherwise metric would be reset by lightning after each epoch
+        auc = self.val_auc.compute()  # get current val auc
+        self.val_auc_best(auc)  # update best so far val auc
+        self.log("val_acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
+        self.log("val_auc_best", self.val_auc_best.compute(), sync_dist=True, prog_bar=True)
 
-        key = str(self.validation_cnt)
+    def on_test_start(self):
+        self.test_loop_preds_list = []
+        self.test_loop_labels_list = []
 
-        if batch_nb == 0:
-            self.validation_cnt += 1
-            key = str(self.validation_cnt)
-            self.validation_output[key] = {
-                "model_predictions": model_scores.detach().cpu().numpy(),
-                "labels": label.detach().cpu().numpy(),
-                "global_step": self.trainer.global_step,
-            }
-        else:
-            self.validation_output[key]["model_predictions"] = np.concatenate(
-                [
-                    self.validation_output[key]["model_predictions"],
-                    model_scores.detach().cpu().numpy(),
-                ]
-            )
-            self.validation_output[key]["labels"] = np.concatenate(
-                [self.validation_output[key]["labels"], label.detach().cpu().numpy()]
-            )
-
-        with torch.cuda.amp.autocast():
-            logits = _flatten_preds(model_output)
-            loss = self.loss_func(logits, label)
-        _, preds = logits.max(1)
-        correct = (preds == label).sum().item()
-        accuracy = correct / label.size(0)
-        self.log("val_loss", loss, on_step=True, on_epoch=True)
-        self.log("val_acc", accuracy, on_step=True, on_epoch=True)
-        self.val_loss_list.append(loss.detach().cpu().numpy())
-        self.val_acc_list.append(accuracy)
-
-        return loss
-
-    def on_validation_epoch_end(self):
-        self.val_loss = np.array(self.val_loss_list)
-        self.val_acc = np.array(self.val_acc_list)
-        each_me = copy.deepcopy(self.trainer.callback_metrics)
-        curr_step = str(self.trainer.global_step)
-        if curr_step not in self.metrics_dict:
-            self.metrics_dict[curr_step] = {}
-        for k, v in each_me.items():
-            self.metrics_dict[curr_step][k] = v.detach().cpu().numpy()
-
-    def test_step(self, batch, batch_nb):
-        pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
-        label = jet_labels.long().to("cuda")
-        self.mod.for_inference = True
-        self.eval()
-        model_output = self(
-            points=None,
-            features=pf_features.to("cuda"),
-            lorentz_vectors=pf_vectors.to("cuda"),
-            mask=pf_mask.to("cuda"),
-        )
-        # with torch.cuda.amp.autocast():
-        #     logits = _flatten_preds(model_output)
-        #     loss = self.loss_func(logits, label)
-        # _, preds = logits.max(1)
-        # correct = (preds == label).sum().item()
-        # accuracy = correct / label.size(0)
-        self.test_output_list.append(model_output.detach().cpu().numpy())
-        self.test_labels_list.append(label.detach().cpu().numpy())
+    def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+        """Perform a single test step on a batch of data from the test set."""
+        loss, logits, targets = self.model_step(batch)
+        preds = torch.softmax(logits, dim=1)
+        self.test_loop_preds_list.append(preds.detach().cpu().numpy())
+        self.test_loop_labels_list.append(targets.detach().cpu().numpy())
+        # update and log metrics
+        self.test_loss(loss)
+        self.test_acc(preds, targets)
+        self.test_auc(preds, targets)
+        self.log("test_loss", self.test_loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("test_acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("test_auc", self.test_auc, on_step=True, on_epoch=True, prog_bar=True)
 
     def on_test_end(self):
-        self.test_output = np.concatenate(self.test_output_list)
-        self.test_labels = np.concatenate(self.test_labels_list)
+        self.test_loop_preds = np.concatenate(self.test_loop_preds_list)
+        self.test_loop_labels = np.concatenate(self.test_loop_labels_list)
 
     def set_learning_rates(self, lr_fc=0.001, lr=0.0001):
         """Set the learning rates for the fc layer and the rest of the model."""
