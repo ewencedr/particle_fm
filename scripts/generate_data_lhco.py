@@ -112,6 +112,15 @@ def main(params):
             mask_y = f["mask_y"][:]
             mjj = f["mjj"][:]
 
+            cond_x = cond_x[:, : datamodule.jet_data_raw[:, 0].shape[-1]]
+            cond_y = cond_y[:, : datamodule.jet_data_raw[:, 1].shape[-1]]
+            print(f"Using {datamodule.jet_data_raw[:, 1].shape[-1]} variables for conditioning")
+            print(f"cond x shape: {cond_x.shape}")
+            print(f"cond y shape: {cond_y.shape}")
+            print(f"mask x shape: {mask_x.shape}")
+            print(f"mask y shape: {mask_y.shape}")
+            print(f"mjj shape: {mjj.shape}")
+
     normalized_cond_x = normalize_tensor(
         torch.Tensor(cond_x).clone(),
         datamodule.cond_means,
@@ -127,7 +136,7 @@ def main(params):
     )
 
     print("Generating data first jet")
-    torch.manual_seed(9999)
+    torch.manual_seed(1111)
     data_x, generation_time_x = generate_data(
         model,
         num_jet_samples=len(mask_x),

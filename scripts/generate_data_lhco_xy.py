@@ -133,7 +133,7 @@ def main(params):
 
             cond_x = cond_x[:, : datamodule_x.jet_data_sr_raw.shape[-1]]
             cond_y = cond_y[:, : datamodule_y.jet_data_sr_raw.shape[-1]]
-
+            print(f"Using {datamodule_x.jet_data_sr_raw.shape[-1]} variables for conditioning")
             print(f"cond x shape: {cond_x.shape}")
             print(f"cond y shape: {cond_y.shape}")
             print(f"mask x shape: {mask_x.shape}")
@@ -155,7 +155,7 @@ def main(params):
     )
 
     print("Generating data first jet")
-    torch.manual_seed(9999)
+    torch.manual_seed(1111)
     data_x, generation_time_x = generate_data(
         model_x,
         num_jet_samples=len(mask_x),
