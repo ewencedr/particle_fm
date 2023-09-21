@@ -27,9 +27,9 @@ model:
   num_particles: 279
   global_cond_dim: 4 # needs to be calculated when using conditioning
   local_cond_dim: 4
-  layers: 6
-  hidden_dim: 128
-  latent: 16
+  layers: 8
+  hidden_dim: 150
+  latent: 256
   scheduler:
     warmup: ${trainer.min_epochs}
     max_iters: ${trainer.max_epochs}

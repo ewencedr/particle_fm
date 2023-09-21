@@ -1,4 +1,4 @@
-task_name: setup2 y-jet
+task_name: setup2 final
 tags:
 - flow_matching
 - LHCO
@@ -6,6 +6,7 @@ tags:
 - both_jet
 train: true
 test: true
+compile: false
 ckpt_path: null
 seed: 12345
 data:
@@ -24,10 +25,10 @@ data:
   conditioning: true
   use_all_data: false
   relative_coords: true
-  jet_type: 'y'
+  jet_type: all
   shuffle_data: false
   use_calculated_base_distribution: true
-  file_suffix_processed_data: _masssorted
+  file_suffix_processed_data: ''
   log_pt: true
   pt_standardization: false
   multiplicity_conditioning: true
@@ -36,16 +37,17 @@ model:
   optimizer:
     _target_: torch.optim.AdamW
     _partial_: true
-    lr: 0.0003
+    lr: 0.0005
     weight_decay: 5.0e-05
   scheduler:
-    _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+    _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
     _partial_: true
-    T_max: ${trainer.max_epochs}
+    warmup: ${trainer.min_epochs}
+    max_iters: ${trainer.max_epochs}
   features: 3
   n_transforms: 1
   layers: 12
-  hidden_dim: 150
+  hidden_dim: 256
   latent: 256
   activation: leaky_relu
   wrapper_func: weight_norm
@@ -86,7 +88,18 @@ callbacks:
     save_on_train_epoch_end: null
     metric_map:
       val/loss: loss
-  early_stopping: null
+  early_stopping:
+    _target_: pytorch_lightning.callbacks.EarlyStopping
+    monitor: val/loss
+    min_delta: 0.0
+    patience: 100
+    verbose: false
+    mode: min
+    strict: true
+    check_finite: true
+    stopping_threshold: null
+    divergence_threshold: null
+    check_on_train_epoch_end: null
   model_summary:
     _target_: pytorch_lightning.callbacks.RichModelSummary
     max_depth: -1
@@ -157,8 +170,8 @@ logger:
 trainer:
   _target_: pytorch_lightning.Trainer
   default_root_dir: ${paths.output_dir}
-  min_epochs: 500
-  max_epochs: 5000
+  min_epochs: 75
+  max_epochs: 1500
   accelerator: gpu
   devices: -1
   check_val_every_n_epoch: 1

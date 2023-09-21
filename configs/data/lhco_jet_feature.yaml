@@ -6,3 +6,4 @@ pin_memory: False
 val_fraction: 0.05
 test_fraction: 0.35
 normalize: True
+additional_preprocess: False

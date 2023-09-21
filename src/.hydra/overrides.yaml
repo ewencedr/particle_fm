@@ -1,4 +1,3 @@
 - experiment=/lhco/lhco_both_jets2
-- task_name=setup2 y-jet
+- task_name=setup2 final
 - trainer=ddp
-- data.jet_type=y

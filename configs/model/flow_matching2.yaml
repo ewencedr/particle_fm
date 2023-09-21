@@ -3,19 +3,25 @@ _target_: src.models.flow_matching_module.SetFlowMatchingLitModule
 optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
-  lr: 0.0003
+  lr: 0.0005
   weight_decay: 0.00005
 
+#scheduler:
+#  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+#  _partial_: true
+#  T_max: 5000
+
 scheduler:
-  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
   _partial_: true
-  T_max: 5000
+  warmup: 1000
+  max_iters: 10000
 
 features: 3
 n_transforms: 1
-layers: 6
-hidden_dim: 128
-latent: 10
+layers: 10
+hidden_dim: 256
+latent: 256
 activation: leaky_relu
 wrapper_func: weight_norm
 dropout: 0.0

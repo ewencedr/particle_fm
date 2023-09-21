@@ -119,18 +119,16 @@ hydra:
   overrides:
     hydra:
     - hydra.run.dir="/home/ewencedr/deep-learning/src"
-    - hydra.job.name=train_ddp_process_1
+    - hydra.job.name=train_ddp_process_3
     - hydra.mode=RUN
     task:
     - experiment=/lhco/lhco_both_jets2
-    - task_name=setup2 y-jet
+    - task_name=setup2 final
     - trainer=ddp
-    - data.jet_type=y
   job:
-    name: train_ddp_process_1
+    name: train_ddp_process_3
     chdir: null
-    override_dirname: data.jet_type=y,experiment=/lhco/lhco_both_jets2,task_name=setup2
-      y-jet,trainer=ddp
+    override_dirname: experiment=/lhco/lhco_both_jets2,task_name=setup2 final,trainer=ddp
     id: ???
     num: ???
     config_name: train.yaml
