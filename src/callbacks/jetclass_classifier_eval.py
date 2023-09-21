@@ -88,7 +88,7 @@ class JetClassClassifierEvaluationCallback(pl.Callback):
         )
         ax.set_xlabel("$p_\\mathrm{fake}$")
         ax.set_ylabel("Normalized")
-        ax.legend(frameon=False, loc="upper right")
+        ax.legend(frameon=False, loc="upper right", ncol=2)
         ax.set_yscale("log")
         cplt.utils.decorate_ax(ax, text=f"AUC val: {val_auc:.3f}\nAUC train: {train_auc:.3f}")
         fig.tight_layout()
