@@ -47,15 +47,15 @@ part_default_kwargs = dict(
 class ParticleTransformerPL(pl.LightningModule):
     """Pytorch-lightning wrapper for ParticleTransformer."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(
+        self,
+        optimizer: torch.optim.Optimizer,
+        scheduler: torch.optim.lr_scheduler = None,
+        **kwargs,
+    ) -> None:
         super().__init__()
+        self.save_hyperparameters()
 
-        self.opt = kwargs.get("optimizer", None)
-        kwargs.pop("optimizer", None)
-        self.scheduler = kwargs.get("scheduler", None)
-        kwargs.pop("scheduler", None)
-        self.lr = kwargs.get("lr", 0.001)
-        kwargs.pop("lr", None)
         kwargs.pop("input_dims", None)  # it's `input_dim` in ParT
 
         self.mod = ParticleTransformer(**kwargs)
@@ -64,7 +64,7 @@ class ParticleTransformerPL(pl.LightningModule):
         self.fc_params = kwargs["fc_params"]
         self.num_classes = kwargs["num_classes"]
         self.last_embed_dim = kwargs["embed_dims"][-1]
-        self.set_learning_rates()
+        # self.set_learning_rates()
         self.test_output_list = []
         self.test_labels_list = []
         self.test_output = None
@@ -193,11 +193,11 @@ class ParticleTransformerPL(pl.LightningModule):
         self.test_loop_preds = np.concatenate(self.test_loop_preds_list)
         self.test_loop_labels = np.concatenate(self.test_loop_labels_list)
 
-    def set_learning_rates(self, lr_fc=0.001, lr=0.0001):
-        """Set the learning rates for the fc layer and the rest of the model."""
-        self.lr_fc = lr_fc
-        self.lr = lr
-        print(f"Setting learning rates to lr_fc={self.lr_fc} and lr={self.lr}")
+    # def set_learning_rates(self, lr_fc=0.001, lr=0.0001):
+    #     """Set the learning rates for the fc layer and the rest of the model."""
+    #     self.lr_fc = lr_fc
+    #     self.lr = lr
+    #     print(f"Setting learning rates to lr_fc={self.lr_fc} and lr={self.lr}")
 
     def reinitialise_fc(self):
         """Reinitialise the final fully connected network of the model."""
@@ -218,13 +218,30 @@ class ParticleTransformerPL(pl.LightningModule):
         self.opt_args = args
         self.dev = dev
 
-    def configure_optimizers(self):
-        # optimizer, scheduler = optim(self.opt_args, self, self.dev)
-        # User adamw optimizer
-        # TODO: use more sophisticated optimizer and scheduler?
-        # compare to the standard ParT fine-tuning
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
-        return optimizer
+    def configure_optimizers(self) -> Dict[str, Any]:
+        """Configures optimizers and learning-rate schedulers to be used for training.
+
+        Normally you'd need one, but in the case of GANs or similar you might need multiple.
+
+        Examples:
+            https://lightning.ai/docs/pytorch/latest/common/lightning_module.html#configure-optimizers
+
+        :return: A dict containing the configured optimizers and learning-rate schedulers to be used for training.
+        """
+        optimizer = self.hparams.optimizer(params=self.parameters())
+        if self.hparams.scheduler is not None:
+            scheduler = self.hparams.scheduler(optimizer=optimizer)
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "monitor": "val_loss",
+                    "interval": "epoch",
+                    "frequency": 1,
+                },
+            }
+
+        return {"optimizer": optimizer}
 
 
 # https://github.com/jet-universe/particle_transformer/blob/main/networks/example_ParticleNet.py
@@ -426,7 +443,7 @@ class ParticleNetPL(pl.LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/loss",
+                    "monitor": "val_loss",
                     "interval": "epoch",
                     "frequency": 1,
                 },
@@ -627,7 +644,7 @@ class EPiCClassifierLitModule(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/loss",
+                    "monitor": "val_loss",
                     "interval": "epoch",
                     "frequency": 1,
                 },
