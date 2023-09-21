@@ -129,16 +129,6 @@ class JetClassClassifierDataModule(LightningDataModule):
             pf_mask = np.concatenate([mask_gen, mask_sim])
             y = np.concatenate([label_gen, label_sim])
 
-            if self.hparams.used_flavor is not None:
-                logger.info(f"Using only the following flavor: {self.hparams.used_flavor}")
-                idx = idx_cond(f"jet_type_label_{self.hparams.used_flavor}")
-                mask_sel_jet = cond_features[:, idx] == 1
-                x_features = x_features[mask_sel_jet]
-                cond_features = cond_features[mask_sel_jet]
-                pf_points = pf_points[mask_sel_jet]
-                pf_mask = pf_mask[mask_sel_jet]
-                y = y[mask_sel_jet]
-
             if self.hparams.debug_sim_only:
                 # use only sim for debugging
                 logger.warning("Using only sim data for debugging.")
@@ -162,6 +152,16 @@ class JetClassClassifierDataModule(LightningDataModule):
                     pf_points[-len_mix:] = x_features[-len_mix:, :, :3]
                     pf_mask[-len_mix:] = mask_gen[:len_mix]
                     y[-len_mix:] = label_gen[:len_mix]
+
+            if self.hparams.used_flavor is not None:
+                logger.info(f"Using only the following flavor: {self.hparams.used_flavor}")
+                idx = idx_cond(f"jet_type_label_{self.hparams.used_flavor}")
+                mask_sel_jet = cond_features[:, idx] == 1
+                x_features = x_features[mask_sel_jet]
+                cond_features = cond_features[mask_sel_jet]
+                pf_points = pf_points[mask_sel_jet]
+                pf_mask = pf_mask[mask_sel_jet]
+                y = y[mask_sel_jet]
 
             # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
             pt = (
