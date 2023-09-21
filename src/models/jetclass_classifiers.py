@@ -150,8 +150,15 @@ class ParticleTransformerPL(pl.LightningModule):
     def on_train_end(self):
         pass
 
+    def on_validation_epoch_start(self) -> None:
+        self.val_preds_list = []
+        self.val_labels_list = []
+
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         loss, logits, targets = self.model_step(batch)
+        preds = torch.softmax(logits, dim=1)
+        self.val_preds_list.append(preds.detach().cpu().numpy())
+        self.val_labels_list.append(targets.detach().cpu().numpy())
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(logits, targets)
@@ -170,6 +177,9 @@ class ParticleTransformerPL(pl.LightningModule):
         self.val_auc_best(auc)  # update best so far val auc
         self.log("val_acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val_auc_best", self.val_auc_best.compute(), sync_dist=True, prog_bar=True)
+
+        self.val_preds = np.concatenate(self.val_preds_list)
+        self.val_labels = np.concatenate(self.val_labels_list)
 
     def on_test_start(self):
         self.test_loop_preds_list = []
@@ -495,6 +505,7 @@ class EPiCClassifierLitModule(LightningModule):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         net_config: Dict[str, Any] = {},
+        **kwargs,
     ) -> None:
         super().__init__()
 
@@ -588,6 +599,10 @@ class EPiCClassifierLitModule(LightningModule):
         """Lightning hook that is called when a training epoch ends."""
         pass
 
+    def on_validation_epoch_start(self) -> None:
+        self.val_preds_list = []
+        self.val_labels_list = []
+
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single validation step on a batch of data from the validation set.
 
@@ -595,12 +610,16 @@ class EPiCClassifierLitModule(LightningModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        loss, preds, targets = self.model_step(batch)
+        loss, logits, targets = self.model_step(batch)
+
+        preds = torch.sigmoid(logits)
+        self.val_preds_list.append(preds.detach().cpu().numpy())
+        self.val_labels_list.append(targets.detach().cpu().numpy())
 
         # update and log metrics
         self.val_loss(loss)
-        self.val_acc(preds, targets)
-        self.val_auc(preds, targets)
+        self.val_acc(logits, targets)
+        self.val_auc(logits, targets)
         self.log("val_loss", self.val_loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log("val_acc", self.val_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("val_auc", self.val_auc, on_step=True, on_epoch=True, prog_bar=True)
@@ -615,6 +634,9 @@ class EPiCClassifierLitModule(LightningModule):
         self.val_auc_best(auc)  # update best so far val auc
         self.log("val_acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val_auc_best", self.val_auc_best.compute(), sync_dist=True, prog_bar=True)
+
+        self.val_preds = np.concatenate(self.val_preds_list)
+        self.val_labels = np.concatenate(self.val_labels_list)
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single test step on a batch of data from the test set.

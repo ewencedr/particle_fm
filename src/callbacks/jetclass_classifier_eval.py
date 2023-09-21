@@ -48,8 +48,12 @@ class JetClassClassifierEvaluationCallback(pl.Callback):
         os.makedirs(plot_dir, exist_ok=True)
         # Save the plots
         fig, ax = plt.subplots(figsize=(5, 3))
-        labels = pl_module.val_labels[:, 1]
-        p_fake = pl_module.val_preds[:, 1]
+        if pl_module.val_labels.shape[1] == 2:
+            labels = pl_module.val_labels[:, 1]
+            p_fake = pl_module.val_preds[:, 1]
+        else:
+            labels = pl_module.val_labels
+            p_fake = pl_module.val_preds
         is_fake = labels == 1
 
         roc_auc = roc_auc_score(labels, p_fake)
