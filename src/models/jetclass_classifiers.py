@@ -345,6 +345,10 @@ class ParticleNetPL(pl.LightningModule):
         self.val_auc.reset()
         self.val_auc_best.reset()
 
+    def on_train_epoch_start(self) -> None:
+        self.train_preds_list = []
+        self.train_labels_list = []
+
     def model_step(self, batch) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Perform a single model step on a batch of data.
 
@@ -376,6 +380,10 @@ class ParticleNetPL(pl.LightningModule):
         """
         loss, logits, targets = self.model_step(batch)
 
+        preds = torch.softmax(logits, dim=1)
+        self.train_preds_list.append(preds.detach().cpu().numpy())
+        self.train_labels_list.append(targets.detach().cpu().numpy())
+
         # update and log metrics
         self.train_loss(loss)
         self.train_acc(logits, targets)
@@ -387,6 +395,8 @@ class ParticleNetPL(pl.LightningModule):
         return loss
 
     def on_train_epoch_end(self):
+        self.train_preds = np.concatenate(self.train_preds_list)
+        self.train_labels = np.concatenate(self.train_labels_list)
         print(f"Epoch {self.trainer.current_epoch} finished.", end="\r")
 
     def on_validation_epoch_start(self) -> None:

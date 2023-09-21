@@ -32,6 +32,9 @@ class JetClassClassifierEvaluationCallback(pl.Callback):
         if not hasattr(pl_module, "val_preds") or not hasattr(pl_module, "val_labels"):
             pylogger.info("No validation predictions found. Skipping plotting.")
             return
+        if not hasattr(pl_module, "train_preds") or not hasattr(pl_module, "train_labels"):
+            pylogger.info("No training predictions found. Skipping plotting.")
+            return
 
         pylogger.info(
             f"Running JetClassClassifierEvaluationCallback epoch: {trainer.current_epoch} step:"
@@ -49,24 +52,45 @@ class JetClassClassifierEvaluationCallback(pl.Callback):
         # Save the plots
         fig, ax = plt.subplots(figsize=(5, 3))
         if pl_module.val_labels.shape[1] == 2:
-            labels = pl_module.val_labels[:, 1]
-            p_fake = pl_module.val_preds[:, 1]
+            val_labels = pl_module.val_labels[:, 1]
+            val_pfake = pl_module.val_preds[:, 1]
+            train_labels = pl_module.train_labels[:, 1]
+            train_pfake = pl_module.train_preds[:, 1]
         else:
-            labels = pl_module.val_labels
-            p_fake = pl_module.val_preds
-        is_fake = labels == 1
+            val_labels = pl_module.val_labels
+            val_pfake = pl_module.val_preds
+            train_labels = pl_module.train_labels
+            train_pfake = pl_module.train_preds
 
-        roc_auc = roc_auc_score(labels, p_fake)
+        val_is_fake = val_labels == 1
+        train_is_fake = train_labels == 1
+
+        val_auc = roc_auc_score(val_labels, val_pfake)
+        train_auc = roc_auc_score(train_labels, train_pfake)
 
         hist_kwargs = dict(bins=np.linspace(0, 1, 50), histtype="step", density=True)
 
-        ax.hist(p_fake[is_fake], label="Fake jets", **hist_kwargs, color="darkred")
-        ax.hist(p_fake[~is_fake], label="Real jets", **hist_kwargs, color="darkblue")
+        ax.hist(val_pfake[val_is_fake], label="Fake jets val", **hist_kwargs, color="darkred")
+        ax.hist(val_pfake[~val_is_fake], label="Real jets val", **hist_kwargs, color="darkblue")
+        ax.hist(
+            train_pfake[train_is_fake],
+            label="Fake jets train",
+            **hist_kwargs,
+            color="darkred",
+            linestyle="--",
+        )
+        ax.hist(
+            train_pfake[~train_is_fake],
+            label="Real jets train",
+            **hist_kwargs,
+            color="darkblue",
+            linestyle="--",
+        )
         ax.set_xlabel("$p_\\mathrm{fake}$")
         ax.set_ylabel("Normalized")
         ax.legend(frameon=False, loc="upper right")
         ax.set_yscale("log")
-        cplt.utils.decorate_ax(ax, text=f"AUC: {roc_auc:.3f}")
+        cplt.utils.decorate_ax(ax, text=f"AUC val: {val_auc:.3f}\nAUC train: {train_auc:.3f}")
         fig.tight_layout()
         plot_filename = f"{plot_dir}/p_fake_{trainer.current_epoch}_{trainer.global_step}.png"
         fig.savefig(plot_filename, dpi=300)
