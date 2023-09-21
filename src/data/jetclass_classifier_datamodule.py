@@ -28,6 +28,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         kin_only: bool = False,
         used_flavor: Tuple[str, ...] = None,
         debug_sim_only: bool = False,
+        debug_sim_gen_fraction: float = None,
         number_of_jets: int = None,
         use_weaver_axes_convention: bool = True,
         **kwargs: Any,
@@ -43,6 +44,11 @@ class JetClassClassifierDataModule(LightningDataModule):
             kin_only: Whether to use only kinematic features.
             used_flavor: Which flavor to use. If None, use all flavors.
             debug_sim_only: Whether to use only sim data for debugging (half of the
+            debug_sim_gen_fraction: Fraction of gen data to mix in for debugging.
+                This can only be used in combination with `debug_sim_only`.
+                The resulting dataset will have "fake"-labelled jets that only have
+                `debug_sim_gen_fraction`% actual fake jets. The remaining part will
+                be real jets that are labelled as fake.
             real data will be labelled as fake).
             kwargs: Additional arguments.
         """
@@ -142,7 +148,20 @@ class JetClassClassifierDataModule(LightningDataModule):
                 pf_points = x_features[:, :, :3]
                 pf_mask = mask_sim
                 y = label_sim
-                y[: len(y) // 2] = 1
+                y[len(y) // 2 :] = 1
+                if self.hparams.debug_sim_gen_fraction is not None:
+                    # mix in some gen data in the second half of the arrays
+                    logger.warning(
+                        f"MIXING IN {self.hparams.debug_sim_gen_fraction*100}% GEN DATA FOR"
+                        " DEBUGGING."
+                    )
+                    len_half = len(y) // 2
+                    len_mix = int(len_half * self.hparams.debug_sim_gen_fraction)
+                    x_features[-len_mix:] = data_gen[:len_mix]
+                    cond_features[-len_mix:] = cond_gen[:len_mix]
+                    pf_points[-len_mix:] = x_features[-len_mix:, :, :3]
+                    pf_mask[-len_mix:] = mask_gen[:len_mix]
+                    y[-len_mix:] = label_gen[:len_mix]
 
             # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
             pt = (
