@@ -1,4 +1,4 @@
-_target_: src.models.part_classifier.ParticleNetPL
+_target_: src.models.jetclass_classifiers.ParticleNetPL
 
 conv_params:
     # ParticleNet

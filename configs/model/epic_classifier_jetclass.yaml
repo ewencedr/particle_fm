@@ -1,4 +1,4 @@
-_target_: src.models.part_classifier.EPiCClassifierLitModule
+_target_: src.models.jetclass_classifiers.EPiCClassifierLitModule
 
 optimizer:
   _target_: torch.optim.AdamW

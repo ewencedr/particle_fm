@@ -1,4 +1,4 @@
-_target_: src.models.part_classifier.ParticleTransformerPL
+_target_: src.models.jetclass_classifiers.ParticleTransformerPL
 
 input_dim: 7
 num_classes: 10
