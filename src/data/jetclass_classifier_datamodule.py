@@ -31,6 +31,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         debug_sim_gen_fraction: float = None,
         number_of_jets: int = None,
         use_weaver_axes_convention: bool = True,
+        pf_features_list: list = None,
         **kwargs: Any,
     ):
         """
@@ -272,7 +273,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             ]
 
             if self.hparams.kin_only:
-                logger.info("Using only kinematic features.")
+                logger.info("Using only kinematic pf_features.")
                 names_pf_features_kin = [
                     "log_part_pt",
                     "log_part_energy",
@@ -287,6 +288,17 @@ class JetClassClassifierDataModule(LightningDataModule):
                 ]
                 self.names_pf_features = names_pf_features_kin
                 pf_features = pf_features[:, :, index_pf_features_kin]
+            elif self.hparams.pf_features_list is not None:
+                logger.info(
+                    f"Using only the following pf_features: {self.hparams.pf_features_list}"
+                )
+                index_pf_features_kin = [
+                    self.names_pf_features.index(name) for name in self.hparams.pf_features_list
+                ]
+                self.names_pf_features = self.hparams.pf_features_list
+                pf_features = pf_features[:, :, index_pf_features_kin]
+            else:
+                logger.info("Using all pf_features.")
 
             logger.info(f"pf_features:   shape={pf_features.shape}, {self.names_pf_features}")
             logger.info(f"pf_points:     shape={pf_points.shape}, {self.names_pf_points}")
