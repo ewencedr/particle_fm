@@ -15,12 +15,12 @@ scheduler:
 
 net_config:
   input_dim: 7
-  equiv_layers: 6
-  hid_d: 128
-  latent: 16
+  equiv_layers: 4
+  hid_d: 20
+  latent: 10
   activation: leaky_relu
   wrapper_func: weight_norm
-  dropout: 0.0
+  dropout: 0.1
   sum_scale: 1e-2
   global_cond_dim: 0
   local_cond_dim: 0
