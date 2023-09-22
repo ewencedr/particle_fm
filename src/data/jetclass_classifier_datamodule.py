@@ -191,7 +191,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             )
             # ensure that energy >= momentum
             p = np.sqrt(px**2 + py**2 + pz**2)
-            energy_clipped = np.clip(energy, a_min=p, a_max=None)
+            energy_clipped = np.clip(energy, a_min=p, a_max=None) * pf_mask[:, :, 0]
 
             pf_vectors = np.concatenate(
                 [
@@ -207,18 +207,9 @@ class JetClassClassifierDataModule(LightningDataModule):
             pf_features = np.concatenate(
                 [
                     # log ( part_pt )
-                    (
-                        (
-                            np.log(
-                                x_features[:, :, idx_part("part_ptrel")]
-                                * cond_features[:, idx_cond("jet_pt")][:, None]
-                            )
-                        )[..., None]
-                        - 1.7
-                    )
-                    * 0.7,
+                    (np.log(pt)[..., None] - 1.7) * 0.7,
                     # log ( part_energy )
-                    ((np.log(energy_clipped))[..., None] - 2.0) * 0.7,
+                    (np.log(energy_clipped)[..., None] - 2.0) * 0.7,
                     # log ( part_ptrel )
                     (np.log(x_features[:, :, idx_part("part_ptrel")])[..., None] + 4.7) * 0.7,
                     # log ( part_energyrel )
