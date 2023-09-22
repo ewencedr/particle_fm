@@ -6,8 +6,8 @@
 defaults:
   - override /data: classifier_data_jetclass.yaml
   # - override /model: mlp_classifier.yaml
-  # - override /model: particlenet_classifier.yaml
-  - override /model: particlenet_lite_classifier.yaml
+  - override /model: particlenet_classifier.yaml
+  # - override /model: particlenet_lite_classifier.yaml
   # - override /model: ParT_classifier.yaml
   - override /callbacks: jetclass_classifier.yaml
   - override /trainer: gpu.yaml
@@ -62,8 +62,11 @@ data:
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
 
 model:
-  input_dims: 2  # ParticleNet
+  input_dims: 7  # ParticleNet
   input_dim: 7  # ParT
+  # conv_params:
+  #     - [7, [16, 16, 16]]
+  #     - [7, [16, 16, 16]]
   num_classes: 2
   # load_pretrained: true
   scheduler:
@@ -78,7 +81,8 @@ model:
     # final_lr: 0.000001
     # max_iters: 20
   # optimizer:
-  #   lr: 0.001
+    # lr: 0.001
+    # weight_decay: 0.01
 
   # early_stopping:
   #  monitor: "val_loss"
@@ -91,7 +95,7 @@ trainer:
   min_epochs: 1
   max_epochs: ${vars.epochs}
   val_check_interval: ${vars.val_check_interval}
-  gradient_clip_val: 0.5
+  gradient_clip_val: null
 
 logger:
   wandb:
