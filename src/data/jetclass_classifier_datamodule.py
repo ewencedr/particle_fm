@@ -123,9 +123,11 @@ class JetClassClassifierDataModule(LightningDataModule):
 
             x_features = np.concatenate([data_gen, data_sim])
             cond_features = np.concatenate([cond_gen, cond_sim])
-            # use the first three particle features as coordinates (etarel, phirel, ptrel)
+            # use the first three particle features as coordinates (etarel, phirel)
             # TODO: probably not needed for ParT (only for ParticleNet)
-            pf_points = x_features[:, :, :3]
+            self.names_pf_points = ["part_etarel", "part_dphi"]
+            pf_points_indices = [idx_part(name) for name in self.names_pf_points]
+            pf_points = x_features[:, :, pf_points_indices]
             pf_mask = np.concatenate([mask_gen, mask_sim])
             y = np.concatenate([label_gen, label_sim])
 
@@ -135,7 +137,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 logger.warning("HALF OF THE REAL DATA WILL BE LABELLED AS FAKE.")
                 x_features = data_sim
                 cond_features = cond_sim
-                pf_points = x_features[:, :, :3]
+                pf_points = x_features[:, :, pf_points_indices]
                 pf_mask = mask_sim
                 y = label_sim
                 y[len(y) // 2 :] = 1
@@ -149,7 +151,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                     len_mix = int(len_half * self.hparams.debug_sim_gen_fraction)
                     x_features[-len_mix:] = data_gen[:len_mix]
                     cond_features[-len_mix:] = cond_gen[:len_mix]
-                    pf_points[-len_mix:] = x_features[-len_mix:, :, :3]
+                    pf_points[-len_mix:] = x_features[-len_mix:, :, pf_points_indices]
                     pf_mask[-len_mix:] = mask_gen[:len_mix]
                     y[-len_mix:] = label_gen[:len_mix]
 
@@ -171,13 +173,13 @@ class JetClassClassifierDataModule(LightningDataModule):
             )
             eta = (
                 x_features[:, :, idx_part("part_etarel")]
-                + cond_features[:, idx_cond("jet_eta")][:, None] * pf_mask[:, :, 0]
-            )
+                + cond_features[:, idx_cond("jet_eta")][:, None]
+            ) * pf_mask[:, :, 0]
             rng = np.random.default_rng(1234)
             phi = (
                 x_features[:, :, idx_part("part_dphi")]
-                + rng.uniform(0, 2 * np.pi, size=(len(pf_mask), 1)) * pf_mask[:, :, 0]
-            )
+                + rng.uniform(0, 2 * np.pi, size=(len(pf_mask), 1))
+            ) * pf_mask[:, :, 0]
             px = pt * np.cos(phi) * pf_mask[:, :, 0]
             py = pt * np.sin(phi) * pf_mask[:, :, 0]
             pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
@@ -271,12 +273,24 @@ class JetClassClassifierDataModule(LightningDataModule):
 
             if self.hparams.kin_only:
                 logger.info("Using only kinematic features.")
-                pf_features = pf_features[:, :, :7]
-                self.names_pf_features = self.names_pf_features[:7]
+                names_pf_features_kin = [
+                    "log_part_pt",
+                    "log_part_energy",
+                    "log_part_ptrel",
+                    "log_part_energyrel",
+                    "part_deltaR",
+                    "part_etarel",
+                    "part_dphi",
+                ]
+                index_pf_features_kin = [
+                    self.names_pf_features.index(name) for name in names_pf_features_kin
+                ]
+                self.names_pf_features = names_pf_features_kin
+                pf_features = pf_features[:, :, index_pf_features_kin]
 
-            logger.info(f"pf_features: shape={pf_features.shape}, {self.names_pf_features}")
-            logger.info(f"pf_points: shape={pf_points.shape}")
-            logger.info(f"pf_mask: shape={pf_mask.shape}")
+            logger.info(f"pf_features:   shape={pf_features.shape}, {self.names_pf_features}")
+            logger.info(f"pf_points:     shape={pf_points.shape}, {self.names_pf_points}")
+            logger.info(f"pf_mask:       shape={pf_mask.shape}")
             logger.info(f"cond_features: shape={cond_features.shape}, {cond_names}")
 
             # TODO: add shuffling
