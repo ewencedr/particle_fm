@@ -44,9 +44,9 @@ scheduler:
   warmup: 8
   cooldown: 8
   cooldown_final: 4
-  max_lr: 0.005
+  max_lr: 0.001
   initial_lr: 0.0005
-  final_lr: 0.000001
+  final_lr: 0.00005
   max_iters: 200
 
 # scheduler:
