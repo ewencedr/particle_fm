@@ -32,6 +32,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         number_of_jets: int = None,
         use_weaver_axes_convention: bool = True,
         pf_features_list: list = None,
+        set_energy_equal_to_p: bool = False,
         **kwargs: Any,
     ):
         """
@@ -96,6 +97,14 @@ class JetClassClassifierDataModule(LightningDataModule):
         # tanh ( part_dzval)
         # part_d0err
         # part_dzerr
+        with h5py.File(
+            self.hparams.data_file.replace("generated_data", "substructure_generated"), "r"
+        ) as h5file:
+            tau32_gen = h5file["tau32"][: self.hparams.number_of_jets]
+        with h5py.File(
+            self.hparams.data_file.replace("generated_data", "substructure_simulated"), "r"
+        ) as h5file:
+            tau32_sim = h5file["tau32"][: self.hparams.number_of_jets]
 
         # Load data from the data_file (that's the output from `eval_ckpt.py`)
         with h5py.File(self.hparams.data_file, "r") as h5file:
@@ -124,6 +133,7 @@ class JetClassClassifierDataModule(LightningDataModule):
 
             x_features = np.concatenate([data_gen, data_sim])
             cond_features = np.concatenate([cond_gen, cond_sim])
+            tau32 = np.concatenate([tau32_gen, tau32_sim])
             # use the first three particle features as coordinates (etarel, phirel)
             # TODO: probably not needed for ParT (only for ParticleNet)
             self.names_pf_points = ["part_etarel", "part_dphi"]
@@ -151,6 +161,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                     len_half = len(y) // 2
                     len_mix = int(len_half * self.hparams.debug_sim_gen_fraction)
                     x_features[-len_mix:] = data_gen[:len_mix]
+                    tau32[-len_mix:] = tau32_gen[:len_mix]
                     cond_features[-len_mix:] = cond_gen[:len_mix]
                     pf_points[-len_mix:] = x_features[-len_mix:, :, pf_points_indices]
                     pf_mask[-len_mix:] = mask_gen[:len_mix]
@@ -164,6 +175,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 cond_features = cond_features[mask_sel_jet]
                 pf_points = pf_points[mask_sel_jet]
                 pf_mask = pf_mask[mask_sel_jet]
+                tau32 = tau32[mask_sel_jet]
                 y = y[mask_sel_jet]
 
             # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
@@ -192,6 +204,25 @@ class JetClassClassifierDataModule(LightningDataModule):
             # ensure that energy >= momentum
             p = np.sqrt(px**2 + py**2 + pz**2)
             energy_clipped = np.clip(energy, a_min=p, a_max=None) * pf_mask[:, :, 0]
+
+            if self.hparams.set_energy_equal_to_p:
+                logger.warning("Setting energy equal to momentum.")
+                energy_clipped = p
+                cond_features[:, idx_cond("jet_energy")] = np.sum(p, axis=1)
+                x_features[:, :, idx_part("part_energyrel")] = p / np.sum(p, axis=1)[:, None]
+
+            self.pt_energy_inspect = np.concatenate(
+                [
+                    p[..., None],
+                    pt[..., None],
+                    energy[..., None],
+                    energy_clipped[..., None],
+                    x_features[:, :, idx_part("part_energyrel")][..., None],
+                    x_features[:, :, idx_part("part_ptrel")][..., None],
+                ],
+                axis=-1,
+            )
+            self.y_inspect = y
 
             pf_vectors = np.concatenate(
                 [
@@ -306,6 +337,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             pf_points = pf_points[permutation]
             pf_mask = pf_mask[permutation]
             y = y[permutation]
+            tau32 = tau32[permutation]
             cond_features = cond_features[permutation]
 
             # remove inf and nan values
@@ -328,6 +360,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         self.pf_mask = pf_mask
         self.pf_points = pf_points
         self.y = y
+        self.tau32 = tau32
         # self.jet_data = jet_data
 
         # Split data into train, val, test
@@ -351,6 +384,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         self.pf_mask_train, self.pf_mask_val, self.pf_mask_test = np.split(pf_mask, split_indices)
         self.cond_train, self.cond_val, self.cond_test = np.split(cond_features, split_indices)
         self.y_train, self.y_val, self.y_test = np.split(y, split_indices)
+        self.tau32_train, self.tau32_val, self.tau32_test = np.split(tau32, split_indices)
 
         # Create datasets
         self.data_train = TensorDataset(
