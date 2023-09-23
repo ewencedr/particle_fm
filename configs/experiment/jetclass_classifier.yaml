@@ -6,8 +6,8 @@
 defaults:
   - override /data: classifier_data_jetclass.yaml
   # - override /model: mlp_classifier.yaml
-  # - override /model: particlenet_classifier.yaml
-  - override /model: particlenet_lite_classifier.yaml
+  - override /model: particlenet_classifier.yaml
+  # - override /model: particlenet_lite_classifier.yaml
   # - override /model: ParT_classifier.yaml
   - override /callbacks: jetclass_classifier.yaml
   - override /trainer: gpu.yaml
@@ -28,7 +28,8 @@ vars:
   val_check_interval: null
 
 data:
-  batch_size: 2048
+  # batch_size: 2048  # ParticleNet-Lite
+  batch_size: 1024  # ParticleNet
   train_val_test_split: [0.8, 0.1, 0.1]
   # kin_only: true
   # set_energy_equal_to_p: true
@@ -74,12 +75,12 @@ model:
   scheduler:
   #   warmup: ${vars.warmup}
     max_iters: ${vars.epochs}
-    warmup: 8
-    cooldown: 8
-    cooldown_final: 4
-    max_lr: 0.001
-    initial_lr: 0.0005
-    final_lr: 0.00005
+    warmup: 4
+    cooldown: 10
+    cooldown_final: 10
+    max_lr: 0.0002
+    initial_lr: 0.00003
+    final_lr: 0.00002
     # max_iters: 20
   optimizer:
     weight_decay: 0.01
@@ -96,7 +97,7 @@ trainer:
   min_epochs: 1
   max_epochs: ${vars.epochs}
   val_check_interval: ${vars.val_check_interval}
-  gradient_clip_val: 0.1
+  gradient_clip_val: 0.02
 
 logger:
   wandb:
