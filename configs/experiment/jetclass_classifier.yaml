@@ -23,7 +23,7 @@ run_note: ""
 seed: 122
 
 vars:
-  epochs: 100
+  epochs: 200
   warmup: 3
   val_check_interval: null
 
@@ -76,9 +76,9 @@ model:
   #   warmup: ${vars.warmup}
     max_iters: ${vars.epochs}
     warmup: 4
-    cooldown: 10
-    cooldown_final: 10
-    max_lr: 0.0002
+    cooldown: 20
+    cooldown_final: 20
+    max_lr: 0.0001
     initial_lr: 0.00003
     final_lr: 0.00002
     # max_iters: 20
@@ -97,7 +97,7 @@ trainer:
   min_epochs: 1
   max_epochs: ${vars.epochs}
   val_check_interval: ${vars.val_check_interval}
-  gradient_clip_val: 0.02
+  gradient_clip_val: 0.02  # ParticleNet 0.02, ParticleNet-Lite 0.1
 
 logger:
   wandb:
