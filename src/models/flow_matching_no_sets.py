@@ -12,6 +12,7 @@ from .components.mlp import (
     small_cond_ResNet_model,
     very_small_cond_MLP_model,
 )
+from .components.time_emb import CosineEncoding
 
 
 class ode_wrapper(torch.nn.Module):
@@ -34,7 +35,7 @@ class ode_wrapper(torch.nn.Module):
         self.mask = mask
         self.cond = cond
 
-    def forward(self, t, x):
+    def forward(self, t, x, *args, **kwargs):
         return self.model(t, x, mask=self.mask, cond=self.cond)
 
 
@@ -42,15 +43,22 @@ class CNF(nn.Module):
     def __init__(
         self,
         features: int,
-        freqs: int = 3,
+        freqs: int = 16,
         activation: str = "Tanh",
     ):
         super().__init__()
-        self.net = small_cond_ResNet_model(
+        self.net = small_cond_MLP_model(
             features, features, dim_t=2 * freqs, dim_cond=1, activation=activation
         )
 
         self.register_buffer("freqs", torch.arange(1, freqs + 1) * torch.pi)
+
+        self.embed = CosineEncoding(
+            outp_dim=2 * freqs,
+            min_value=0.0,
+            max_value=1.0,
+            frequency_scaling="exponential",
+        )
 
     def forward(
         self,
@@ -59,8 +67,14 @@ class CNF(nn.Module):
         mask: torch.Tensor = None,
         cond: torch.Tensor = None,
     ) -> torch.Tensor:
-        t = self.freqs * t[..., None]
-        t = torch.cat((t.cos(), t.sin()), dim=-1)
+        # t = self.freqs * t[..., None]
+        # t = torch.cat((t.cos(), t.sin()), dim=-1)
+        # t = t.expand(*x.shape[:-1], -1)
+
+        # cosine
+        if t.dim() == 0:
+            t = t.unsqueeze(0)
+        t = self.embed(t)
         t = t.expand(*x.shape[:-1], -1)
 
         return self.net(t, x, cond=cond)
