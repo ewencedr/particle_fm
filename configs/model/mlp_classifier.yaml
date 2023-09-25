@@ -1,7 +1,11 @@
 _target_: src.models.jetclass_classifiers.CondClassifier
 
 net_config:
-  fc_params: [[256, 0.1], [256, 0.1], [256, 0.1], [128, 0.1]]
+  fc_params:
+    - [256, 0.1]
+    - [256, 0.1]
+    - [256, 0.1]
+    - [128, 0.1]
   input_dim: 13
 
 optimizer:
