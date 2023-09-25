@@ -122,13 +122,13 @@ hydra:
     - hydra.job.name=train_ddp_process_3
     - hydra.mode=RUN
     task:
-    - experiment=/lhco/lhco_both_jets2
-    - task_name=setup2 final
-    - trainer=ddp
+    - task_name=both_jets_continue_2_earlystop
+    - ckpt_path=/beegfs/desy/user/ewencedr/deep-learning/logs/both_jets_continue/runs/2023-09-19_18-00-23/checkpoints/last-EMA.ckpt
+    - experiment=lhco/lhco_both_jets
   job:
     name: train_ddp_process_3
     chdir: null
-    override_dirname: experiment=/lhco/lhco_both_jets2,task_name=setup2 final,trainer=ddp
+    override_dirname: ckpt_path=/beegfs/desy/user/ewencedr/deep-learning/logs/both_jets_continue/runs/2023-09-19_18-00-23/checkpoints/last-EMA.ckpt,experiment=lhco/lhco_both_jets,task_name=both_jets_continue_2_earlystop
     id: ???
     num: ???
     config_name: train.yaml
@@ -161,14 +161,14 @@ hydra:
       debug: null
       local: default.yaml
       hparams_search: null
-      experiment: /lhco/lhco_both_jets2
+      experiment: lhco/lhco_both_jets
       hydra: default.yaml
       extras: default.yaml
       paths: default.yaml
-      trainer: ddp
+      trainer: ddp.yaml
       logger: many_loggers.yaml
       callbacks: /lhco/lhco.yaml
-      model: flow_matching2.yaml
+      model: flow_matching.yaml
       data: lhco.yaml
       hydra/env: default
       hydra/callbacks: null
