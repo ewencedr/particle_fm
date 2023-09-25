@@ -234,6 +234,27 @@ class JetClassClassifierDataModule(LightningDataModule):
                 axis=-1,
             )
 
+            # for compatibility with kin-only trainings:
+            non_kin_feature_names = [
+                "part_isChargedHadron",
+                "part_isNeutralHadron",
+                "part_isPhoton",
+                "part_isElectron",
+                "part_isMuon",
+                "part_charge",
+                "part_d0val",
+                "part_d0err",
+                "part_dzval",
+                "part_dzerr",
+            ]
+            for name in non_kin_feature_names:
+                if name not in part_names:
+                    logger.warning(f"Adding {name} as zeros to x_features.")
+                    x_features = np.concatenate(
+                        [x_features, np.zeros((len(x_features), len(x_features[0]), 1))], axis=-1
+                    )
+                    part_names.append(name)
+
             # create the features array as needed by ParT
             pf_features = np.concatenate(
                 [
