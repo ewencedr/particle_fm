@@ -9,7 +9,7 @@ defaults:
   # - override /model: particlenet_classifier.yaml
   # - override /model: ParT_classifier.yaml
   - override /model: epic_classifier_jetclass.yaml
-  - override /callbacks: jetclass_classifier_epic.yaml
+  - override /callbacks: jetclass_classifier.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
