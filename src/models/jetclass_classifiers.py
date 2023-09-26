@@ -11,6 +11,7 @@ from tqdm import tqdm
 sys.path.insert(0, "/home/birkjosc/repositories/weaver-core")
 from typing import Any, Dict, Tuple
 
+from lightning.pytorch.utilities import grad_norm
 from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification import AUROC, Accuracy
@@ -332,6 +333,18 @@ class ParticleNetPL(pl.LightningModule):
         self.val_acc_best = MaxMetric()
         self.val_auc_best = MaxMetric()
 
+    def on_before_optimizer_step(self, optimizer):
+        # Compute the 2-norm for each layer
+        # If using mixed precision, the gradients are already unscaled here
+        # dict containing {<layer_name>: <2-norm value>, ...}
+        norms = grad_norm(self.mod, norm_type=2)
+        max_norm = torch.max(torch.tensor(list(norms.values())))
+        mean_norm = torch.mean(torch.tensor(list(norms.values())))
+        min_norm = torch.min(torch.tensor(list(norms.values())))
+        self.log("grad_norm_max", max_norm, on_step=True, on_epoch=True, prog_bar=False)
+        self.log("grad_norm_mean", mean_norm, on_step=True, on_epoch=True, prog_bar=False)
+        self.log("grad_norm_min", min_norm, on_step=True, on_epoch=True, prog_bar=False)
+
     def forward(self, points, features, lorentz_vectors, mask):
         return self.mod(points=points, features=features, mask=mask)
 
@@ -526,7 +539,7 @@ class EPiCClassifierLitModule(LightningModule):
         self.net = EPiC_discriminator(**net_config)
 
         # loss function
-        self.criterion = torch.nn.BCEWithLogitsLoss()
+        self.criterion = torch.nn.CrossEntropyLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="binary")
@@ -577,10 +590,14 @@ class EPiCClassifierLitModule(LightningModule):
         """
         pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
         labels = jet_labels.squeeze()
-        logits = self.forward(pf_features, mask=pf_mask).squeeze()
-        loss = self.criterion(logits, labels)
-        preds = logits
-        return loss, preds, labels
+        logits = self.forward(pf_features, mask=pf_mask)
+        loss = self.criterion(logits.to("cuda"), labels.float().to("cuda"))
+        labels = jet_labels.squeeze()
+        return loss, logits, labels
+
+    def on_train_epoch_start(self) -> None:
+        self.train_preds_list = []
+        self.train_labels_list = []
 
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
@@ -592,12 +609,16 @@ class EPiCClassifierLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         :return: A tensor of losses between model predictions and targets.
         """
-        loss, preds, targets = self.model_step(batch)
+        loss, logits, targets = self.model_step(batch)
+
+        preds = torch.softmax(logits, dim=1)
+        self.train_preds_list.append(preds.detach().cpu().numpy())
+        self.train_labels_list.append(targets.detach().cpu().numpy())
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_acc(preds, targets)
-        self.train_auc(preds, targets)
+        self.train_acc(logits, targets)
+        self.train_auc(logits, targets)
         self.log("train_loss", self.train_loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_acc", self.train_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_auc", self.train_auc, on_step=True, on_epoch=True, prog_bar=True)
@@ -605,9 +626,10 @@ class EPiCClassifierLitModule(LightningModule):
         # return loss or backpropagation will fail
         return loss
 
-    def on_train_epoch_end(self) -> None:
-        """Lightning hook that is called when a training epoch ends."""
-        pass
+    def on_train_epoch_end(self):
+        self.train_preds = np.concatenate(self.train_preds_list)
+        self.train_labels = np.concatenate(self.train_labels_list)
+        print(f"Epoch {self.trainer.current_epoch} finished.", end="\r")
 
     def on_validation_epoch_start(self) -> None:
         self.val_preds_list = []
@@ -621,11 +643,9 @@ class EPiCClassifierLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         loss, logits, targets = self.model_step(batch)
-
-        preds = torch.sigmoid(logits)
+        preds = torch.softmax(logits, dim=1)
         self.val_preds_list.append(preds.detach().cpu().numpy())
         self.val_labels_list.append(targets.detach().cpu().numpy())
-
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(logits, targets)
@@ -649,14 +669,11 @@ class EPiCClassifierLitModule(LightningModule):
         self.val_labels = np.concatenate(self.val_labels_list)
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-        """Perform a single test step on a batch of data from the test set.
-
-        :param batch: A batch of data (a tuple) containing the input tensor of images and target
-            labels.
-        :param batch_idx: The index of the current batch.
-        """
-        loss, preds, targets = self.model_step(batch)
-
+        """Perform a single test step on a batch of data from the test set."""
+        loss, logits, targets = self.model_step(batch)
+        preds = torch.softmax(logits, dim=1)
+        self.test_loop_preds_list.append(preds.detach().cpu().numpy())
+        self.test_loop_labels_list.append(targets.detach().cpu().numpy())
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)

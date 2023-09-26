@@ -15,7 +15,8 @@ logger_emask = get_pylogger("epic_mask")
 
 
 class EPiC_layer(nn.Module):
-    """Equivariant Point Cloud (EPiC) Layer. Based on https://arxiv.org/abs/2301.08128. Can handle point clouds with shape (..., points, feats).
+    """Equivariant Point Cloud (EPiC) Layer. Based on https://arxiv.org/abs/2301.08128. Can handle
+    point clouds with shape (..., points, feats).
 
     Args:
         local_in_dim (int, optional): local in dim. Defaults to 3.
@@ -427,6 +428,7 @@ class EPiC_discriminator(nn.Module):
         dropout: float = 0.0,
         sum_scale: float = 1e-2,
         num_sup_sets: int = 2,
+        out_dim: int = 1,
     ):
         super().__init__()
         self.activation = activation
@@ -439,6 +441,7 @@ class EPiC_discriminator(nn.Module):
         self.num_points = num_points
         self.num_sup_sets = num_sup_sets
         self.sum_scale = sum_scale
+        self.out_dim = out_dim
 
         self.t_local_cat = t_local_cat
         self.t_global_cat = t_global_cat
@@ -487,7 +490,7 @@ class EPiC_discriminator(nn.Module):
             nn.Linear(int(2 * self.hid_d + self.latent) * self.num_sup_sets, self.hid_d)
         )
         self.fc_g4 = self.wrapper_func(nn.Linear(self.hid_d, self.hid_d))
-        self.out = self.wrapper_func(nn.Linear(self.hid_d, 1))
+        self.out = self.wrapper_func(nn.Linear(self.hid_d, self.out_dim))
 
     def forward(
         self,
