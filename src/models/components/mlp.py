@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 
 class MLP(nn.Sequential):
@@ -9,7 +8,7 @@ class MLP(nn.Sequential):
         in_features: int,
         out_features: int,
         hidden_features: list[int] = [64, 64],
-        activation: str = "LeakyReLU",
+        activation: str = "ELU",
     ):
         layers = []
 
@@ -27,7 +26,7 @@ class small_cond_MLP_model(nn.Module):
         self,
         in_features: int,
         out_features: int,
-        activation: str = "LeakyReLU",
+        activation: str = "ELU",
         dim_t: int = 6,
         dim_cond: int = 1,
     ):
@@ -74,7 +73,7 @@ class very_small_cond_MLP_model(nn.Module):
         self,
         in_features: int,
         out_features: int,
-        activation: str = "leaky_relu",
+        activation: str = "ELU",
         dim_t: int = 6,
         dim_cond: int = 1,
     ):
@@ -99,12 +98,8 @@ class resnetBlock(nn.Module):
         self.linear2 = nn.Linear(hidden_features, out_features)
 
     def forward(self, x):
-        # res = x  # .clone()
-        x = F.leaky_relu(self.linear(x))
-        res = x  # .clone()
-        # print(f"x shape: {x.shape}")
-        # print(f"res shape: {res.shape}")
-        x = F.leaky_relu(self.linear2(x))  # + res)
+        x = nn.LeakyReLU(self.linear(x))
+        x = nn.LeakyReLU(self.linear2(x) + x)
         return x
 
 
@@ -135,6 +130,11 @@ class small_cond_ResNet_model(nn.Module):
         )
         self.mlp4 = resnetBlock(
             256 + dim_t + dim_cond,
+            out_features=256,
+            hidden_features=256,
+        )
+        self.mlp5 = resnetBlock(
+            256 + dim_t + dim_cond,
             out_features=out_features,
             hidden_features=64,
         )
@@ -148,6 +148,8 @@ class small_cond_ResNet_model(nn.Module):
         x = self.mlp3(x)
         x = torch.cat([t, x, cond], dim=-1)
         x = self.mlp4(x)
+        x = torch.cat([t, x, cond], dim=-1)
+        x = self.mlp5(x)
         return x
 
 
