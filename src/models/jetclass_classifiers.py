@@ -886,15 +886,16 @@ class HighLevelClassifier(LightningModule):
         self.val_preds = np.concatenate(self.val_preds_list)
         self.val_labels = np.concatenate(self.val_labels_list)
 
+    def on_test_start(self):
+        self.test_loop_preds_list = []
+        self.test_loop_labels_list = []
+
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
-        """Perform a single test step on a batch of data from the test set.
-
-        :param batch: A batch of data (a tuple) containing the input tensor of images and target
-            labels.
-        :param batch_idx: The index of the current batch.
-        """
-        loss, preds, targets = self.model_step(batch)
-
+        """Perform a single test step on a batch of data from the test set."""
+        loss, logits, targets = self.model_step(batch)
+        preds = torch.softmax(logits, dim=1)
+        self.test_loop_preds_list.append(preds.detach().cpu().numpy())
+        self.test_loop_labels_list.append(targets.detach().cpu().numpy())
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)
@@ -903,9 +904,9 @@ class HighLevelClassifier(LightningModule):
         self.log("test_acc", self.test_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("test_auc", self.test_auc, on_step=True, on_epoch=True, prog_bar=True)
 
-    def on_test_epoch_end(self) -> None:
-        """Lightning hook that is called when a test epoch ends."""
-        pass
+    def on_test_end(self):
+        self.test_loop_preds = np.concatenate(self.test_loop_preds_list)
+        self.test_loop_labels = np.concatenate(self.test_loop_labels_list)
 
     def configure_optimizers(self) -> Dict[str, Any]:
         """Configures optimizers and learning-rate schedulers to be used for training.
