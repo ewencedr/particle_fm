@@ -114,7 +114,7 @@ class ParticleTransformerPL(pl.LightningModule):
             - A tensor of predictions.
             - A tensor of target labels.
         """
-        pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
+        pf_points, pf_features, pf_vectors, pf_mask, cond, hl_features, jet_labels = batch
         labels = jet_labels.squeeze()
         logits = self.forward(
             points=None,
@@ -372,7 +372,7 @@ class ParticleNetPL(pl.LightningModule):
             - A tensor of predictions.
             - A tensor of target labels.
         """
-        pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
+        pf_points, pf_features, pf_vectors, pf_mask, cond, hl_features, jet_labels = batch
         labels = jet_labels.squeeze()
         logits = self.forward(
             points=pf_points.to("cuda"),
@@ -588,7 +588,7 @@ class EPiCClassifierLitModule(LightningModule):
             - A tensor of predictions.
             - A tensor of target labels.
         """
-        pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
+        pf_points, pf_features, pf_vectors, pf_mask, cond, hl_features, jet_labels = batch
         labels = jet_labels.squeeze()
         logits = self.forward(pf_features, mask=pf_mask)
         loss = self.criterion(logits.to("cuda"), labels.float().to("cuda"))
@@ -729,7 +729,7 @@ class MLP(nn.Sequential):
         super().__init__(*layers[:-2])
 
 
-class CondClassifier(LightningModule):
+class HighLevelClassifier(LightningModule):
     """Classifier for the conditioning features."""
 
     def __init__(
@@ -737,6 +737,8 @@ class CondClassifier(LightningModule):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         net_config: Dict[str, Any] = {},
+        use_hl_features: bool = False,
+        use_cond_features: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -797,9 +799,14 @@ class CondClassifier(LightningModule):
             - A tensor of predictions.
             - A tensor of target labels.
         """
-        pf_points, pf_features, pf_vectors, pf_mask, cond, jet_labels = batch
+        pf_points, pf_features, pf_vectors, pf_mask, cond, hl_features, jet_labels = batch
         labels = jet_labels.squeeze()
-        logits = self.forward(cond).squeeze()
+        if self.hparams.use_hl_features:
+            logits = self.forward(hl_features).squeeze()
+        elif self.hparams.use_cond_features:
+            logits = self.forward(cond).squeeze()
+        else:
+            raise ValueError("Need to use either high-level or conditioning features.")
         loss = self.criterion(logits, labels.float())
         preds = logits
         return loss, preds, labels

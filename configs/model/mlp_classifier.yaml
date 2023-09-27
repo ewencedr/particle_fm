@@ -1,4 +1,4 @@
-_target_: src.models.jetclass_classifiers.CondClassifier
+_target_: src.models.jetclass_classifiers.HighLevelClassifier
 
 net_config:
   fc_params:

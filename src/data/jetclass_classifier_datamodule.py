@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, Optional, Tuple
 
 import awkward as ak
@@ -32,6 +33,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         number_of_jets: int = None,
         use_weaver_axes_convention: bool = True,
         pf_features_list: list = None,
+        hl_features_list: list = None,
         set_energy_equal_to_p: bool = False,
         **kwargs: Any,
     ):
@@ -97,14 +99,6 @@ class JetClassClassifierDataModule(LightningDataModule):
         # tanh ( part_dzval)
         # part_d0err
         # part_dzerr
-        with h5py.File(
-            self.hparams.data_file.replace("generated_data", "substructure_generated"), "r"
-        ) as h5file:
-            tau32_gen = h5file["tau32"][: self.hparams.number_of_jets]
-        with h5py.File(
-            self.hparams.data_file.replace("generated_data", "substructure_simulated"), "r"
-        ) as h5file:
-            tau32_sim = h5file["tau32"][: self.hparams.number_of_jets]
 
         # Load data from the data_file (that's the output from `eval_ckpt.py`)
         with h5py.File(self.hparams.data_file, "r") as h5file:
@@ -131,239 +125,272 @@ class JetClassClassifierDataModule(LightningDataModule):
             cond_sim = h5file["cond_data_sim"][: self.hparams.number_of_jets]
             label_sim = np.zeros(len(data_sim))
 
-            x_features = np.concatenate([data_gen, data_sim])
-            cond_features = np.concatenate([cond_gen, cond_sim])
-            tau32 = np.concatenate([tau32_gen, tau32_sim])
-            # use the first three particle features as coordinates (etarel, phirel)
-            # TODO: probably not needed for ParT (only for ParticleNet)
-            self.names_pf_points = ["part_etarel", "part_dphi"]
-            pf_points_indices = [idx_part(name) for name in self.names_pf_points]
+        # fmt: off
+        subs_filename_gen = self.hparams.data_file.replace("generated_data", "substructure_generated")  # noqa E501
+        subs_filename_sim = self.hparams.data_file.replace("generated_data", "substructure_simulated")  # noqa E501
+        self.names_hl_features = [ "d12", "d2", "d23", "ecf2", "ecf3", "mass", "pt", "tau1", "tau2", "tau21", "tau3", "tau32"] # noqa E501
+
+        # fmt: on
+        if os.path.isfile(subs_filename_gen) and os.path.isfile(subs_filename_sim):
+            with h5py.File(subs_filename_gen) as h5file:
+                hl_features_gen = np.concatenate(
+                    [
+                        h5file[hl_name][: self.hparams.number_of_jets][..., None]
+                        for hl_name in self.names_hl_features
+                    ],
+                    axis=-1,
+                )
+            with h5py.File(subs_filename_sim) as h5file:
+                hl_features_sim = np.concatenate(
+                    [
+                        h5file[hl_name][: self.hparams.number_of_jets][..., None]
+                        for hl_name in self.names_hl_features
+                    ],
+                    axis=-1,
+                )
+        else:
+            hl_features_gen = np.zeros((len(data_gen), len(self.names_hl_features)))
+            hl_features_sim = np.zeros((len(data_sim), len(self.names_hl_features)))
+
+        x_features = np.concatenate([data_gen, data_sim])
+        cond_features = np.concatenate([cond_gen, cond_sim])
+        hl_features = np.concatenate([hl_features_gen, hl_features_sim])
+        # use the first three particle features as coordinates (etarel, phirel)
+        # TODO: probably not needed for ParT (only for ParticleNet)
+        self.names_pf_points = ["part_etarel", "part_dphi"]
+        pf_points_indices = [idx_part(name) for name in self.names_pf_points]
+        pf_points = x_features[:, :, pf_points_indices]
+        pf_mask = np.concatenate([mask_gen, mask_sim])
+        y = np.concatenate([label_gen, label_sim])
+
+        if self.hparams.debug_sim_only:
+            # use only sim for debugging
+            logger.warning("Using only sim data for debugging.")
+            logger.warning("HALF OF THE REAL DATA WILL BE LABELLED AS FAKE.")
+            x_features = data_sim
+            cond_features = cond_sim
             pf_points = x_features[:, :, pf_points_indices]
-            pf_mask = np.concatenate([mask_gen, mask_sim])
-            y = np.concatenate([label_gen, label_sim])
+            pf_mask = mask_sim
+            y = label_sim
+            y[len(y) // 2 :] = 1
+            if self.hparams.debug_sim_gen_fraction is not None:
+                # mix in some gen data in the second half of the arrays
+                logger.warning(
+                    f"MIXING IN {self.hparams.debug_sim_gen_fraction*100}% GEN DATA FOR DEBUGGING."
+                )
+                len_half = len(y) // 2
+                len_mix = int(len_half * self.hparams.debug_sim_gen_fraction)
+                x_features[-len_mix:] = data_gen[:len_mix]
+                hl_features[-len_mix:] = hl_features[:len_mix]
+                cond_features[-len_mix:] = cond_gen[:len_mix]
+                pf_points[-len_mix:] = x_features[-len_mix:, :, pf_points_indices]
+                pf_mask[-len_mix:] = mask_gen[:len_mix]
+                y[-len_mix:] = label_gen[:len_mix]
 
-            if self.hparams.debug_sim_only:
-                # use only sim for debugging
-                logger.warning("Using only sim data for debugging.")
-                logger.warning("HALF OF THE REAL DATA WILL BE LABELLED AS FAKE.")
-                x_features = data_sim
-                cond_features = cond_sim
-                pf_points = x_features[:, :, pf_points_indices]
-                pf_mask = mask_sim
-                y = label_sim
-                y[len(y) // 2 :] = 1
-                if self.hparams.debug_sim_gen_fraction is not None:
-                    # mix in some gen data in the second half of the arrays
-                    logger.warning(
-                        f"MIXING IN {self.hparams.debug_sim_gen_fraction*100}% GEN DATA FOR"
-                        " DEBUGGING."
+        if self.hparams.used_flavor is not None:
+            logger.info(f"Using only the following flavor: {self.hparams.used_flavor}")
+            idx = idx_cond(f"jet_type_label_{self.hparams.used_flavor}")
+            mask_sel_jet = cond_features[:, idx] == 1
+            x_features = x_features[mask_sel_jet]
+            cond_features = cond_features[mask_sel_jet]
+            pf_points = pf_points[mask_sel_jet]
+            pf_mask = pf_mask[mask_sel_jet]
+            hl_features = hl_features[mask_sel_jet]
+            y = y[mask_sel_jet]
+
+        # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
+        pt = (
+            x_features[:, :, idx_part("part_ptrel")]
+            * cond_features[:, idx_cond("jet_pt")][:, None]
+            * pf_mask[:, :, 0]
+        )
+        eta = (
+            x_features[:, :, idx_part("part_etarel")]
+            + cond_features[:, idx_cond("jet_eta")][:, None]
+        ) * pf_mask[:, :, 0]
+        rng = np.random.default_rng(1234)
+        phi = (
+            x_features[:, :, idx_part("part_dphi")]
+            + rng.uniform(0, 2 * np.pi, size=(len(pf_mask), 1))
+        ) * pf_mask[:, :, 0]
+        px = pt * np.cos(phi) * pf_mask[:, :, 0]
+        py = pt * np.sin(phi) * pf_mask[:, :, 0]
+        pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
+        energy = (
+            x_features[:, :, idx_part("part_energyrel")]
+            * cond_features[:, idx_cond("jet_energy")][:, None]
+            * pf_mask[:, :, 0]
+        )
+        # ensure that energy >= momentum
+        p = np.sqrt(px**2 + py**2 + pz**2)
+        energy_clipped = np.clip(energy, a_min=p, a_max=None) * pf_mask[:, :, 0]
+
+        if self.hparams.set_energy_equal_to_p:
+            logger.warning("Setting energy equal to momentum.")
+            energy_clipped = p
+            cond_features[:, idx_cond("jet_energy")] = np.sum(p, axis=1)
+            x_features[:, :, idx_part("part_energyrel")] = p / np.sum(p, axis=1)[:, None]
+
+        self.pt_energy_inspect = np.concatenate(
+            [
+                p[..., None],
+                pt[..., None],
+                energy[..., None],
+                energy_clipped[..., None],
+                x_features[:, :, idx_part("part_energyrel")][..., None],
+                x_features[:, :, idx_part("part_ptrel")][..., None],
+            ],
+            axis=-1,
+        )
+        self.y_inspect = y
+
+        pf_vectors = np.concatenate(
+            [
+                px[..., None],
+                py[..., None],
+                pz[..., None],
+                energy_clipped[..., None],
+            ],
+            axis=-1,
+        )
+
+        # for compatibility with kin-only trainings:
+        non_kin_feature_names = [
+            "part_isChargedHadron",
+            "part_isNeutralHadron",
+            "part_isPhoton",
+            "part_isElectron",
+            "part_isMuon",
+            "part_charge",
+            "part_d0val",
+            "part_d0err",
+            "part_dzval",
+            "part_dzerr",
+        ]
+        for name in non_kin_feature_names:
+            if name not in part_names:
+                logger.warning(f"Adding {name} as zeros to x_features.")
+                x_features = np.concatenate(
+                    [x_features, np.zeros((len(x_features), len(x_features[0]), 1))], axis=-1
+                )
+                part_names.append(name)
+
+        # create the features array as needed by ParT
+        pf_features = np.concatenate(
+            [
+                # log ( part_pt )
+                (np.log(pt)[..., None] - 1.7) * 0.7,
+                # log ( part_energy )
+                (np.log(energy_clipped)[..., None] - 2.0) * 0.7,
+                # log ( part_ptrel )
+                (np.log(x_features[:, :, idx_part("part_ptrel")])[..., None] + 4.7) * 0.7,
+                # log ( part_energyrel )
+                (np.log(x_features[:, :, idx_part("part_energyrel")])[..., None] + 4.7) * 0.7,
+                # part_deltaR
+                np.clip(
+                    (
+                        np.hypot(
+                            x_features[:, :, idx_part("part_etarel")],
+                            x_features[:, :, idx_part("part_dphi")],
+                        )[..., None]
+                        - 0.2
                     )
-                    len_half = len(y) // 2
-                    len_mix = int(len_half * self.hparams.debug_sim_gen_fraction)
-                    x_features[-len_mix:] = data_gen[:len_mix]
-                    tau32[-len_mix:] = tau32_gen[:len_mix]
-                    cond_features[-len_mix:] = cond_gen[:len_mix]
-                    pf_points[-len_mix:] = x_features[-len_mix:, :, pf_points_indices]
-                    pf_mask[-len_mix:] = mask_gen[:len_mix]
-                    y[-len_mix:] = label_gen[:len_mix]
+                    * 4.0,
+                    -5,
+                    5,
+                )
+                * pf_mask[:, :, 0][..., None],
+                x_features[:, :, idx_part("part_charge")][..., None],
+                x_features[:, :, idx_part("part_isChargedHadron")][..., None],
+                x_features[:, :, idx_part("part_isNeutralHadron")][..., None],
+                x_features[:, :, idx_part("part_isPhoton")][..., None],
+                x_features[:, :, idx_part("part_isElectron")][..., None],
+                x_features[:, :, idx_part("part_isMuon")][..., None],
+                np.tanh(x_features[:, :, idx_part("part_d0val")])[..., None],
+                np.clip(x_features[:, :, idx_part("part_d0err")][..., None], 0, 1),
+                np.tanh(x_features[:, :, idx_part("part_dzval")])[..., None],
+                np.clip(x_features[:, :, idx_part("part_dzerr")][..., None], 0, 1),
+                x_features[:, :, idx_part("part_etarel")][..., None],
+                x_features[:, :, idx_part("part_dphi")][..., None],
+            ],
+            axis=-1,
+        )
+        self.names_pf_features = [
+            "log_part_pt",
+            "log_part_energy",
+            "log_part_ptrel",
+            "log_part_energyrel",
+            "part_deltaR",
+            "part_charge",
+            "part_isChargedHadron",
+            "part_isNeutralHadron",
+            "part_isPhoton",
+            "part_isElectron",
+            "part_isMuon",
+            "tanh_part_d0val",
+            "part_d0err",
+            "tanh_part_dzval",
+            "part_dzerr",
+            "part_etarel",
+            "part_dphi",
+        ]
 
-            if self.hparams.used_flavor is not None:
-                logger.info(f"Using only the following flavor: {self.hparams.used_flavor}")
-                idx = idx_cond(f"jet_type_label_{self.hparams.used_flavor}")
-                mask_sel_jet = cond_features[:, idx] == 1
-                x_features = x_features[mask_sel_jet]
-                cond_features = cond_features[mask_sel_jet]
-                pf_points = pf_points[mask_sel_jet]
-                pf_mask = pf_mask[mask_sel_jet]
-                tau32 = tau32[mask_sel_jet]
-                y = y[mask_sel_jet]
-
-            # --- define x_lorentz as px, py, pz, energy using eta, phi, pt to calculate px, py, pz
-            pt = (
-                x_features[:, :, idx_part("part_ptrel")]
-                * cond_features[:, idx_cond("jet_pt")][:, None]
-                * pf_mask[:, :, 0]
-            )
-            eta = (
-                x_features[:, :, idx_part("part_etarel")]
-                + cond_features[:, idx_cond("jet_eta")][:, None]
-            ) * pf_mask[:, :, 0]
-            rng = np.random.default_rng(1234)
-            phi = (
-                x_features[:, :, idx_part("part_dphi")]
-                + rng.uniform(0, 2 * np.pi, size=(len(pf_mask), 1))
-            ) * pf_mask[:, :, 0]
-            px = pt * np.cos(phi) * pf_mask[:, :, 0]
-            py = pt * np.sin(phi) * pf_mask[:, :, 0]
-            pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
-            energy = (
-                x_features[:, :, idx_part("part_energyrel")]
-                * cond_features[:, idx_cond("jet_energy")][:, None]
-                * pf_mask[:, :, 0]
-            )
-            # ensure that energy >= momentum
-            p = np.sqrt(px**2 + py**2 + pz**2)
-            energy_clipped = np.clip(energy, a_min=p, a_max=None) * pf_mask[:, :, 0]
-
-            if self.hparams.set_energy_equal_to_p:
-                logger.warning("Setting energy equal to momentum.")
-                energy_clipped = p
-                cond_features[:, idx_cond("jet_energy")] = np.sum(p, axis=1)
-                x_features[:, :, idx_part("part_energyrel")] = p / np.sum(p, axis=1)[:, None]
-
-            self.pt_energy_inspect = np.concatenate(
-                [
-                    p[..., None],
-                    pt[..., None],
-                    energy[..., None],
-                    energy_clipped[..., None],
-                    x_features[:, :, idx_part("part_energyrel")][..., None],
-                    x_features[:, :, idx_part("part_ptrel")][..., None],
-                ],
-                axis=-1,
-            )
-            self.y_inspect = y
-
-            pf_vectors = np.concatenate(
-                [
-                    px[..., None],
-                    py[..., None],
-                    pz[..., None],
-                    energy_clipped[..., None],
-                ],
-                axis=-1,
-            )
-
-            # for compatibility with kin-only trainings:
-            non_kin_feature_names = [
-                "part_isChargedHadron",
-                "part_isNeutralHadron",
-                "part_isPhoton",
-                "part_isElectron",
-                "part_isMuon",
-                "part_charge",
-                "part_d0val",
-                "part_d0err",
-                "part_dzval",
-                "part_dzerr",
-            ]
-            for name in non_kin_feature_names:
-                if name not in part_names:
-                    logger.warning(f"Adding {name} as zeros to x_features.")
-                    x_features = np.concatenate(
-                        [x_features, np.zeros((len(x_features), len(x_features[0]), 1))], axis=-1
-                    )
-                    part_names.append(name)
-
-            # create the features array as needed by ParT
-            pf_features = np.concatenate(
-                [
-                    # log ( part_pt )
-                    (np.log(pt)[..., None] - 1.7) * 0.7,
-                    # log ( part_energy )
-                    (np.log(energy_clipped)[..., None] - 2.0) * 0.7,
-                    # log ( part_ptrel )
-                    (np.log(x_features[:, :, idx_part("part_ptrel")])[..., None] + 4.7) * 0.7,
-                    # log ( part_energyrel )
-                    (np.log(x_features[:, :, idx_part("part_energyrel")])[..., None] + 4.7) * 0.7,
-                    # part_deltaR
-                    np.clip(
-                        (
-                            np.hypot(
-                                x_features[:, :, idx_part("part_etarel")],
-                                x_features[:, :, idx_part("part_dphi")],
-                            )[..., None]
-                            - 0.2
-                        )
-                        * 4.0,
-                        -5,
-                        5,
-                    )
-                    * pf_mask[:, :, 0][..., None],
-                    x_features[:, :, idx_part("part_charge")][..., None],
-                    x_features[:, :, idx_part("part_isChargedHadron")][..., None],
-                    x_features[:, :, idx_part("part_isNeutralHadron")][..., None],
-                    x_features[:, :, idx_part("part_isPhoton")][..., None],
-                    x_features[:, :, idx_part("part_isElectron")][..., None],
-                    x_features[:, :, idx_part("part_isMuon")][..., None],
-                    np.tanh(x_features[:, :, idx_part("part_d0val")])[..., None],
-                    np.clip(x_features[:, :, idx_part("part_d0err")][..., None], 0, 1),
-                    np.tanh(x_features[:, :, idx_part("part_dzval")])[..., None],
-                    np.clip(x_features[:, :, idx_part("part_dzerr")][..., None], 0, 1),
-                    x_features[:, :, idx_part("part_etarel")][..., None],
-                    x_features[:, :, idx_part("part_dphi")][..., None],
-                ],
-                axis=-1,
-            )
-            self.names_pf_features = [
+        if self.hparams.kin_only:
+            logger.info("Using only kinematic pf_features.")
+            names_pf_features_kin = [
                 "log_part_pt",
                 "log_part_energy",
                 "log_part_ptrel",
                 "log_part_energyrel",
                 "part_deltaR",
-                "part_charge",
-                "part_isChargedHadron",
-                "part_isNeutralHadron",
-                "part_isPhoton",
-                "part_isElectron",
-                "part_isMuon",
-                "tanh_part_d0val",
-                "part_d0err",
-                "tanh_part_dzval",
-                "part_dzerr",
                 "part_etarel",
                 "part_dphi",
             ]
+            index_pf_features_kin = [
+                self.names_pf_features.index(name) for name in names_pf_features_kin
+            ]
+            self.names_pf_features = names_pf_features_kin
+            pf_features = pf_features[:, :, index_pf_features_kin]
+        elif self.hparams.pf_features_list is not None:
+            logger.info(f"Using only the following pf_features: {self.hparams.pf_features_list}")
+            index_pf_features_kin = [
+                self.names_pf_features.index(name) for name in self.hparams.pf_features_list
+            ]
+            self.names_pf_features = self.hparams.pf_features_list
+            pf_features = pf_features[:, :, index_pf_features_kin]
+        else:
+            logger.info("Using all pf_features.")
 
-            if self.hparams.kin_only:
-                logger.info("Using only kinematic pf_features.")
-                names_pf_features_kin = [
-                    "log_part_pt",
-                    "log_part_energy",
-                    "log_part_ptrel",
-                    "log_part_energyrel",
-                    "part_deltaR",
-                    "part_etarel",
-                    "part_dphi",
-                ]
-                index_pf_features_kin = [
-                    self.names_pf_features.index(name) for name in names_pf_features_kin
-                ]
-                self.names_pf_features = names_pf_features_kin
-                pf_features = pf_features[:, :, index_pf_features_kin]
-            elif self.hparams.pf_features_list is not None:
-                logger.info(
-                    f"Using only the following pf_features: {self.hparams.pf_features_list}"
-                )
-                index_pf_features_kin = [
-                    self.names_pf_features.index(name) for name in self.hparams.pf_features_list
-                ]
-                self.names_pf_features = self.hparams.pf_features_list
-                pf_features = pf_features[:, :, index_pf_features_kin]
-            else:
-                logger.info("Using all pf_features.")
+        if self.hparams.hl_features_list is not None:
+            logger.info(f"Using only the following hl_features: {self.hparams.hl_features_list}")
+            index_hl_features = [
+                self.names_hl_features.index(name) for name in self.hparams.hl_features_list
+            ]
+            self.names_hl_features = self.hparams.hl_features_list
+            hl_features = hl_features[:, index_hl_features]
 
-            logger.info(f"pf_features:   shape={pf_features.shape}, {self.names_pf_features}")
-            logger.info(f"pf_points:     shape={pf_points.shape}, {self.names_pf_points}")
-            logger.info(f"pf_mask:       shape={pf_mask.shape}")
-            logger.info(f"cond_features: shape={cond_features.shape}, {cond_names}")
+        logger.info(f"pf_features:   shape={pf_features.shape}, {self.names_pf_features}")
+        logger.info(f"pf_points:     shape={pf_points.shape}, {self.names_pf_points}")
+        logger.info(f"pf_mask:       shape={pf_mask.shape}")
+        logger.info(f"cond_features: shape={cond_features.shape}, {cond_names}")
+        logger.info(f"hl_features:   shape={hl_features.shape}, {self.names_hl_features}")
 
-            # TODO: add shuffling
-            # shuffle data
-            rng = np.random.default_rng(1234)
-            permutation = rng.permutation(len(x_features))
-            x_features = x_features[permutation]
-            pf_features = pf_features[permutation]
-            pf_vectors = pf_vectors[permutation]
-            pf_points = pf_points[permutation]
-            pf_mask = pf_mask[permutation]
-            y = y[permutation]
-            tau32 = tau32[permutation]
-            cond_features = cond_features[permutation]
+        # TODO: add shuffling
+        # shuffle data
+        rng = np.random.default_rng(1234)
+        permutation = rng.permutation(len(x_features))
+        x_features = x_features[permutation]
+        pf_features = pf_features[permutation]
+        pf_vectors = pf_vectors[permutation]
+        pf_points = pf_points[permutation]
+        pf_mask = pf_mask[permutation]
+        y = y[permutation]
+        hl_features = hl_features[permutation]
+        cond_features = cond_features[permutation]
 
-            # remove inf and nan values
-            # TODO: check if this is ok with JetClass...
-            pf_features = np.nan_to_num(pf_features, nan=0.0, posinf=0.0, neginf=0.0)
+        # remove inf and nan values
+        # TODO: check if this is ok with JetClass...
+        pf_features = np.nan_to_num(pf_features, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Swap indices of particle-level arrays to get required shape for
         # ParT/ParticleNet: (n_jets, n_features, n_particles)
@@ -381,7 +408,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         self.pf_mask = pf_mask
         self.pf_points = pf_points
         self.y = y
-        self.tau32 = tau32
+        self.hl_features = hl_features
         # self.jet_data = jet_data
 
         # Split data into train, val, test
@@ -405,7 +432,9 @@ class JetClassClassifierDataModule(LightningDataModule):
         self.pf_mask_train, self.pf_mask_val, self.pf_mask_test = np.split(pf_mask, split_indices)
         self.cond_train, self.cond_val, self.cond_test = np.split(cond_features, split_indices)
         self.y_train, self.y_val, self.y_test = np.split(y, split_indices)
-        self.tau32_train, self.tau32_val, self.tau32_test = np.split(tau32, split_indices)
+        self.hl_features_train, self.hl_features_val, self.hl_features_test = np.split(
+            hl_features, split_indices
+        )
 
         # Create datasets
         self.data_train = TensorDataset(
@@ -414,6 +443,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             torch.tensor(self.pf_vectors_train, dtype=torch.float32),
             torch.tensor(self.pf_mask_train, dtype=torch.float32),
             torch.tensor(self.cond_train, dtype=torch.float32),
+            torch.tensor(self.hl_features_train, dtype=torch.float32),
             torch.nn.functional.one_hot(torch.tensor(self.y_train, dtype=torch.int64)),
         )
         self.data_val = TensorDataset(
@@ -422,6 +452,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             torch.tensor(self.pf_vectors_val, dtype=torch.float32),
             torch.tensor(self.pf_mask_val, dtype=torch.float32),
             torch.tensor(self.cond_val, dtype=torch.float32),
+            torch.tensor(self.hl_features_val, dtype=torch.float32),
             torch.nn.functional.one_hot(torch.tensor(self.y_val, dtype=torch.int64)),
         )
         self.data_test = TensorDataset(
@@ -430,6 +461,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             torch.tensor(self.pf_vectors_test, dtype=torch.float32),
             torch.tensor(self.pf_mask_test, dtype=torch.float32),
             torch.tensor(self.cond_test, dtype=torch.float32),
+            torch.tensor(self.hl_features_test, dtype=torch.float32),
             torch.nn.functional.one_hot(torch.tensor(self.y_test, dtype=torch.int64)),
         )
 
