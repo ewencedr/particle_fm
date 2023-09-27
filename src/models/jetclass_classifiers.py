@@ -811,6 +811,10 @@ class HighLevelClassifier(LightningModule):
         preds = logits
         return loss, preds, labels
 
+    def on_train_epoch_start(self) -> None:
+        self.train_preds_list = []
+        self.train_labels_list = []
+
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
@@ -821,12 +825,16 @@ class HighLevelClassifier(LightningModule):
         :param batch_idx: The index of the current batch.
         :return: A tensor of losses between model predictions and targets.
         """
-        loss, preds, targets = self.model_step(batch)
+        loss, logits, targets = self.model_step(batch)
+
+        preds = torch.softmax(logits, dim=1)
+        self.train_preds_list.append(preds.detach().cpu().numpy())
+        self.train_labels_list.append(targets.detach().cpu().numpy())
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_acc(preds, targets)
-        self.train_auc(preds, targets)
+        self.train_acc(logits, targets)
+        self.train_auc(logits, targets)
         self.log("train_loss", self.train_loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_acc", self.train_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("train_auc", self.train_auc, on_step=True, on_epoch=True, prog_bar=True)
@@ -834,9 +842,14 @@ class HighLevelClassifier(LightningModule):
         # return loss or backpropagation will fail
         return loss
 
-    def on_train_epoch_end(self) -> None:
-        """Lightning hook that is called when a training epoch ends."""
-        pass
+    def on_train_epoch_end(self):
+        self.train_preds = np.concatenate(self.train_preds_list)
+        self.train_labels = np.concatenate(self.train_labels_list)
+        print(f"Epoch {self.trainer.current_epoch} finished.", end="\r")
+
+    def on_validation_epoch_start(self) -> None:
+        self.val_preds_list = []
+        self.val_labels_list = []
 
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single validation step on a batch of data from the validation set.
@@ -845,12 +858,16 @@ class HighLevelClassifier(LightningModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        loss, preds, targets = self.model_step(batch)
+        loss, logits, targets = self.model_step(batch)
+
+        preds = torch.softmax(logits, dim=1)
+        self.val_preds_list.append(preds.detach().cpu().numpy())
+        self.val_labels_list.append(targets.detach().cpu().numpy())
 
         # update and log metrics
         self.val_loss(loss)
-        self.val_acc(preds, targets)
-        self.val_auc(preds, targets)
+        self.val_acc(logits, targets)
+        self.val_auc(logits, targets)
         self.log("val_loss", self.val_loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log("val_acc", self.val_acc, on_step=True, on_epoch=True, prog_bar=True)
         self.log("val_auc", self.val_auc, on_step=True, on_epoch=True, prog_bar=True)
@@ -865,6 +882,9 @@ class HighLevelClassifier(LightningModule):
         self.val_auc_best(auc)  # update best so far val auc
         self.log("val_acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val_auc_best", self.val_auc_best.compute(), sync_dist=True, prog_bar=True)
+
+        self.val_preds = np.concatenate(self.val_preds_list)
+        self.val_labels = np.concatenate(self.val_labels_list)
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single test step on a batch of data from the test set.

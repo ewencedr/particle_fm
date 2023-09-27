@@ -40,7 +40,8 @@ data:
     - tau21
     - tau32
     - mass
-  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
+  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_3000000.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000-truth_cond.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-16_19-12-11/evaluated_ckpts/epoch_3744/generated_data_epoch_3744_nsamples_100000.h5
@@ -56,17 +57,17 @@ model:
   use_hl_features: true
   net_config:
     fc_params:
-      - [256, 0.1]
-      - [256, 0.1]
-      - [256, 0.1]
+      - [64, 0.1]
       - [128, 0.1]
+      - [128, 0.1]
+      - [64, 0.1]
     input_dim: 6
 
 trainer:
   min_epochs: 1
   max_epochs: ${vars.epochs}
   val_check_interval: ${vars.val_check_interval}
-  gradient_clip_val: 0.5  # ParticleNet 0.02, ParticleNet-Lite 0.1
+  # gradient_clip_val: 0.5  # ParticleNet 0.02, ParticleNet-Lite 0.1
 
 task_name: "jetclass_classifier"
 
