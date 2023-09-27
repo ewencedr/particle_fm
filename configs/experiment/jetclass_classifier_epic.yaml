@@ -29,10 +29,12 @@ vars:
 
 data:
   # kin_only: true
-  number_of_jets: 1000
+  batch_size: 512
+  # number_of_jets: 100000
   use_weaver_axes_convention: false
-  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
-  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-16_19-12-11/evaluated_ckpts/epoch_3744/generated_data_epoch_3744_nsamples_100000.h5
+  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-16_19-12-11/evaluated_ckpts/epoch_3744/generated_data_epoch_3744_nsamples_100000.h5
+  # data_file: /beegfs/desy/user/birkjosc/datasets/landscape/TopLandscape/for_crosscheck_classifier_simulated_generated.h5  # change num_points in model to 200
   pf_features_list:
     - part_etarel
     - part_dphi
@@ -62,6 +64,7 @@ model:
     dropout: 0.3
     input_dim: 17
     out_dim: 2
+    # num_points: 200 # top tagging landscape
 #   input_dims: 7  # ParticleNet
 #   input_dim: 7  # ParT
 #   num_classes: 2
