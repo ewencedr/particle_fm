@@ -418,7 +418,10 @@ class JetClassClassifierDataModule(LightningDataModule):
             int(fractions[0] * total_length),
             int((fractions[0] + fractions[1]) * total_length),
         ]
-        logger.info(f"Splitting data into {split_indices} for train, val, test")
+        logger.info(
+            f"Splitting data into fractions {fractions} for train, val, test "
+            f"(at indices {split_indices})."
+        )
 
         self.pf_features_train, self.pf_features_val, self.pf_features_test = np.split(
             pf_features, split_indices
