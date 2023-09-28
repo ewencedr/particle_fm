@@ -126,6 +126,7 @@ class JetClassClassifierDataModule(LightningDataModule):
             label_sim = np.zeros(len(data_sim))
 
         # fmt: off
+        # load the substructure features / high-level features
         subs_filename_gen = self.hparams.data_file.replace("generated_data", "substructure_generated")  # noqa E501
         subs_filename_sim = self.hparams.data_file.replace("generated_data", "substructure_simulated")  # noqa E501
         self.names_hl_features = [ "d12", "d2", "d23", "ecf2", "ecf3", "mass", "pt", "tau1", "tau2", "tau21", "tau3", "tau32"] # noqa E501
@@ -366,6 +367,10 @@ class JetClassClassifierDataModule(LightningDataModule):
             index_hl_features = [
                 self.names_hl_features.index(name) for name in self.hparams.hl_features_list
             ]
+
+            self.names_hl_features_all = self.names_hl_features
+            hl_features_all = hl_features
+
             self.names_hl_features = self.hparams.hl_features_list
             hl_features = hl_features[:, index_hl_features]
 
@@ -375,8 +380,6 @@ class JetClassClassifierDataModule(LightningDataModule):
         logger.info(f"cond_features: shape={cond_features.shape}, {cond_names}")
         logger.info(f"hl_features:   shape={hl_features.shape}, {self.names_hl_features}")
 
-        # TODO: add shuffling
-        # shuffle data
         rng = np.random.default_rng(1234)
         permutation = rng.permutation(len(x_features))
         x_features = x_features[permutation]
@@ -386,6 +389,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         pf_mask = pf_mask[permutation]
         y = y[permutation]
         hl_features = hl_features[permutation]
+        hl_features_all = hl_features_all[permutation]
         cond_features = cond_features[permutation]
 
         # remove inf and nan values
@@ -409,6 +413,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         self.pf_points = pf_points
         self.y = y
         self.hl_features = hl_features
+        self.hl_features_all = hl_features_all
         # self.jet_data = jet_data
 
         # Split data into train, val, test
@@ -437,6 +442,9 @@ class JetClassClassifierDataModule(LightningDataModule):
         self.y_train, self.y_val, self.y_test = np.split(y, split_indices)
         self.hl_features_train, self.hl_features_val, self.hl_features_test = np.split(
             hl_features, split_indices
+        )
+        self.hl_features_all_train, self.hl_features_all_val, self.hl_features_all_test = np.split(
+            hl_features_all, split_indices
         )
 
         # Create datasets
