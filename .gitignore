@@ -3,6 +3,8 @@ logs/
 .cometml-runs
 *.pdf
 *.png
+outputs
+.hydra
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
