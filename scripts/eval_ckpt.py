@@ -30,7 +30,7 @@ from src.data.components.metrics import wasserstein_distance_batched
 
 # from src.data.components.utils import calculate_jet_features
 from src.utils.data_generation import generate_data
-from src.utils.jet_substructure import dump_hlvs
+from src.utils.jet_substructure import calc_substructure, dump_hlvs
 from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; plot_data,
     apply_mpl_styles,
     plot_full_substructure,
@@ -201,6 +201,8 @@ def main():
         pylogger.info(f"Generated {len(data_gen)} samples in {generation_time:.0f} seconds.")
 
         # ------------------------------------------------
+        # POSTPROCESSING
+        # ------------------------------------------------
         # Correcting the generated data
         # Clipping
         for i, var_name in enumerate(datamodule.names_particle_features):
@@ -251,6 +253,18 @@ def main():
             pylogger.info("Rounding part_charge to nearest integer.")
             idx_charge = names_part_features.index("part_charge")
             data_gen[:, :, idx_charge] = np.round(data_gen[:, :, idx_charge])
+
+        # Remove jets with less than 3 particles (since we want to recluster
+        # them later)
+        more_than_3_particles_gen = np.sum(mask_gen[:, :, 0], axis=1) >= 3
+        more_than_3_particles_sim = np.sum(mask_sim[:, :, 0], axis=1) >= 3
+
+        data_gen = data_gen[more_than_3_particles_gen]
+        data_sim = data_sim[more_than_3_particles_sim]
+        mask_gen = mask_gen[more_than_3_particles_gen]
+        mask_sim = mask_sim[more_than_3_particles_sim]
+        cond_gen = cond_gen[more_than_3_particles_gen]
+        cond_sim = cond_sim[more_than_3_particles_sim]
 
         # # ------------------------------------------------
 
