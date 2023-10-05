@@ -600,6 +600,7 @@ class JetSubstructure:
         self.tau32 = self.tau3 / self.tau2
         self.e2 = self.ecf2 / self.ptsum**2
         self.e3 = self.ecf3 / self.ptsum**3
+        # D2 as defined in https://arxiv.org/pdf/1409.6298.pdf
         self.d2 = (self.e3) / self.e2**3
 
     def _calc_ptsum(self):
