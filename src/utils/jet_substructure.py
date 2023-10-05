@@ -568,14 +568,14 @@ class JetSubstructure:
     https://indico.cern.ch/event/760557/contributions/3262382/attachments/1796645/2929179/lltalk.pdf
     """
 
-    def __init__(self, particles, R=1):
+    def __init__(self, particles, R=0.8):
         """
         Parameters
         ----------
         particles : awkward array
             The particles that are clustered into jets.
         R : float
-            The jet radius for the reclustering.
+            The jet radius for the reclustering, default is 0.8.
         """
         self.R = R
         self.particles = particles
@@ -679,7 +679,7 @@ class JetSubstructure:
 def calc_substructure(
     particles_sim,
     particles_gen,
-    R=1,
+    R=0.8,
     filename=None,
 ):
     """Calculate the substructure variables for the given particles and save them to a file.
@@ -691,7 +691,7 @@ def calc_substructure(
     particles_gen : awkward array
         The particles of the generated jets.
     R : float, optional
-        The jet radius, by default 1
+        The jet radius, by default 0.8
     filename : str, optional
         The filename to save the results to, by default None (don't save)
     """
