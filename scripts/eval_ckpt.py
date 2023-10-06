@@ -350,6 +350,197 @@ def main():
 
         part_names_sim = h5file["part_data_sim"].attrs["names"][:]
 
+    # calculate substructure
+    substructure_path = output_dir
+    substr_filename_gen = (
+        f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
+    )
+    print(f"Saving substructure to {substructure_path / substr_filename_gen}")
+    substructure_full_path = substructure_path / substr_filename_gen
+    substr_filename_jetclass = (
+        f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
+    )
+    substructure_full_path_jetclass = substructure_path / substr_filename_jetclass
+
+    # calculate substructure for generated data
+    if not os.path.isfile(str(substructure_full_path) + ".h5"):
+        pylogger.info("Calculating substructure.")
+        dump_hlvs(data_gen, str(substructure_full_path), plot=False)
+    # calculate substructure for reference data
+    if not os.path.isfile(str(substructure_full_path_jetclass) + ".h5"):
+        pylogger.info("Calculating substructure.")
+        dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
+
+    # load substructure for model generated data
+    keys = []
+    data_substructure = []
+    with h5py.File(str(substructure_full_path) + ".h5", "r") as f:
+        tau21 = np.array(f["tau21"])
+        tau32 = np.array(f["tau32"])
+        d2 = np.array(f["d2"])
+        tau21_isnan = np.isnan(tau21)
+        tau32_isnan = np.isnan(tau32)
+        d2_isnan = np.isnan(d2)
+        if np.sum(tau21_isnan) > 0 or np.sum(tau32_isnan) > 0 or np.sum(d2_isnan) > 0:
+            pylogger.warning(f"Found {np.sum(tau21_isnan)} nan values in tau21")
+            pylogger.warning(f"Found {np.sum(tau32_isnan)} nan values in tau32")
+            pylogger.warning(f"Found {np.sum(d2_isnan)} nan values in d2")
+            pylogger.warning("Setting nan values to zero.")
+        tau21[tau21_isnan] = 0
+        tau32[tau32_isnan] = 0
+        d2[d2_isnan] = 0
+        for key in f.keys():
+            keys.append(key)
+            data_substructure.append(np.array(f[key]))
+    keys = np.array(keys)
+    data_substructure = np.array(data_substructure)
+
+    # load substructure for JetClass data
+    data_substructure_jetclass = []
+    with h5py.File(str(substructure_full_path_jetclass) + ".h5", "r") as f:
+        tau21_jetclass = np.array(f["tau21"])
+        tau32_jetclass = np.array(f["tau32"])
+        d2_jetclass = np.array(f["d2"])
+        tau21_jetclass_isnan = np.isnan(tau21_jetclass)
+        tau32_jetclass_isnan = np.isnan(tau32_jetclass)
+        d2_jetclass_isnan = np.isnan(d2_jetclass)
+        if (
+            np.sum(tau21_jetclass_isnan) > 0
+            or np.sum(tau32_jetclass_isnan) > 0
+            or np.sum(d2_jetclass_isnan) > 0
+        ):
+            pylogger.warning(f"Found {np.sum(tau21_jetclass_isnan)} nan values in tau21")
+            pylogger.warning(f"Found {np.sum(tau32_jetclass_isnan)} nan values in tau32")
+            pylogger.warning(f"Found {np.sum(d2_jetclass_isnan)} nan values in d2")
+            pylogger.warning("Setting nan values to zero.")
+        tau21_jetclass[tau21_jetclass_isnan] = 0
+        tau32_jetclass[tau32_jetclass_isnan] = 0
+        d2_jetclass[d2_jetclass_isnan] = 0
+        for key in f.keys():
+            data_substructure_jetclass.append(np.array(f[key]))
+    data_substructure_jetclass = np.array(data_substructure_jetclass)
+
+    # -----------------------------------------------
+    # ----- calculate metrics and plot features -----
+    metrics = {}
+
+    # calculate wasserstein distances
+    w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
+        tau21_jetclass, tau21, **W_DIST_CFG
+    )
+    w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
+        tau32_jetclass, tau32, **W_DIST_CFG
+    )
+    w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(d2_jetclass, d2, **W_DIST_CFG)
+
+    # add to metrics
+    metrics["w_dist_tau21_mean"] = w_dist_tau21_mean
+    metrics["w_dist_tau21_std"] = w_dist_tau21_std
+    metrics["w_dist_tau32_mean"] = w_dist_tau32_mean
+    metrics["w_dist_tau32_std"] = w_dist_tau32_std
+    metrics["w_dist_d2_mean"] = w_dist_d2_mean
+    metrics["w_dist_d2_std"] = w_dist_d2_std
+
+    # plot substructure
+    file_name_substructure = "substructure_3plots"
+    file_name_full_substructure = "substructure_full"
+    img_path = str(plots_dir) + "/"
+    plot_substructure(
+        tau21=tau21,
+        tau32=tau32,
+        d2=d2,
+        tau21_jetnet=tau21_jetclass,
+        tau32_jetnet=tau32_jetclass,
+        d2_jetnet=d2_jetclass,
+        save_fig=True,
+        save_folder=img_path,
+        save_name=file_name_substructure,
+        close_fig=True,
+        simulation_name="JetClass",
+        model_name="Generated",
+    )
+    plot_full_substructure(
+        data_substructure=data_substructure,
+        data_substructure_jetnet=data_substructure_jetclass,
+        keys=keys,
+        save_fig=True,
+        save_folder=img_path,
+        save_name=file_name_full_substructure,
+        close_fig=True,
+        simulation_name="JetClass",
+        model_name="Generated",
+    )
+
+    # If there are multiple jet types, plot them separately
+    jet_types_dict = {
+        var_name.split("_")[-1]: i
+        for i, var_name in enumerate(datamodule.names_conditioning)
+        if "jet_type" in var_name
+    }
+    jet_types_dict["all_jet_types"] = None
+    pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
+
+    for jet_type, jet_type_idx in jet_types_dict.items():
+        pylogger.info(f"Plotting substructure for jet type {jet_type}")
+        if jet_type == "all_jet_types":
+            jet_type_mask_sim = np.ones(len(cond_sim), dtype=bool)
+            jet_type_mask_gen = np.ones(len(cond_gen), dtype=bool)
+        else:
+            jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
+            jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
+
+        if np.sum(jet_type_mask_sim) == 0 or np.sum(jet_type_mask_gen) == 0:
+            pylogger.warning(f"No samples for jet type {jet_type} found -> continue.")
+            continue
+
+        w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
+            tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **W_DIST_CFG
+        )
+        w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
+            tau32_jetclass[jet_type_mask_sim], tau32[jet_type_mask_gen], **W_DIST_CFG
+        )
+        w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
+            d2_jetclass[jet_type_mask_sim], d2[jet_type_mask_gen], **W_DIST_CFG
+        )
+        # add to metrics
+        metrics[f"w_dist_tau21_mean_{jet_type}"] = w_dist_tau21_mean
+        metrics[f"w_dist_tau21_std_{jet_type}"] = w_dist_tau21_std
+        metrics[f"w_dist_tau32_mean_{jet_type}"] = w_dist_tau32_mean
+        metrics[f"w_dist_tau32_std_{jet_type}"] = w_dist_tau32_std
+        metrics[f"w_dist_d2_mean_{jet_type}"] = w_dist_d2_mean
+        metrics[f"w_dist_d2_std_{jet_type}"] = w_dist_d2_std
+
+        plot_substructure(
+            tau21=tau21[jet_type_mask_gen],
+            tau32=tau32[jet_type_mask_gen],
+            d2=d2[jet_type_mask_gen],
+            tau21_jetnet=tau21_jetclass[jet_type_mask_sim],
+            tau32_jetnet=tau32_jetclass[jet_type_mask_sim],
+            d2_jetnet=d2_jetclass[jet_type_mask_sim],
+            save_fig=True,
+            save_folder=img_path,
+            save_name=file_name_substructure + "_" + jet_type,
+            close_fig=True,
+            simulation_name="JetClass",
+            model_name="Generated",
+        )
+        plot_full_substructure(
+            data_substructure=[
+                data_substructure[i][jet_type_mask_gen] for i in range(len(data_substructure))
+            ],
+            data_substructure_jetnet=[
+                data_substructure_jetclass[i][jet_type_mask_sim]
+                for i in range(len(data_substructure_jetclass))
+            ],
+            keys=keys,
+            save_fig=True,
+            save_folder=img_path,
+            save_name=file_name_full_substructure + "_" + jet_type,
+            close_fig=True,
+            simulation_name="JetClass",
+            model_name="Generated",
+        )
+
     pylogger.info("Plotting particle features")
     plot_particle_features(
         data_gen=data_gen,
@@ -382,17 +573,7 @@ def main():
             datamodule.names_conditioning = []
 
     pylogger.info("Calculating Wasserstein distances.")
-    metrics = calculate_all_wasserstein_metrics(data_sim, data_gen, **W_DIST_CFG)
-    # metrics = {}
-
-    # If there are multiple jet types, plot them separately
-    jet_types_dict = {
-        var_name.split("_")[-1]: i
-        for i, var_name in enumerate(datamodule.names_conditioning)
-        if "jet_type" in var_name
-    }
-    jet_types_dict["all_jet_types"] = None
-    pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
+    metrics.update(calculate_all_wasserstein_metrics(data_sim, data_gen, **W_DIST_CFG))
 
     for jet_type, jet_type_idx in jet_types_dict.items():
         pylogger.info(f"Plotting jet type {jet_type}")
@@ -454,183 +635,6 @@ def main():
             legend_label_gen="Generated",
             plot_path=plots_dir / f"epoch_{ckpt_epoch}_jet_features_{jet_type}.pdf",
         )
-
-    if EVALUATE_SUBSTRUCTURE:
-        substructure_path = output_dir
-        substr_filename_gen = (
-            f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
-        )
-        print(f"Saving substructure to {substructure_path / substr_filename_gen}")
-        substructure_full_path = substructure_path / substr_filename_gen
-        substr_filename_jetclass = (
-            f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
-        )
-        substructure_full_path_jetclass = substructure_path / substr_filename_jetclass
-
-        # calculate substructure for generated data
-        if not os.path.isfile(str(substructure_full_path) + ".h5"):
-            pylogger.info("Calculating substructure.")
-            dump_hlvs(data_gen, str(substructure_full_path), plot=False)
-        # calculate substructure for reference data
-        if not os.path.isfile(str(substructure_full_path_jetclass) + ".h5"):
-            pylogger.info("Calculating substructure.")
-            dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
-
-        # load substructure for model generated data
-        keys = []
-        data_substructure = []
-        with h5py.File(str(substructure_full_path) + ".h5", "r") as f:
-            tau21 = np.array(f["tau21"])
-            tau32 = np.array(f["tau32"])
-            d2 = np.array(f["d2"])
-            tau21_isnan = np.isnan(tau21)
-            tau32_isnan = np.isnan(tau32)
-            d2_isnan = np.isnan(d2)
-            if np.sum(tau21_isnan) > 0 or np.sum(tau32_isnan) > 0 or np.sum(d2_isnan) > 0:
-                pylogger.warning(f"Found {np.sum(tau21_isnan)} nan values in tau21")
-                pylogger.warning(f"Found {np.sum(tau32_isnan)} nan values in tau32")
-                pylogger.warning(f"Found {np.sum(d2_isnan)} nan values in d2")
-                pylogger.warning("Setting nan values to zero.")
-            tau21[tau21_isnan] = 0
-            tau32[tau32_isnan] = 0
-            d2[d2_isnan] = 0
-            for key in f.keys():
-                keys.append(key)
-                data_substructure.append(np.array(f[key]))
-        keys = np.array(keys)
-        data_substructure = np.array(data_substructure)
-
-        # load substructure for JetClass data
-        data_substructure_jetclass = []
-        with h5py.File(str(substructure_full_path_jetclass) + ".h5", "r") as f:
-            tau21_jetclass = np.array(f["tau21"])
-            tau32_jetclass = np.array(f["tau32"])
-            d2_jetclass = np.array(f["d2"])
-            tau21_jetclass_isnan = np.isnan(tau21_jetclass)
-            tau32_jetclass_isnan = np.isnan(tau32_jetclass)
-            d2_jetclass_isnan = np.isnan(d2_jetclass)
-            if (
-                np.sum(tau21_jetclass_isnan) > 0
-                or np.sum(tau32_jetclass_isnan) > 0
-                or np.sum(d2_jetclass_isnan) > 0
-            ):
-                pylogger.warning(f"Found {np.sum(tau21_jetclass_isnan)} nan values in tau21")
-                pylogger.warning(f"Found {np.sum(tau32_jetclass_isnan)} nan values in tau32")
-                pylogger.warning(f"Found {np.sum(d2_jetclass_isnan)} nan values in d2")
-                pylogger.warning("Setting nan values to zero.")
-            tau21_jetclass[tau21_jetclass_isnan] = 0
-            tau32_jetclass[tau32_jetclass_isnan] = 0
-            d2_jetclass[d2_jetclass_isnan] = 0
-            for key in f.keys():
-                data_substructure_jetclass.append(np.array(f[key]))
-        data_substructure_jetclass = np.array(data_substructure_jetclass)
-
-        # calculate wasserstein distances
-        w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
-            tau21_jetclass, tau21, **W_DIST_CFG
-        )
-        w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
-            tau32_jetclass, tau32, **W_DIST_CFG
-        )
-        w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(d2_jetclass, d2, **W_DIST_CFG)
-
-        # add to metrics
-        metrics["w_dist_tau21_mean"] = w_dist_tau21_mean
-        metrics["w_dist_tau21_std"] = w_dist_tau21_std
-        metrics["w_dist_tau32_mean"] = w_dist_tau32_mean
-        metrics["w_dist_tau32_std"] = w_dist_tau32_std
-        metrics["w_dist_d2_mean"] = w_dist_d2_mean
-        metrics["w_dist_d2_std"] = w_dist_d2_std
-
-        # plot substructure
-        file_name_substructure = "substructure_3plots"
-        file_name_full_substructure = "substructure_full"
-        img_path = str(plots_dir) + "/"
-        plot_substructure(
-            tau21=tau21,
-            tau32=tau32,
-            d2=d2,
-            tau21_jetnet=tau21_jetclass,
-            tau32_jetnet=tau32_jetclass,
-            d2_jetnet=d2_jetclass,
-            save_fig=True,
-            save_folder=img_path,
-            save_name=file_name_substructure,
-            close_fig=True,
-            simulation_name="JetClass",
-            model_name="Generated",
-        )
-        plot_full_substructure(
-            data_substructure=data_substructure,
-            data_substructure_jetnet=data_substructure_jetclass,
-            keys=keys,
-            save_fig=True,
-            save_folder=img_path,
-            save_name=file_name_full_substructure,
-            close_fig=True,
-            simulation_name="JetClass",
-            model_name="Generated",
-        )
-        for jet_type, jet_type_idx in jet_types_dict.items():
-            pylogger.info(f"Plotting substructure for jet type {jet_type}")
-            if jet_type == "all_jet_types":
-                jet_type_mask_sim = np.ones(len(cond_sim), dtype=bool)
-                jet_type_mask_gen = np.ones(len(cond_gen), dtype=bool)
-            else:
-                jet_type_mask_sim = cond_sim[:, jet_type_idx] == 1
-                jet_type_mask_gen = cond_gen[:, jet_type_idx] == 1
-
-            if np.sum(jet_type_mask_sim) == 0 or np.sum(jet_type_mask_gen) == 0:
-                pylogger.warning(f"No samples for jet type {jet_type} found -> continue.")
-                continue
-
-            w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
-                tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **W_DIST_CFG
-            )
-            w_dist_tau32_mean, w_dist_tau32_std = wasserstein_distance_batched(
-                tau32_jetclass[jet_type_mask_sim], tau32[jet_type_mask_gen], **W_DIST_CFG
-            )
-            w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
-                d2_jetclass[jet_type_mask_sim], d2[jet_type_mask_gen], **W_DIST_CFG
-            )
-            # add to metrics
-            metrics[f"w_dist_tau21_mean_{jet_type}"] = w_dist_tau21_mean
-            metrics[f"w_dist_tau21_std_{jet_type}"] = w_dist_tau21_std
-            metrics[f"w_dist_tau32_mean_{jet_type}"] = w_dist_tau32_mean
-            metrics[f"w_dist_tau32_std_{jet_type}"] = w_dist_tau32_std
-            metrics[f"w_dist_d2_mean_{jet_type}"] = w_dist_d2_mean
-            metrics[f"w_dist_d2_std_{jet_type}"] = w_dist_d2_std
-
-            plot_substructure(
-                tau21=tau21[jet_type_mask_gen],
-                tau32=tau32[jet_type_mask_gen],
-                d2=d2[jet_type_mask_gen],
-                tau21_jetnet=tau21_jetclass[jet_type_mask_sim],
-                tau32_jetnet=tau32_jetclass[jet_type_mask_sim],
-                d2_jetnet=d2_jetclass[jet_type_mask_sim],
-                save_fig=True,
-                save_folder=img_path,
-                save_name=file_name_substructure + "_" + jet_type,
-                close_fig=True,
-                simulation_name="JetClass",
-                model_name="Generated",
-            )
-            plot_full_substructure(
-                data_substructure=[
-                    data_substructure[i][jet_type_mask_gen] for i in range(len(data_substructure))
-                ],
-                data_substructure_jetnet=[
-                    data_substructure_jetclass[i][jet_type_mask_sim]
-                    for i in range(len(data_substructure_jetclass))
-                ],
-                keys=keys,
-                save_fig=True,
-                save_folder=img_path,
-                save_name=file_name_full_substructure + "_" + jet_type,
-                close_fig=True,
-                simulation_name="JetClass",
-                model_name="Generated",
-            )
 
     yaml_path = output_dir / f"eval_metrics_{n_samples_gen}{suffix}.yml"
     pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
