@@ -592,16 +592,11 @@ class JetSubstructure:
         self._calc_tau1()
         self._calc_tau2()
         self._calc_tau3()
-        print("Calculating ECFs")
-        # ECF1 is just the ptsum
-        self._calc_ecf2()
-        self._calc_ecf3()
         self.tau21 = self.tau2 / self.tau1
         self.tau32 = self.tau3 / self.tau2
-        self.e2 = self.ecf2 / self.ptsum**2
-        self.e3 = self.ecf3 / self.ptsum**3
+        print("Calculating D2")
         # D2 as defined in https://arxiv.org/pdf/1409.6298.pdf
-        self.d2 = (self.e3) / self.e2**3
+        self.d2 = self.cluster.exclusive_jets_energy_correlator(njets=1, func="d2")
 
     def _calc_ptsum(self):
         """Calculate the ptsum values."""
@@ -655,26 +650,6 @@ class JetSubstructure:
         )
         self.tau3 = ak.sum(self.pt_i * min_delta_r, axis=1) / self.d0
 
-    def _calc_ecf2(self):
-        """Calculate the ecf2 values."""
-        particles_ij = ak.combinations(self.particles, 2, replacement=False)
-        particles_i, particles_j = ak.unzip(particles_ij)
-        delta_r_ij = particles_i.deltaR(particles_j)
-        pt_ij = particles_i.pt * particles_j.pt
-
-        self.ecf2 = ak.sum(pt_ij * delta_r_ij, axis=1)
-
-    def _calc_ecf3(self):
-        """Calculate the ecf3 values."""
-        particles_ijk = ak.combinations(self.particles, 3, replacement=False)
-        particles_i, particles_j, particles_k = ak.unzip(particles_ijk)
-        delta_r_ij = particles_i.deltaR(particles_j)
-        delta_r_ik = particles_i.deltaR(particles_k)
-        delta_r_jk = particles_j.deltaR(particles_k)
-        pt_ijk = particles_i.pt * particles_j.pt * particles_k.pt
-
-        self.ecf3 = ak.sum(pt_ijk * delta_r_ij * delta_r_ik * delta_r_jk, axis=1)
-
 
 def calc_substructure(
     particles_sim,
@@ -711,10 +686,6 @@ def calc_substructure(
         "tau3",
         "tau21",
         "tau32",
-        "ecf2",
-        "ecf3",
-        "e2",
-        "e3",
         "d2",
     ]
     with h5py.File(filename, "w") as f:
