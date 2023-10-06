@@ -568,27 +568,33 @@ class JetSubstructure:
     https://indico.cern.ch/event/760557/contributions/3262382/attachments/1796645/2929179/lltalk.pdf
     """
 
-    def __init__(self, particles, R=0.8):
-        """
+    def __init__(self, particles, R=0.8, beta=1.0):
+        """Run the jet clustering and calculate the substructure variables. The clustering is
+        performed with the kt algorithm and the WTA pt scheme.
+
         Parameters
         ----------
         particles : awkward array
             The particles that are clustered into jets.
-        R : float
-            The jet radius for the reclustering, default is 0.8.
+        R : float, optional
+            The jet radius, by default 0.8
+        beta : float, optional
+            The beta parameter for N-subjettiness, by default 1.0
         """
         self.R = R
+        self.beta = beta
         self.particles = particles
-        jetdef = fastjet.JetDefinition(fastjet.kt_algorithm, self.R)
+        jetdef = fastjet.JetDefinition(fastjet.kt_algorithm, self.R, fastjet.WTA_pt_scheme)
+        print("Clustering jets with fastjet")
+        print("Jet definition:", jetdef)
         self.cluster = fastjet.ClusterSequence(particles, jetdef)
         self.inclusive_jets = self.cluster.inclusive_jets()
         self.exclusive_jets_1 = self.cluster.exclusive_jets(n_jets=1)
         self.exclusive_jets_2 = self.cluster.exclusive_jets(n_jets=2)
         self.exclusive_jets_3 = self.cluster.exclusive_jets(n_jets=3)
 
-        self._calc_ptsum()
-        self._calc_d0()
         print("Calculating N-subjettiness")
+        self._calc_d0()
         self._calc_tau1()
         self._calc_tau2()
         self._calc_tau3()
@@ -598,20 +604,16 @@ class JetSubstructure:
         # D2 as defined in https://arxiv.org/pdf/1409.6298.pdf
         self.d2 = self.cluster.exclusive_jets_energy_correlator(njets=1, func="d2")
 
-    def _calc_ptsum(self):
-        """Calculate the ptsum values."""
-        self.ptsum = ak.sum(self.particles.pt, axis=1)
-
     def _calc_d0(self):
         """Calculate the d0 values."""
-        self.d0 = ak.sum(self.particles.pt * self.R, axis=1)
+        self.d0 = ak.sum(self.particles.pt * self.R**self.beta, axis=1)
 
     def _calc_tau1(self):
         """Calculate the tau1 values."""
         self.delta_r_1i = calc_deltaR(self.particles, self.exclusive_jets_1[:, :1])
         self.pt_i = self.particles.pt
         # calculate the tau1 values
-        self.tau1 = ak.sum(self.pt_i * self.delta_r_1i, axis=1) / self.d0
+        self.tau1 = ak.sum(self.pt_i * self.delta_r_1i**self.beta, axis=1) / self.d0
 
     def _calc_tau2(self):
         """Calculate the tau2 values."""
@@ -622,8 +624,8 @@ class JetSubstructure:
         min_delta_r = ak.min(
             ak.concatenate(
                 [
-                    delta_r_1i[..., np.newaxis],
-                    delta_r_2i[..., np.newaxis],
+                    delta_r_1i[..., np.newaxis] ** self.beta,
+                    delta_r_2i[..., np.newaxis] ** self.beta,
                 ],
                 axis=-1,
             ),
@@ -640,9 +642,9 @@ class JetSubstructure:
         min_delta_r = ak.min(
             ak.concatenate(
                 [
-                    delta_r_1i[..., np.newaxis],
-                    delta_r_2i[..., np.newaxis],
-                    delta_r_3i[..., np.newaxis],
+                    delta_r_1i[..., np.newaxis] ** self.beta,
+                    delta_r_2i[..., np.newaxis] ** self.beta,
+                    delta_r_3i[..., np.newaxis] ** self.beta,
                 ],
                 axis=-1,
             ),
