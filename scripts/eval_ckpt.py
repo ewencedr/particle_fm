@@ -354,6 +354,7 @@ def main():
 
         part_names_sim = h5file["part_data_sim"].attrs["names"][:]
         names_cond_features = list(datamodule.names_conditioning)
+        names_part_features = list(datamodule.names_particle_features)
 
     # create awkward arrays and calculate the jet substructure
     idx_jet_pt = names_cond_features.index("jet_pt")
@@ -426,7 +427,7 @@ def main():
     #     dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
 
     # load substructure for model generated data
-    keys = []
+    keys = ["tau1", "tau2", "tau3", "tau21", "tau32", "d2"]
     data_substructure = []
     with h5py.File(h5data_output_path_subs) as f:
         tau21 = np.array(f["tau21_gen"])
@@ -443,10 +444,8 @@ def main():
         tau21[tau21_isnan] = 0
         tau32[tau32_isnan] = 0
         d2[d2_isnan] = 0
-        for key in f.keys():
-            keys.append(key)
-            data_substructure.append(np.array(f[key]))
-    keys = np.array(keys)
+        for key in keys:
+            data_substructure.append(np.array(f[key + "_gen"]))
     data_substructure = np.array(data_substructure)
 
     # load substructure for JetClass data
@@ -470,8 +469,8 @@ def main():
         tau21_jetclass[tau21_jetclass_isnan] = 0
         tau32_jetclass[tau32_jetclass_isnan] = 0
         d2_jetclass[d2_jetclass_isnan] = 0
-        for key in f.keys():
-            data_substructure_jetclass.append(np.array(f[key]))
+        for key in keys:
+            data_substructure_jetclass.append(np.array(f[key + "_sim"]))
     data_substructure_jetclass = np.array(data_substructure_jetclass)
 
     # -----------------------------------------------

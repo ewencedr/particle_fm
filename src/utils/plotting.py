@@ -1482,7 +1482,8 @@ def plot_full_substructure(
     """Plot all substructure distributions."""
     fig, axs = plt.subplots(4, 3, figsize=(15, 20))
 
-    for i, ax in enumerate(axs.flatten()):
+    for i, ax in enumerate(range(len(data_substructure_jetnet))):
+        ax = axs.flatten()[i]
         hist_jetnet = ax.hist(
             data_substructure_jetnet[i],
             bins=bins,
