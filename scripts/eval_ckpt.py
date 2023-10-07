@@ -270,55 +270,6 @@ def main():
         cond_gen = cond_gen[more_than_3_particles_gen]
         cond_sim = cond_sim[more_than_3_particles_sim]
 
-        names_cond_features = list(datamodule.names_conditioning)
-
-        idx_jet_pt = names_cond_features.index("jet_pt")
-        idx_part_ptrel = names_part_features.index("part_ptrel")
-        pt_gen = data_gen[:, :, idx_part_ptrel] * cond_gen[:, idx_jet_pt][:, None]
-        pt_sim = data_sim[:, :, idx_part_ptrel] * cond_sim[:, idx_jet_pt][:, None]
-
-        idx_jet_eta = names_cond_features.index("jet_eta")
-        idx_part_etarel = names_part_features.index("part_etarel")
-        eta_gen = data_gen[:, :, idx_part_etarel] + cond_gen[:, idx_jet_eta][:, None]
-        eta_sim = data_sim[:, :, idx_part_etarel] + cond_sim[:, idx_jet_eta][:, None]
-
-        idx_part_dphi = names_part_features.index("part_dphi")
-        dphi_gen = data_gen[:, :, idx_part_dphi]
-        dphi_sim = data_sim[:, :, idx_part_dphi]
-
-        # create awkward arrays
-        particles_gen = ak.zip(
-            {
-                "pt": pt_gen,
-                "eta": eta_gen,
-                "phi": dphi_gen,
-                "mass": np.zeros_like(pt_gen),
-            },
-            with_name="Momentum4D",
-        )
-        particles_sim = ak.zip(
-            {
-                "pt": pt_sim,
-                "eta": eta_sim,
-                "phi": dphi_sim,
-                "mass": np.zeros_like(pt_sim),
-            },
-            with_name="Momentum4D",
-        )
-        # remove zero-padded entries
-        particles_gen_mask = ak.mask(particles_gen, particles_gen.pt > 0)
-        particles_sim_mask = ak.mask(particles_sim, particles_sim.pt > 0)
-        particles_gen = ak.drop_none(particles_gen_mask)
-        particles_sim = ak.drop_none(particles_sim_mask)
-
-        # calculate the substrucutre
-        calc_substructure(
-            particles_sim=particles_sim,
-            particles_gen=particles_gen,
-            R=0.8,
-            filename=str(h5data_output_path).replace(".h5", "_substructure.h5"),
-        )
-
         # # ------------------------------------------------
 
         pylogger.info("Calculating jet features")
@@ -402,35 +353,85 @@ def main():
         pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
 
         part_names_sim = h5file["part_data_sim"].attrs["names"][:]
+        names_cond_features = list(datamodule.names_conditioning)
 
-    # calculate substructure
-    substructure_path = output_dir
-    substr_filename_gen = (
-        f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
-    )
-    print(f"Saving substructure to {substructure_path / substr_filename_gen}")
-    substructure_full_path = substructure_path / substr_filename_gen
-    substr_filename_jetclass = (
-        f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
-    )
-    substructure_full_path_jetclass = substructure_path / substr_filename_jetclass
+    # create awkward arrays and calculate the jet substructure
+    idx_jet_pt = names_cond_features.index("jet_pt")
+    idx_part_ptrel = names_part_features.index("part_ptrel")
+    pt_gen = data_gen[:, :, idx_part_ptrel] * cond_gen[:, idx_jet_pt][:, None]
+    pt_sim = data_sim[:, :, idx_part_ptrel] * cond_sim[:, idx_jet_pt][:, None]
 
-    # calculate substructure for generated data
-    if not os.path.isfile(str(substructure_full_path) + ".h5"):
-        pylogger.info("Calculating substructure.")
-        dump_hlvs(data_gen, str(substructure_full_path), plot=False)
-    # calculate substructure for reference data
-    if not os.path.isfile(str(substructure_full_path_jetclass) + ".h5"):
-        pylogger.info("Calculating substructure.")
-        dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
+    idx_jet_eta = names_cond_features.index("jet_eta")
+    idx_part_etarel = names_part_features.index("part_etarel")
+    eta_gen = data_gen[:, :, idx_part_etarel] + cond_gen[:, idx_jet_eta][:, None]
+    eta_sim = data_sim[:, :, idx_part_etarel] + cond_sim[:, idx_jet_eta][:, None]
+
+    idx_part_dphi = names_part_features.index("part_dphi")
+    dphi_gen = data_gen[:, :, idx_part_dphi]
+    dphi_sim = data_sim[:, :, idx_part_dphi]
+
+    # create awkward arrays
+    particles_gen = ak.zip(
+        {
+            "pt": pt_gen,
+            "eta": eta_gen,
+            "phi": dphi_gen,
+            "mass": np.zeros_like(pt_gen),
+        },
+        with_name="Momentum4D",
+    )
+    particles_sim = ak.zip(
+        {
+            "pt": pt_sim,
+            "eta": eta_sim,
+            "phi": dphi_sim,
+            "mass": np.zeros_like(pt_sim),
+        },
+        with_name="Momentum4D",
+    )
+    # remove zero-padded entries
+    particles_gen_mask = ak.mask(particles_gen, particles_gen.pt > 0)
+    particles_sim_mask = ak.mask(particles_sim, particles_sim.pt > 0)
+    particles_gen = ak.drop_none(particles_gen_mask)
+    particles_sim = ak.drop_none(particles_sim_mask)
+
+    h5data_output_path_subs = str(h5data_output_path).replace(".h5", "_substructure.h5")
+    # calculate the substrucutre
+    calc_substructure(
+        particles_sim=particles_sim,
+        particles_gen=particles_gen,
+        R=0.8,
+        filename=h5data_output_path_subs,
+    )
+
+    # calculate substructure (old code)
+    # substructure_path = output_dir
+    # substr_filename_gen = (
+    #     f"substructure_generated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
+    # )
+    # print(f"Saving substructure to {substructure_path / substr_filename_gen}")
+    # substructure_full_path = substructure_path / substr_filename_gen
+    # substr_filename_jetclass = (
+    #     f"substructure_simulated_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}"
+    # )
+    # substructure_full_path_jetclass = substructure_path / substr_filename_jetclass
+
+    # # calculate substructure for generated data
+    # if not os.path.isfile(str(substructure_full_path) + ".h5"):
+    #     pylogger.info("Calculating substructure.")
+    #     dump_hlvs(data_gen, str(substructure_full_path), plot=False)
+    # # calculate substructure for reference data
+    # if not os.path.isfile(str(substructure_full_path_jetclass) + ".h5"):
+    #     pylogger.info("Calculating substructure.")
+    #     dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
 
     # load substructure for model generated data
     keys = []
     data_substructure = []
-    with h5py.File(str(substructure_full_path) + ".h5", "r") as f:
-        tau21 = np.array(f["tau21"])
-        tau32 = np.array(f["tau32"])
-        d2 = np.array(f["d2"])
+    with h5py.File(h5data_output_path_subs) as f:
+        tau21 = np.array(f["tau21_gen"])
+        tau32 = np.array(f["tau32_gen"])
+        d2 = np.array(f["d2_gen"])
         tau21_isnan = np.isnan(tau21)
         tau32_isnan = np.isnan(tau32)
         d2_isnan = np.isnan(d2)
@@ -450,10 +451,10 @@ def main():
 
     # load substructure for JetClass data
     data_substructure_jetclass = []
-    with h5py.File(str(substructure_full_path_jetclass) + ".h5", "r") as f:
-        tau21_jetclass = np.array(f["tau21"])
-        tau32_jetclass = np.array(f["tau32"])
-        d2_jetclass = np.array(f["d2"])
+    with h5py.File(h5data_output_path_subs) as f:
+        tau21_jetclass = np.array(f["tau21_sim"])
+        tau32_jetclass = np.array(f["tau32_sim"])
+        d2_jetclass = np.array(f["d2_sim"])
         tau21_jetclass_isnan = np.isnan(tau21_jetclass)
         tau32_jetclass_isnan = np.isnan(tau32_jetclass)
         d2_jetclass_isnan = np.isnan(d2_jetclass)
