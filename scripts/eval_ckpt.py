@@ -9,6 +9,7 @@ import shutil
 from copy import deepcopy
 from pathlib import Path
 
+import awkward as ak
 import h5py
 import hydra
 import numpy as np
@@ -16,6 +17,7 @@ import numpy as np
 # plots and metrics
 import pandas as pd
 import torch
+import vector
 import yaml
 
 # set env variable DATA_DIR again because of hydra
@@ -39,6 +41,8 @@ from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; pl
     plot_substructure,
     prepare_data_for_plotting,
 )
+
+vector.register_awkward()
 
 # set up logging for jupyter notebook
 pylogger = logging.getLogger("eval_ckpt")
@@ -174,7 +178,7 @@ def main():
         shutil.copyfile(ckpt, output_dir / f"epoch_{ckpt_epoch}.ckpt")
 
     h5data_output_path = (
-        output_dir / f"generated_data_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}.h5"
+        output_dir / f"eval_output_epoch_{ckpt_epoch}_nsamples_{n_samples_gen}{suffix}.h5"
     )
 
     if h5data_output_path.exists():
@@ -265,6 +269,55 @@ def main():
         mask_sim = mask_sim[more_than_3_particles_sim]
         cond_gen = cond_gen[more_than_3_particles_gen]
         cond_sim = cond_sim[more_than_3_particles_sim]
+
+        names_cond_features = list(datamodule.names_conditioning)
+
+        idx_jet_pt = names_cond_features.index("jet_pt")
+        idx_part_ptrel = names_part_features.index("part_ptrel")
+        pt_gen = data_gen[:, :, idx_part_ptrel] * cond_gen[:, idx_jet_pt][:, None]
+        pt_sim = data_sim[:, :, idx_part_ptrel] * cond_sim[:, idx_jet_pt][:, None]
+
+        idx_jet_eta = names_cond_features.index("jet_eta")
+        idx_part_etarel = names_part_features.index("part_etarel")
+        eta_gen = data_gen[:, :, idx_part_etarel] + cond_gen[:, idx_jet_eta][:, None]
+        eta_sim = data_sim[:, :, idx_part_etarel] + cond_sim[:, idx_jet_eta][:, None]
+
+        idx_part_dphi = names_part_features.index("part_dphi")
+        dphi_gen = data_gen[:, :, idx_part_dphi]
+        dphi_sim = data_sim[:, :, idx_part_dphi]
+
+        # create awkward arrays
+        particles_gen = ak.zip(
+            {
+                "pt": pt_gen,
+                "eta": eta_gen,
+                "phi": dphi_gen,
+                "mass": np.zeros_like(pt_gen),
+            },
+            with_name="Momentum4D",
+        )
+        particles_sim = ak.zip(
+            {
+                "pt": pt_sim,
+                "eta": eta_sim,
+                "phi": dphi_sim,
+                "mass": np.zeros_like(pt_sim),
+            },
+            with_name="Momentum4D",
+        )
+        # remove zero-padded entries
+        particles_gen_mask = ak.mask(particles_gen, particles_gen.pt > 0)
+        particles_sim_mask = ak.mask(particles_sim, particles_sim.pt > 0)
+        particles_gen = ak.drop_none(particles_gen_mask)
+        particles_sim = ak.drop_none(particles_sim_mask)
+
+        # calculate the substrucutre
+        calc_substructure(
+            particles_sim=particles_sim,
+            particles_gen=particles_gen,
+            R=0.8,
+            filename=str(h5data_output_path).replace(".h5", "_substructure.h5"),
+        )
 
         # # ------------------------------------------------
 
