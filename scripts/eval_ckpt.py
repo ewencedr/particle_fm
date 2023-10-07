@@ -32,7 +32,7 @@ from src.data.components.metrics import wasserstein_distance_batched
 
 # from src.data.components.utils import calculate_jet_features
 from src.utils.data_generation import generate_data
-from src.utils.jet_substructure import calc_substructure, dump_hlvs
+from src.utils.jet_substructure import calc_substructure  # , dump_hlvs
 from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; plot_data,
     apply_mpl_styles,
     plot_full_substructure,
