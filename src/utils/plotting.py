@@ -1480,7 +1480,7 @@ def plot_full_substructure(
     save_name: str = None,
 ) -> None:
     """Plot all substructure distributions."""
-    fig, axs = plt.subplots(4, 3, figsize=(15, 20))
+    fig, axs = plt.subplots(4, 4, figsize=(15, 20))
 
     for i, ax in enumerate(range(len(data_substructure_jetnet))):
         ax = axs.flatten()[i]
