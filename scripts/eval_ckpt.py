@@ -312,10 +312,10 @@ def main():
         mask_sim = h5file["part_mask_sim"][:]
         cond_sim = h5file["cond_data_sim"][:]
 
-        jet_data_gen = h5file["jet_data_gen"][:]
-        jet_data_sim = h5file["jet_data_sim"][:]
-        pt_selected_particles_gen = h5file["pt_selected_particles_gen"][:]
-        pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
+        # jet_data_gen = h5file["jet_data_gen"][:]
+        # jet_data_sim = h5file["jet_data_sim"][:]
+        # pt_selected_particles_gen = h5file["pt_selected_particles_gen"][:]
+        # pt_selected_particles_sim = h5file["pt_selected_particles_sim"][:]
 
         part_names_sim = h5file["part_data_sim"].attrs["names"][:]
         names_cond_features = list(datamodule.names_conditioning)
