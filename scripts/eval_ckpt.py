@@ -272,24 +272,6 @@ def main():
 
         # # ------------------------------------------------
 
-        pylogger.info("Calculating jet features")
-        plot_prep_config = {"calculate_efps": True}
-        (
-            jet_data_gen,
-            efps_values_gen,
-            pt_selected_particles_gen,
-            _,
-        ) = prepare_data_for_plotting([data_gen[:, :, :3]], **plot_prep_config)
-        (
-            jet_data_sim,
-            efps_values_sim,
-            pt_selected_particles_sim,
-            _,
-        ) = prepare_data_for_plotting([data_sim[:, :, :3]], **plot_prep_config)
-        # prepare_data_for_plotting returns lists of arrays of the following shape:
-        # jet_data: (n_datasets, n_jets, n_jet_features)
-        # efps_values: (n_datasets, n_jets, n_efp_features)
-        # pt_selected_particles: (n_datasets, n_selected_particles, n_jets) --> swap axes here!
         print(f"Saving data to {h5data_output_path}")
 
         # for jetnet compatibility
@@ -320,23 +302,6 @@ def main():
                             data=datamodule.names_conditioning,
                             dtype=h5py.special_dtype(vlen=str),
                         )
-            # calculated jet data
-            h5file.create_dataset("jet_data_gen", data=jet_data_gen[0])
-            h5file.create_dataset("jet_data_sim", data=jet_data_sim[0])
-            for ds_key in ["jet_data_sim", "jet_data_gen"]:
-                h5file[ds_key].attrs.create(
-                    "names",
-                    data=["jet_pt", "jet_y", "jet_phi", "jet_mass"],
-                    dtype=h5py.special_dtype(vlen=str),
-                )
-            h5file.create_dataset("efp_values_gen", data=efps_values_gen[0])
-            h5file.create_dataset("efp_values_sim", data=efps_values_sim[0])
-            h5file.create_dataset(
-                "pt_selected_particles_gen", data=np.swapaxes(pt_selected_particles_gen, 1, 2)[0]
-            )
-            h5file.create_dataset(
-                "pt_selected_particles_sim", data=np.swapaxes(pt_selected_particles_sim, 1, 2)[0]
-            )
 
     # read the file
     with h5py.File(h5data_output_path) as h5file:
@@ -427,12 +392,14 @@ def main():
     #     dump_hlvs(data_sim, str(substructure_full_path_jetclass), plot=False)
 
     # load substructure for model generated data
-    keys = ["tau1", "tau2", "tau3", "tau21", "tau32", "d2"]
+    keys = ["tau1", "tau2", "tau3", "tau21", "tau32", "d2", "jet_mass", "jet_pt"]
     data_substructure = []
     with h5py.File(h5data_output_path_subs) as f:
         tau21 = np.array(f["tau21_gen"])
         tau32 = np.array(f["tau32_gen"])
         d2 = np.array(f["d2_gen"])
+        jet_mass = np.array(f["jet_mass_gen"])
+        jet_pt = np.array(f["jet_pt_gen"])
         tau21_isnan = np.isnan(tau21)
         tau32_isnan = np.isnan(tau32)
         d2_isnan = np.isnan(d2)
@@ -454,6 +421,8 @@ def main():
         tau21_jetclass = np.array(f["tau21_sim"])
         tau32_jetclass = np.array(f["tau32_sim"])
         d2_jetclass = np.array(f["d2_sim"])
+        jet_mass_jetclass = np.array(f["jet_mass_sim"])
+        jet_pt_jetclass = np.array(f["jet_pt_sim"])
         tau21_jetclass_isnan = np.isnan(tau21_jetclass)
         tau32_jetclass_isnan = np.isnan(tau32_jetclass)
         d2_jetclass_isnan = np.isnan(d2_jetclass)
@@ -485,6 +454,12 @@ def main():
         tau32_jetclass, tau32, **W_DIST_CFG
     )
     w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(d2_jetclass, d2, **W_DIST_CFG)
+    w_dist_jetmass_mean, w_dist_jetmass_std = wasserstein_distance_batched(
+        jet_mass_jetclass, jet_mass, **W_DIST_CFG
+    )
+    w_dist_jetpt_mean, w_dist_jetpt_std = wasserstein_distance_batched(
+        jet_pt_jetclass, jet_pt, **W_DIST_CFG
+    )
 
     # add to metrics
     metrics["w_dist_tau21_mean"] = w_dist_tau21_mean
@@ -493,6 +468,10 @@ def main():
     metrics["w_dist_tau32_std"] = w_dist_tau32_std
     metrics["w_dist_d2_mean"] = w_dist_d2_mean
     metrics["w_dist_d2_std"] = w_dist_d2_std
+    metrics["w_dist_jetmass_mean"] = w_dist_jetmass_mean
+    metrics["w_dist_jetmass_std"] = w_dist_jetmass_std
+    metrics["w_dist_jetpt_mean"] = w_dist_jetpt_mean
+    metrics["w_dist_jetpt_std"] = w_dist_jetpt_std
 
     # plot substructure
     file_name_substructure = "substructure_3plots"
@@ -555,6 +534,12 @@ def main():
         w_dist_d2_mean, w_dist_d2_std = wasserstein_distance_batched(
             d2_jetclass[jet_type_mask_sim], d2[jet_type_mask_gen], **W_DIST_CFG
         )
+        w_dist_jetmass_mean, w_dist_jetmass_std = wasserstein_distance_batched(
+            jet_mass_jetclass[jet_type_mask_sim], jet_mass[jet_type_mask_gen], **W_DIST_CFG
+        )
+        w_dist_jetpt_mean, w_dist_jetpt_std = wasserstein_distance_batched(
+            jet_pt_jetclass[jet_type_mask_sim], jet_pt[jet_type_mask_gen], **W_DIST_CFG
+        )
         # add to metrics
         metrics[f"w_dist_tau21_mean_{jet_type}"] = w_dist_tau21_mean
         metrics[f"w_dist_tau21_std_{jet_type}"] = w_dist_tau21_std
@@ -562,6 +547,10 @@ def main():
         metrics[f"w_dist_tau32_std_{jet_type}"] = w_dist_tau32_std
         metrics[f"w_dist_d2_mean_{jet_type}"] = w_dist_d2_mean
         metrics[f"w_dist_d2_std_{jet_type}"] = w_dist_d2_std
+        metrics[f"w_dist_jetmass_mean_{jet_type}"] = w_dist_jetmass_mean
+        metrics[f"w_dist_jetmass_std_{jet_type}"] = w_dist_jetmass_std
+        metrics[f"w_dist_jetpt_mean_{jet_type}"] = w_dist_jetpt_mean
+        metrics[f"w_dist_jetpt_std_{jet_type}"] = w_dist_jetpt_std
 
         plot_substructure(
             tau21=tau21[jet_type_mask_gen],
@@ -604,15 +593,6 @@ def main():
         legend_label_sim="JetClass",
         legend_label_gen="Generated",
         plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features.pdf",
-    )
-    pylogger.info("Plotting jet features")
-    plot_jet_features(
-        jet_data_gen=jet_data_gen,
-        jet_data_sim=jet_data_sim,
-        jet_feature_names=["jet_pt", "jet_y", "jet_phi", "jet_mrel"],
-        legend_label_sim="JetClass",
-        legend_label_gen="Generated",
-        plot_path=plots_dir / f"epoch_{ckpt_epoch}_jet_features.pdf",
     )
 
     # for jetnet compatibility
@@ -679,14 +659,6 @@ def main():
             legend_label_sim="JetClass",
             legend_label_gen="Generated",
             plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
-        )
-        plot_jet_features(
-            jet_data_gen=jet_data_gen[jet_type_mask_gen],
-            jet_data_sim=jet_data_sim[jet_type_mask_sim],
-            jet_feature_names=["jet_pt", "jet_y", "jet_phi", "jet_mrel"],
-            legend_label_sim="JetClass",
-            legend_label_gen="Generated",
-            plot_path=plots_dir / f"epoch_{ckpt_epoch}_jet_features_{jet_type}.pdf",
         )
 
     yaml_path = output_dir / f"eval_metrics_{n_samples_gen}{suffix}.yml"

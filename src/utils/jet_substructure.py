@@ -584,6 +584,9 @@ class JetSubstructure:
         self.R = R
         self.beta = beta
         self.particles = particles
+        self.particles_sum = ak.sum(particles, axis=1)
+        self.jet_mass = self.particles_sum.mass
+        self.jet_pt = self.particles_sum.pt
         jetdef = fastjet.JetDefinition(fastjet.kt_algorithm, self.R, fastjet.WTA_pt_scheme)
         print("Clustering jets with fastjet")
         print("Jet definition:", jetdef)
@@ -689,6 +692,8 @@ def calc_substructure(
         "tau21",
         "tau32",
         "d2",
+        "jet_mass",
+        "jet_pt",
     ]
     with h5py.File(filename, "w") as f:
         for name in names:
