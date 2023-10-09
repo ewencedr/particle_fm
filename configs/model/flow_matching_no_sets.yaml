@@ -1,0 +1,15 @@
+_target_: src.models.flow_matching_no_sets.FLowMatchingNoSetsLitModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  #weight_decay: 0.00005
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ConstantLR
+  _partial_: true
+  #warmup: 1000
+  #max_iters: 10000
+
+features: 10

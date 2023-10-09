@@ -9,19 +9,12 @@ from torch.distributions import Normal
 from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
-from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
-from .components import EPiC_encoder, IterativeNormLayer
-from .components.droid_transformer import FullTransformerEncoder, FullCrossAttentionEncoder
-from .components.transformer import Transformer
+from .components import EPiC_encoder
 from .components.losses import (
-    ConditionalFlowMatchingLoss,
-    ConditionalFlowMatchingOTLoss,
-    DiffusionLoss,
     FlowMatchingLoss,
 )
-from .components.solver import ddim_sampler, euler_maruyama_sampler
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
 
 logger = get_pylogger("fm_module")
@@ -37,7 +30,6 @@ class ode_wrapper(torch.nn.Module):
         mask (torch.Tensor, optional): Mask. Defaults to None.
         cond (torch.Tensor, optional): Condition. Defaults to None.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
-        diff_config (Mapping, optional): Config for diffusion noise scheduling. Only necessary when using loss_type="diffusion". Defaults to {"max_sr": 0.999, "min_sr": 0.02}.
     """
 
     def __init__(
@@ -46,26 +38,15 @@ class ode_wrapper(torch.nn.Module):
         mask: torch.Tensor = None,
         cond: torch.Tensor = None,
         loss_type: str = "FM-OT",
-        diff_config: Mapping = {"max_sr": 0.999, "min_sr": 0.02},
     ):
         super().__init__()
         self.model = model
         self.mask = mask
         self.cond = cond
         self.loss_type = loss_type
-        if self.loss_type == "diffusion":
-            self.diff_sched = VPDiffusionSchedule(**diff_config)
 
     def forward(self, t, x, *args, **kwargs):
-        if self.loss_type == "diffusion":
-            expanded_shape = [-1] + [1] * (x.dim() - 1)
-            _, noise_rates = self.diff_sched(t.view(expanded_shape))
-            betas = self.diff_sched.get_betas(t.view(expanded_shape))
-            return (
-                -0.5 * betas * (x - self.model(t, x, mask=self.mask, cond=self.cond) / noise_rates)
-            )
-        else:
-            return self.model(t, x, mask=self.mask, cond=self.cond)
+        return self.model(t, x, mask=self.mask, cond=self.cond)
 
 
 class CNF(nn.Module):
@@ -89,7 +70,6 @@ class CNF(nn.Module):
         add_time_to_input (bool, optional): Concat time to input. Defaults to True.
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
-        diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
         sum_scale (float, optional): Factor that is multiplied with the sum pooling. Defaults to 1e-2.
         net_config (Mapping, optional): Config for Architecture. Defaults to {}.
     """
@@ -113,7 +93,6 @@ class CNF(nn.Module):
         add_time_to_input: bool = True,
         t_emb: str = "sincos",
         loss_type: str = "FM-OT",
-        diff_config: Mapping[str, Any] = {"max_sr": 0.999, "min_sr": 0.02},
         sum_scale: float = 1e-2,
         net_config: Mapping[str, Any] = {},
     ):
@@ -122,54 +101,31 @@ class CNF(nn.Module):
         self.add_time_to_input = add_time_to_input
         input_dim = features + 2 * frequencies if self.add_time_to_input else features
 
-        if model == "epic":
-            net_config = {
-                "input_dim": input_dim,
-                "feats": features,
-                "latent": latent,
-                "equiv_layers": layers,
-                "hid_d": hidden_dim,
-                "activation": activation,
-                "wrapper_func": wrapper_func,
-                "frequencies": frequencies,
-                "num_points": num_particles,
-                "t_local_cat": t_local_cat,
-                "t_global_cat": t_global_cat,
-                "global_cond_dim": global_cond_dim,
-                "local_cond_dim": local_cond_dim,
-                "dropout": dropout,
-                "sum_scale": sum_scale,
-            }
-            self.net = EPiC_encoder(
-                **net_config,
-            )
-        elif model == "transformer":
-            self.net = Transformer(
-                input_dim=input_dim,
-                **net_config,
-            )
-        elif model == "droid_fulltransformer":
-            self.net = FullTransformerEncoder(
-                inpt_dim=input_dim,
-                outp_dim=features,
-                ctxt_dim=global_cond_dim + 2 * frequencies,
-                **net_config,
-            )
-        elif model == "droid_fullcrossattention":
-            self.net = FullCrossAttentionEncoder(
-                inpt_dim=input_dim,
-                outp_dim=features,
-                ctxt_dim=global_cond_dim + 2 * frequencies,
-                **net_config,
-            )
-        else:
-            raise NotImplementedError(f"Model {model} not implemented.")
+        net_config = {
+            "input_dim": input_dim,
+            "feats": features,
+            "latent": latent,
+            "equiv_layers": layers,
+            "hid_d": hidden_dim,
+            "activation": activation,
+            "wrapper_func": wrapper_func,
+            "frequencies": frequencies,
+            "num_points": num_particles,
+            "t_local_cat": t_local_cat,
+            "t_global_cat": t_global_cat,
+            "global_cond_dim": global_cond_dim,
+            "local_cond_dim": local_cond_dim,
+            "dropout": dropout,
+            "sum_scale": sum_scale,
+        }
+        self.net = EPiC_encoder(
+            **net_config,
+        )
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
         self.activation = activation
         self.t_emb = t_emb
         self.loss_type = loss_type
-        self.diff_config = diff_config
         # Gaussian random feature embedding layer for time
         if self.t_emb == "gaussian":
             self.embed = nn.Sequential(
@@ -251,7 +207,6 @@ class CNF(nn.Module):
             cond=cond,
             mask=mask,
             loss_type=self.loss_type,
-            diff_config=self.diff_config,
         )
         if ode_solver == "dopri5_zuko":
             return odeint(wrapped_cnf, z, 1.0, 0.0, phi=self.parameters())
@@ -296,30 +251,6 @@ class CNF(nn.Module):
             t_span = torch.linspace(1.0, 0.0, ode_steps)
             traj = node.trajectory(z, t_span)
             return traj[-1]
-        elif ode_solver == "em" or ode_solver == "ddim":
-            if self.loss_type == "diffusion":
-                diff_sched = VPDiffusionSchedule(**self.diff_config)
-                if ode_solver == "em":  # euler-maruyama
-                    x = euler_maruyama_sampler(
-                        self,
-                        diff_sched=diff_sched,
-                        initial_noise=z,
-                        mask=mask,
-                        cond=cond,
-                        n_steps=ode_steps,
-                    )
-                elif ode_solver == "ddim":
-                    x = ddim_sampler(
-                        self,
-                        diff_sched=diff_sched,
-                        initial_noise=z,
-                        mask=mask,
-                        cond=cond,
-                        n_steps=ode_steps,
-                    )
-                return x[0]
-            else:
-                raise SyntaxError(f"Solver {ode_solver} is only implemented for diffusion loss")
         else:
             raise NotImplementedError(f"Solver {ode_solver} not implemented")
 
@@ -359,7 +290,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         local_cond_dim (int, optional): Dimension to concatenate to the Local MLPs in EPiC Model. Must be zero for no conditioning. Defaults to 0.
         activation (str, optional): Activation function. Defaults to "leaky_relu".
         wrapper_func (str, optional): Wrapper function. Defaults to "weight_norm".
-        use_normaliser (bool, optional): Use layers that learn to normalise the input and conditioning. Defaults to True.
         normaliser_config (Mapping, optional): Normaliser config. Defaults to None.
         net_config (Mapping, optional): Config for Architecture. Defaults to {}.
         latent (int, optional): Latent dimension. Defaults to 16.
@@ -370,7 +300,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         sum_scale (float, optional): Factor that is multiplied with the sum pooling. Defaults to 1e-2.
         loss_type (str, optional): Loss type. Defaults to "FM-OT".
         t_emb (str, optional): Embedding for time. Defaults to "sincos".
-        diff_config (Mapping, optional): Config for diffusion rate scheduling. Defaults to {"max_sr": 1, "min_sr": 1e-8}.
         criterion (str, optional): Criterion for loss. Defaults to "mse".
     """
 
@@ -387,7 +316,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         n_transforms: int = 1,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
-        use_normaliser: bool = False,
         normaliser_config: Mapping = {},
         net_config: Mapping = {},
         # epic
@@ -403,7 +331,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         loss_type: str = "FM-OT",
         sigma: float = 1e-4,
         t_emb: str = "sincos",
-        diff_config: Mapping = {"max_sr": 1, "min_sr": 1e-8},
         criterion: str = "mse",
     ):
         super().__init__()
@@ -433,7 +360,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                     add_time_to_input=add_time_to_input,
                     t_emb=t_emb,
                     loss_type=loss_type,
-                    diff_config=diff_config,
                     sum_scale=sum_scale,
                 )
             )
@@ -443,30 +369,8 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
         if loss_type == "FM-OT":
             self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma, criterion=criterion)
-        elif loss_type == "CFM":
-            self.loss = ConditionalFlowMatchingLoss(
-                flows=self.flows, sigma=sigma, criterion=criterion
-            )
-        elif loss_type == "CFM-OT":
-            self.loss = ConditionalFlowMatchingOTLoss(
-                flows=self.flows, sigma=sigma, criterion=criterion
-            )
-        elif loss_type == "diffusion":
-            self.loss = DiffusionLoss(
-                flows=self.flows, sigma=sigma, diff_config=diff_config, criterion=criterion
-            )
-        elif loss_type == "droid":
-            self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma, criterion=criterion)
         else:
             raise NotImplementedError(f"Loss type {loss_type} not implemented.")
-
-        if use_normaliser:
-            self.normaliser = IterativeNormLayer(
-                (features,),
-                **normaliser_config,
-            )
-            if self.conditioned:
-                self.ctxt_normaliser = IterativeNormLayer((global_cond_dim,), **normaliser_config)
 
     def forward(
         self,
@@ -507,11 +411,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, mask, cond = batch
-        if self.hparams.use_normaliser:
-            bool_mask = (mask.clone().detach() == 1).squeeze()
-            x = self.normaliser(x, bool_mask)
-            if self.conditioned:
-                cond = self.ctxt_normaliser(cond)
+
         if not self.trainer.datamodule.hparams.variable_jet_sizes:
             mask = None
 
@@ -557,11 +457,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
 
     def validation_step(self, batch: Any, batch_idx: int):
         x, mask, cond = batch
-        if self.hparams.use_normaliser:
-            bool_mask = (mask.clone().detach() == 1).squeeze()
-            x = self.normaliser(x, bool_mask)
-            if self.conditioned:
-                cond = self.ctxt_normaliser(cond)
+
         if not self.trainer.datamodule.hparams.variable_jet_sizes:
             mask = None
 
@@ -653,8 +549,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         )
         if cond is not None:
             cond = cond.to(self.device)
-            if self.hparams.use_normaliser:
-                cond = self.ctxt_normaliser(cond)
         if mask is not None:
             mask = mask[:n_samples]
             mask = mask.to(self.device)
@@ -662,6 +556,4 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         samples = self.forward(
             z, cond=cond, mask=mask, reverse=True, ode_solver=ode_solver, ode_steps=ode_steps
         )
-        if self.hparams.use_normaliser:
-            samples = self.normaliser.reverse(samples, mask)
         return samples

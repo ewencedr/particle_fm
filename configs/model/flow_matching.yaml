@@ -29,12 +29,5 @@ t_local_cat: True
 add_time_to_input: False
 
 loss_type: 'FM-OT'
-diff_config:
-  max_sr: 0.999
-  min_sr: 0.02
 criterion: 'mse'
 sigma: 1e-4
-
-use_normaliser: False
-normaliser_config:
-  max_n: 2000
