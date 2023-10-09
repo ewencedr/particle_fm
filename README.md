@@ -83,4 +83,4 @@ and the particle feature model with
 ```bash
 python src/train.py experiment=lhco/lhco_both_jets
 ```
-After training both models, one can generate the events with the `lhco_full_eval` notebook. The classifier training and evaluation plots were done with [this](https://github.com/ViniciusMikuni/LHCO_diffusion) code.
+After training both models, one can generate the events with the `lhco_full_eval` notebook. The classifier training and evaluation plots were done with [this](https://github.com/ViniciusMikuni/LHCO_diffusion) code. This code also contains an EPiC classifier that can be used to quickly evaluate if the generated samples can fool a classifier, but this is not used in the paper.
