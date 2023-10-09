@@ -20,7 +20,7 @@ from src.utils.data_generation import generate_data
 from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
 from src.utils.pylogger import get_pylogger
 
-log = get_pylogger("JetNetEvaluationCallbackSR")
+log = get_pylogger("LHCOEvaluationCallbackSR")
 
 # TODO wandb logging min and max values
 # TODO wandb logging video of jets, histograms, and point clouds
@@ -28,8 +28,8 @@ log = get_pylogger("JetNetEvaluationCallbackSR")
 # TODO use ema can be taken from ema callback and should be removed here
 
 
-class JetNetEvaluationCallbackSR(pl.Callback):
-    """Create a callback to evaluate the model on the test dataset of the JetNet dataset and log
+class LHCOEvaluationCallbackSR(pl.Callback):
+    """Create a callback to evaluate the model on the LHCO dataset in the SR and log
     the results to loggers. Currently supported are CometLogger and WandbLogger.
 
     Args:

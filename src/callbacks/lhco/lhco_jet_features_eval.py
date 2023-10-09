@@ -39,7 +39,7 @@ log = get_pylogger("LHCOEvaluationCallback")
 
 
 class LHCOJetFeaturesEvaluationCallback(pl.Callback):
-    """Create a callback to evaluate the model on the test dataset of the LHCO dataset and log the
+    """Create a callback to evaluate the model on the LHCO dataset and log the
     results to loggers. Currently supported are CometLogger and WandbLogger.
 
     Args:

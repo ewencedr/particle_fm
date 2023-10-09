@@ -11,7 +11,7 @@ from src.utils.pylogger import get_pylogger
 
 from .components import normalize_tensor
 
-log = get_pylogger("JetNetDataModule")
+log = get_pylogger("LHCODataModule")
 
 
 class LHCOJetFeatureDataModule(LightningDataModule):

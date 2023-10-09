@@ -18,12 +18,11 @@ from .components import (
     one_hot_encode,
 )
 
-log = get_pylogger("JetNetDataModule")
+log = get_pylogger("LHCODataModule")
 
 
 class LHCODataModule(LightningDataModule):
-    """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
-    will be a tensor of zeros.
+    """LightningDataModule for LHCO dataset.
 
     Args:
         val_fraction (float, optional): Fraction of data to use for validation. Between 0 and 1. Defaults to 0.15.
