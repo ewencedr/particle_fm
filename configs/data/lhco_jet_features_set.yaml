@@ -1,9 +1,0 @@
-_target_: src.data.lhco_jet_feature_datamodule.LHCOJetFeatureDataModule
-data_dir: ${paths.data_dir}
-batch_size: 1024
-num_workers: 32
-pin_memory: False
-val_fraction: 0.05
-test_fraction: 0.35
-normalize: True
-set_data: True
