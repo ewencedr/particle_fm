@@ -5,6 +5,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
+import time
 
 from src.callbacks.ema import EMA
 from src.data.components import calculate_all_wasserstein_metrics
@@ -67,6 +68,7 @@ class JetNetEvaluationCallbackSR(pl.Callback):
             "ode_steps": 100,
         },
         plot_config: Mapping = {"plot_efps": False},
+        verbose: bool = False,
     ):
         super().__init__()
         self.every_n_epochs = every_n_epochs
@@ -98,6 +100,11 @@ class JetNetEvaluationCallbackSR(pl.Callback):
             "nolog10000": nolog10000,
             "epochs10000": epochs10000,
         }
+
+        self.time_start = 0
+        self.time_end = 0
+        self.epoch_times = []
+        self.verbose = verbose
 
     def on_train_start(self, trainer, pl_module) -> None:
         # log something, so that metrics exists and the checkpoint callback doesn't crash
@@ -135,7 +142,19 @@ class JetNetEvaluationCallbackSR(pl.Callback):
         elif self.ema_callback is not None and self.use_ema:
             log.info("Using EMA weights for logging.")
 
+    def on_train_epoch_start(self, trainer, pl_module) -> None:
+        self.time_start = time.time()
+
     def on_train_epoch_end(self, trainer, pl_module):
+        self.time_end = time.time()
+        epoch_time = self.time_end - self.time_start
+        self.epoch_times.append(epoch_time)
+        if self.verbose:
+            print(f"time elapsed train epoch end: {epoch_time}")
+            print(f"time start time epoch end: {self.time_start}")
+            print(f"time end time epoch end: {self.time_end}")
+            print(f"epoch times: {self.epoch_times}")
+
         if self.fix_seed:
             # fix seed for better reproducibility and comparable results
             torch.manual_seed(9999)
