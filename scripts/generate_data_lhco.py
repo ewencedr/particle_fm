@@ -177,41 +177,15 @@ def main(params):
     data_raw = np.stack([data_x_raw, data_y_raw], axis=1)
 
     print("Preparing data for saving")
-    # remove unphysical values
-    # data_x[..., 0][data_x[..., 0] > np.max(datamodule.tensor_train.numpy()[..., 0])] = np.max(
-    #    datamodule.tensor_train.numpy()[..., 0]
-    # )
-    # data_x[..., 1][data_x[..., 1] > np.max(datamodule.tensor_train.numpy()[..., 1])] = np.max(
-    #    datamodule.tensor_train.numpy()[..., 1]
-    # )
     data_x[..., 2][data_x[..., 2] > np.max(datamodule.tensor_train.numpy()[..., 2])] = np.max(
         datamodule.tensor_train.numpy()[..., 2][datamodule.tensor_train.numpy()[..., 2] != 1]
     )
-    # data_x[..., 0][data_x[..., 0] < np.min(datamodule.tensor_train.numpy()[..., 0])] = np.min(
-    #    datamodule.tensor_train.numpy()[..., 0]
-    # )
-    # data_x[..., 1][data_x[..., 1] < np.min(datamodule.tensor_train.numpy()[..., 1])] = np.min(
-    #    datamodule.tensor_train.numpy()[..., 1]
-    # )
     data_x[..., 2][data_x[..., 2] < np.min(datamodule.tensor_train.numpy()[..., 2])] = np.min(
         datamodule.tensor_train.numpy()[..., 2][datamodule.tensor_train.numpy()[..., 2] != 0]
     )
-
-    # data_y[..., 0][data_y[..., 0] > np.max(datamodule.tensor_train.numpy()[..., 0])] = np.max(
-    #    datamodule.tensor_train.numpy()[..., 0]
-    # )
-    # data_y[..., 1][data_y[..., 1] > np.max(datamodule.tensor_train.numpy()[..., 1])] = np.max(
-    #    datamodule.tensor_train.numpy()[..., 1]
-    # )
     data_y[..., 2][data_y[..., 2] > np.max(datamodule.tensor_train.numpy()[..., 2])] = np.max(
         datamodule.tensor_train.numpy()[..., 2][datamodule.tensor_train.numpy()[..., 2] != 1]
     )
-    # data_y[..., 0][data_y[..., 0] < np.min(datamodule.tensor_train.numpy()[..., 0])] = np.min(
-    #    datamodule.tensor_train.numpy()[..., 0]
-    # )
-    # data_y[..., 1][data_y[..., 1] < np.min(datamodule.tensor_train.numpy()[..., 1])] = np.min(
-    #    datamodule.tensor_train.numpy()[..., 1]
-    # )
     data_y[..., 2][data_y[..., 2] < np.min(datamodule.tensor_train.numpy()[..., 2])] = np.min(
         datamodule.tensor_train.numpy()[..., 2][datamodule.tensor_train.numpy()[..., 2] != 0]
     )
@@ -475,7 +449,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--folder",
         "-f",
-        default="/beegfs/desy/user/ewencedr/deep-learning/logs/lhco all jets/runs/2023-08-25_14-42-49",
+        default="name/runs/0000-00-00_00-00-00",
         help="folder of the model to generate from",
         type=str,
     )

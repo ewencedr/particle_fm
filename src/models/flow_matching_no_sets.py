@@ -9,8 +9,6 @@ from .components.losses import FlowMatchingLoss
 from .components.mlp import (
     MLP,
     small_cond_MLP_model,
-    small_cond_ResNet_model,
-    very_small_cond_MLP_model,
 )
 
 

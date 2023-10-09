@@ -316,7 +316,6 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         n_transforms: int = 1,
         activation: str = "leaky_relu",
         wrapper_func: str = "weight_norm",
-        normaliser_config: Mapping = {},
         net_config: Mapping = {},
         # epic
         latent: int = 16,
