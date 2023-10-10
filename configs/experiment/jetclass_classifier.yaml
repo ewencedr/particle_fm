@@ -67,14 +67,14 @@ data:
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
 
 model:
-  input_dims: 17  # ParticleNet
-  input_dim: 17  # ParT
+  input_dim: 17  # this is renamed to "input_dims" for ParticleNet
   # conv_params:
   #     - [7, [16, 16, 16]]
   #     - [7, [16, 16, 16]]
   # fc_params: [[64, 0.1]] # ParticleNet
   num_classes: 2
-  # load_pretrained: true
+  load_pretrained: true
+  # no scheduler overwrite for ParT
   scheduler:
   #   warmup: ${vars.warmup}
     max_iters: ${vars.epochs}

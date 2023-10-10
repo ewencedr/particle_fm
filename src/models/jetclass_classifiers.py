@@ -43,6 +43,8 @@ part_default_kwargs = dict(
     trim=True,
     for_inference=False,
 )
+PART_KIN_MODEL_PATH = "/home/birkjosc/repositories/particle_transformer/models/ParT_kin.pt"
+PART_FULL_MODEL_PATH = "/home/birkjosc/repositories/particle_transformer/models/ParT_full.pt"
 
 
 class ParticleTransformerPL(pl.LightningModule):
@@ -58,13 +60,28 @@ class ParticleTransformerPL(pl.LightningModule):
         self.save_hyperparameters(logger=False)
 
         kwargs.pop("input_dims", None)  # it's `input_dim` in ParT
+        cfg = copy.deepcopy(part_default_kwargs)
+        cfg["input_dim"] = kwargs.get("input_dim")
+        cfg["fc_params"] = kwargs.get("fc_params", [])
 
-        self.mod = ParticleTransformer(**kwargs)
+        self.mod = ParticleTransformer(**cfg)
+
+        if kwargs.get("load_pretrained", False):
+            if cfg["input_dim"] == 7:
+                ckpt = torch.load(PART_KIN_MODEL_PATH, map_location="cuda")
+                self.load_state_dict(ckpt)
+            elif cfg["input_dim"] == 17:
+                ckpt = torch.load(PART_FULL_MODEL_PATH, map_location="cuda")
+                self.load_state_dict(ckpt)
+            else:
+                print("No pretrained model available for this input dimension.")
+
         self.loss_func = torch.nn.CrossEntropyLoss()
         # self.data_config = data_config
         self.fc_params = kwargs["fc_params"]
         self.num_classes = kwargs["num_classes"]
         self.last_embed_dim = kwargs["embed_dims"][-1]
+        self.reinitialise_fc()
         # self.set_learning_rates()
         self.test_output_list = []
         self.test_labels_list = []
@@ -291,10 +308,9 @@ class ParticleNetPL(pl.LightningModule):
         self.save_hyperparameters(logger=False)
         self.lr = kwargs.get("lr", 0.001)
         kwargs.pop("lr", None)
-        kwargs.pop("input_dim", None)  # it's `input_dim` in ParticleNet
 
         cfg = copy.deepcopy(particlenet_default_kwargs)
-        cfg["input_dims"] = kwargs["input_dims"]
+        cfg["input_dims"] = kwargs["input_dim"]  # note that we rename "input_dim" to "input_dims"
         cfg["fc_params"] = kwargs["fc_params"]
         cfg["conv_params"] = kwargs["conv_params"]
 

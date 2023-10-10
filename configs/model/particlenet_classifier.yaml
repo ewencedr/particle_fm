@@ -10,7 +10,7 @@ conv_params:
     # - [7, [64, 64, 64]]
 fc_params: [[256, 0.1]] # ParticleNet
 # fc_params: [[128, 0.1]] # ParticleNet-Lite
-input_dims: null
+input_dim: null
 num_classes: 10
 use_fusion: False
 use_fts_bn: True
