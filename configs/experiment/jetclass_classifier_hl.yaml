@@ -30,16 +30,16 @@ vars:
 data:
   # batch_size: 2048  # ParticleNet-Lite
   batch_size: 256  # ParticleNet
-  train_val_test_split: [0.8, 0.1, 0.1]
+  # train_val_test_split: [0.8, 0.1, 0.1]
   # kin_only: true
   # set_energy_equal_to_p: true
   hl_features_list:
     - tau1
     - tau2
     - tau3
-    - tau21
-    - tau32
-    - mass
+    # - tau21
+    # - tau32
+    # - mass
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
   data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_3000000.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000-truth_cond.h5
@@ -61,7 +61,7 @@ model:
       - [128, 0.1]
       - [128, 0.1]
       - [64, 0.1]
-    input_dim: 6
+    input_dim: 3
   optimizer:
     lr: 0.005
   scheduler:

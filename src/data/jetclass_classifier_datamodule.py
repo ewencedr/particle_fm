@@ -101,6 +101,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         # part_dzerr
 
         # Load data from the data_file (that's the output from `eval_ckpt.py`)
+        logger.info(f"Loading data from {self.hparams.data_file}...")
         with h5py.File(self.hparams.data_file, "r") as h5file:
             part_names = list(h5file["part_data_sim"].attrs["names"])
             cond_names = list(h5file["cond_data_sim"].attrs["names"])
@@ -125,26 +126,31 @@ class JetClassClassifierDataModule(LightningDataModule):
             cond_sim = h5file["cond_data_sim"][: self.hparams.number_of_jets]
             label_sim = np.zeros(len(data_sim))
 
+            logger.info(f"Shape of data_gen: {data_gen.shape}")
+            logger.info(f"Shape of data_sim: {data_sim.shape}")
+            logger.info(f"Shape of cond_gen: {cond_gen.shape}")
+            logger.info(f"Shape of cond_sim: {cond_sim.shape}")
+            logger.info(f"Shape of mask_gen: {mask_gen.shape}")
+            logger.info(f"Shape of mask_sim: {mask_sim.shape}")
+
         # fmt: off
         # load the substructure features / high-level features
-        subs_filename_gen = self.hparams.data_file.replace("generated_data", "substructure_generated")  # noqa E501
-        subs_filename_sim = self.hparams.data_file.replace("generated_data", "substructure_simulated")  # noqa E501
-        self.names_hl_features_all = [ "d12", "d2", "d23", "ecf2", "ecf3", "mass", "pt", "tau1", "tau2", "tau21", "tau3", "tau32"] # noqa E501
+        subs_filename = self.hparams.data_file.replace(".h5", "_substructure.h5")  # noqa E501
+        self.names_hl_features_all = [ "d2", "tau1", "tau2", "tau21", "tau3", "tau32"] # noqa E501
 
         # fmt: on
-        if os.path.isfile(subs_filename_gen) and os.path.isfile(subs_filename_sim):
-            with h5py.File(subs_filename_gen) as h5file:
+        if os.path.isfile(subs_filename) and os.path.isfile(subs_filename):
+            with h5py.File(subs_filename) as h5file:
                 hl_features_gen = np.concatenate(
                     [
-                        h5file[hl_name][: self.hparams.number_of_jets][..., None]
+                        h5file[hl_name + "_gen"][: self.hparams.number_of_jets][..., None]
                         for hl_name in self.names_hl_features_all
                     ],
                     axis=-1,
                 )
-            with h5py.File(subs_filename_sim) as h5file:
                 hl_features_sim = np.concatenate(
                     [
-                        h5file[hl_name][: self.hparams.number_of_jets][..., None]
+                        h5file[hl_name + "_sim"][: self.hparams.number_of_jets][..., None]
                         for hl_name in self.names_hl_features_all
                     ],
                     axis=-1,
@@ -217,28 +223,24 @@ class JetClassClassifierDataModule(LightningDataModule):
         px = pt * np.cos(phi) * pf_mask[:, :, 0]
         py = pt * np.sin(phi) * pf_mask[:, :, 0]
         pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
-        energy = (
-            x_features[:, :, idx_part("part_energyrel")]
-            * cond_features[:, idx_cond("jet_energy")][:, None]
-            * pf_mask[:, :, 0]
-        )
         # ensure that energy >= momentum
+        logger.warning("Using energy equal to momentum.")
         p = np.sqrt(px**2 + py**2 + pz**2)
-        energy_clipped = np.clip(energy, a_min=p, a_max=None) * pf_mask[:, :, 0]
+        part_energy = p
 
         if self.hparams.set_energy_equal_to_p:
             logger.warning("Setting energy equal to momentum.")
-            energy_clipped = p
-            cond_features[:, idx_cond("jet_energy")] = np.sum(p, axis=1)
-            x_features[:, :, idx_part("part_energyrel")] = p / np.sum(p, axis=1)[:, None]
+            part_energy = p
+            jet_energy = np.sum(p, axis=1)
+            part_energyrel = p / np.sum(p, axis=1)[:, None]
 
         self.pt_energy_inspect = np.concatenate(
             [
                 p[..., None],
                 pt[..., None],
-                energy[..., None],
-                energy_clipped[..., None],
-                x_features[:, :, idx_part("part_energyrel")][..., None],
+                part_energy[..., None],
+                part_energy[..., None],
+                part_energyrel[..., None],
                 x_features[:, :, idx_part("part_ptrel")][..., None],
             ],
             axis=-1,
@@ -250,7 +252,7 @@ class JetClassClassifierDataModule(LightningDataModule):
                 px[..., None],
                 py[..., None],
                 pz[..., None],
-                energy_clipped[..., None],
+                part_energy[..., None],
             ],
             axis=-1,
         )
@@ -284,11 +286,11 @@ class JetClassClassifierDataModule(LightningDataModule):
                 # log ( part_pt )
                 (np.log(pt)[..., None] - 1.7) * 0.7,
                 # log ( part_energy )
-                (np.log(energy_clipped)[..., None] - 2.0) * 0.7,
+                (np.log(part_energy)[..., None] - 2.0) * 0.7,
                 # log ( part_ptrel )
                 (np.log(x_features[:, :, idx_part("part_ptrel")])[..., None] + 4.7) * 0.7,
                 # log ( part_energyrel )
-                (np.log(x_features[:, :, idx_part("part_energyrel")])[..., None] + 4.7) * 0.7,
+                (np.log(part_energyrel)[..., None] + 4.7) * 0.7,
                 # part_deltaR
                 np.clip(
                     (

@@ -55,7 +55,7 @@ class ParticleTransformerPL(pl.LightningModule):
         **kwargs,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(logger=False)
 
         kwargs.pop("input_dims", None)  # it's `input_dim` in ParT
 
