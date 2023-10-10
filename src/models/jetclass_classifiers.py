@@ -66,15 +66,35 @@ class ParticleTransformerPL(pl.LightningModule):
 
         self.mod = ParticleTransformer(**cfg)
 
+        # keys to drop from pretrained model if input_dim is different from kin or full
+        keys_to_drop = [
+            "mod.embed.input_bn.weight",
+            "mod.embed.input_bn.bias",
+            "mod.embed.input_bn.running_mean",
+            "mod.embed.input_bn.running_var",
+            "mod.embed.input_bn.num_batches_tracked",
+            "mod.embed.embed.0.weight",
+            "mod.embed.embed.0.bias",
+            "mod.embed.embed.1.bias",
+            "mod.embed.embed.1.weight",
+        ]
+
         if kwargs.get("load_pretrained", False):
             if cfg["input_dim"] == 7:
                 ckpt = torch.load(PART_KIN_MODEL_PATH, map_location="cuda")
                 self.load_state_dict(ckpt)
-            elif cfg["input_dim"] == 17:
-                ckpt = torch.load(PART_FULL_MODEL_PATH, map_location="cuda")
-                self.load_state_dict(ckpt)
+            # elif cfg["input_dim"] == 17:
+            #     ckpt = torch.load(PART_FULL_MODEL_PATH, map_location="cuda")
+            #     self.load_state_dict(ckpt)
             else:
-                print("No pretrained model available for this input dimension.")
+                print(
+                    "No pretrained model available for this input dimension."
+                    "Loading pretrained model for input_dim=17 and dropping keys."
+                )
+                ckpt = torch.load(PART_FULL_MODEL_PATH, map_location="cuda")
+                for key in keys_to_drop:
+                    ckpt.pop(key)
+                self.load_state_dict(ckpt, strict=False)
 
         self.loss_func = torch.nn.CrossEntropyLoss()
         # self.data_config = data_config

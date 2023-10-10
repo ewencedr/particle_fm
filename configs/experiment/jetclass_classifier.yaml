@@ -7,8 +7,8 @@ defaults:
   - override /data: classifier_data_jetclass.yaml
   # - override /model: mlp_classifier.yaml
   # - override /model: particlenet_classifier.yaml
-  - override /model: particlenet_lite_classifier.yaml
-  # - override /model: ParT_classifier.yaml
+  # - override /model: particlenet_lite_classifier.yaml
+  - override /model: ParT_classifier.yaml
   - override /callbacks: jetclass_classifier.yaml
   - override /trainer: gpu.yaml
 
@@ -28,8 +28,8 @@ vars:
   val_check_interval: null
 
 data:
-  batch_size: 512  # ParticleNet-Lite
-  # batch_size: 1024  # ParticleNet
+  batch_size: 256  # ParT
+  # batch_size: 1024  # ParticleNet-Lite
   # train_val_test_split: [0.8, 0.1, 0.1]
   # kin_only: true
   set_energy_equal_to_p: true
@@ -41,16 +41,16 @@ data:
     - log_part_ptrel
     - log_part_energyrel
     - part_deltaR
-    - part_charge
-    - part_isChargedHadron
-    - part_isNeutralHadron
-    - part_isPhoton
-    - part_isElectron
-    - part_isMuon
+    # - part_charge
+    # - part_isChargedHadron
+    # - part_isNeutralHadron
+    # - part_isPhoton
+    # - part_isElectron
+    # - part_isMuon
     - tanh_part_d0val
-    - part_d0err
+    # - part_d0err
     - tanh_part_dzval
-    - part_dzerr
+    # - part_dzerr
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000-truth_cond.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000.h5
@@ -61,13 +61,13 @@ data:
   # number_of_jets: 100000
   # debug_sim_only: true
   # debug_sim_gen_fraction: 0.8
-  # used_flavor: Tbqq
+  used_flavor: Tbqq
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
 
 model:
-  input_dim: 17  # this is renamed to "input_dims" for ParticleNet
+  input_dim: 9  # this is renamed to "input_dims" for ParticleNet
   # conv_params:
   #     - [7, [16, 16, 16]]
   #     - [7, [16, 16, 16]]
@@ -75,18 +75,18 @@ model:
   num_classes: 2
   load_pretrained: true
   # no scheduler overwrite for ParT
-  scheduler:
-  #   warmup: ${vars.warmup}
-    max_iters: ${vars.epochs}
-    warmup: 8
-    cooldown: 8
-    cooldown_final: 4
-    max_lr: 0.005
-    initial_lr: 0.0005
-    final_lr: 0.000001
-    # max_iters: 20
-  optimizer:
-    weight_decay: 0.0001
+  # scheduler:
+  #   # ParticleNet-Lite scheduler
+  #   max_iters: ${vars.epochs}
+  #   warmup: 50
+  #   cooldown: 50
+  #   cooldown_final: 50
+  #   max_lr: 0.005
+  #   initial_lr: 0.0005
+  #   final_lr: 0.000001
+  #   # max_iters: 20
+  # optimizer:
+  #   weight_decay: 0.0001
     # lr: 0.001
 
   # early_stopping:
@@ -100,7 +100,7 @@ trainer:
   min_epochs: 1
   max_epochs: ${vars.epochs}
   val_check_interval: ${vars.val_check_interval}
-  gradient_clip_val: 0.02  # ParticleNet 0.02, ParticleNet-Lite 0.1
+  gradient_clip_val: 0.5  # ParticleNet 0.02, ParticleNet-Lite 0.1
   gradient_clip_algorithm: norm
 
 logger:
