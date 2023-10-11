@@ -35,6 +35,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         pf_features_list: list = None,
         hl_features_list: list = None,
         set_energy_equal_to_p: bool = False,
+        set_neutral_particle_ips_zero: bool = False,
         **kwargs: Any,
     ):
         """
@@ -256,6 +257,20 @@ class JetClassClassifierDataModule(LightningDataModule):
             ],
             axis=-1,
         )
+
+        if self.hparams.set_neutral_particle_ips_zero:
+            logger.warning("Setting neutral particle IP and IP uncertainty to zero.")
+            # set d0val, dzval, d0err, dzerr to zero if particle is not charged
+            not_charged_hadron = x_features[:, :, idx_part("part_isChargedHadron")] == 0
+            not_electron = x_features[:, :, idx_part("part_isElectron")] == 0
+            not_muon = x_features[:, :, idx_part("part_isMuon")] == 0
+
+            not_charged = not_charged_hadron & not_electron & not_muon
+
+            x_features[:, :, idx_part("part_d0val")][not_charged] = 0
+            x_features[:, :, idx_part("part_dzval")][not_charged] = 0
+            x_features[:, :, idx_part("part_d0err")][not_charged] = 0
+            x_features[:, :, idx_part("part_dzerr")][not_charged] = 0
 
         # for compatibility with kin-only trainings:
         non_kin_feature_names = [
