@@ -13,7 +13,6 @@ from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_encoder, IterativeNormLayer
-from .components.transformer import Transformer
 from .components.losses import (
     ConditionalFlowMatchingLoss,
     ConditionalFlowMatchingOTLoss,
@@ -22,6 +21,7 @@ from .components.losses import (
 )
 from .components.solver import ddim_sampler, euler_maruyama_sampler
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
+from .components.transformer import Transformer
 
 logger = get_pylogger("fm_module")
 
@@ -54,7 +54,7 @@ class ode_wrapper(torch.nn.Module):
         if self.loss_type == "diffusion":
             self.diff_sched = VPDiffusionSchedule(**diff_config)
 
-    def forward(self, t, x):
+    def forward(self, t, x, *args, **kwargs):
         if self.loss_type == "diffusion":
             expanded_shape = [-1] + [1] * (x.dim() - 1)
             _, noise_rates = self.diff_sched(t.view(expanded_shape))
