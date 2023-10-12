@@ -1493,9 +1493,10 @@ def plot_full_substructure(
         )
         ax.hist(data_substructure[i], bins=hist_jetnet[1], label=f"{model_name}", histtype="step")
         ax.set_title(keys[i])
-        ax.legend(loc="best", frameon=False)
+        if i == 0:
+            ax.legend(loc="best", frameon=False)
 
-    plt.legend(loc="best", frameon=False)
+    # plt.legend(loc="best", frameon=False)
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")
