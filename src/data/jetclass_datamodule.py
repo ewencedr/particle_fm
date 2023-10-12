@@ -334,6 +334,7 @@ class JetClassDataModule(LightningDataModule):
                         self.tensor_conditioning_gen = torch.tensor(conditioning_gen, dtype=torch.float32)
                         pylogger.info("Done processing the conditioning data.")
                 else:
+                    pylogger.warning("No conditioning data from generator used. Will used the truth conditioning data!.")
                     self.mask_gen = None
                     self.tensor_conditioning_gen = None
 

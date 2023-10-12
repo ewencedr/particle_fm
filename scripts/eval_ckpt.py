@@ -79,6 +79,16 @@ parser.add_argument(
     type=int,
     default=100,
 )
+parser.add_argument(
+    "--used_jet_types",
+    nargs="+",
+    type=str,
+    help=(
+        "List of jet types to use for evaluation. If not specified, the jet types from the"
+        " training are used."
+    ),
+    default=None,
+)
 
 VARIABLES_TO_CLIP = ["part_ptrel", "part_energyrel"]
 W_DIST_CFG = {"num_eval_samples": 50_000, "num_batches": 10}
@@ -111,6 +121,9 @@ def main():
 
     if args.cond_gen_file != "use_truth_cond":
         cfg.data.conditioning_gen_filename = args.cond_gen_file
+
+    if args.used_jet_types is not None:
+        cfg.data.used_jet_types = args.used_jet_types
 
     datamodule = hydra.utils.instantiate(cfg.data)
     datamodule.setup()
@@ -510,7 +523,7 @@ def main():
         if "jet_type" in var_name
     }
     jet_types_dict["all_jet_types"] = None
-    pylogger.info(f"Used jet types: {jet_types_dict.keys()}")
+    pylogger.info(f"List of jet types: {jet_types_dict.keys()}")
 
     for jet_type, jet_type_idx in jet_types_dict.items():
         pylogger.info(f"Plotting substructure for jet type {jet_type}")
