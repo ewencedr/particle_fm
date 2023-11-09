@@ -20,7 +20,7 @@ defaults:
 
 tags: ["fm-classifier_test", "JetClass", "ClassifierTest"]
 run_note: ""
-seed: 122
+seed: 1223
 
 vars:
   epochs: 400
@@ -48,9 +48,9 @@ data:
     # - part_isPhoton
     # - part_isElectron
     # - part_isMuon
-    - tanh_part_d0val
+    # - tanh_part_d0val
     # - part_d0err
-    - tanh_part_dzval
+    # - tanh_part_dzval
     # - part_dzerr
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000-truth_cond.h5
@@ -58,8 +58,10 @@ data:
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-16_19-12-11/evaluated_ckpts/epoch_3744/generated_data_epoch_3744_nsamples_100000.h5
   # landscape dataset for crosscheck
   # data_file: /beegfs/desy/user/birkjosc/datasets/landscape/TopLandscape/for_crosscheck_classifier_simulated_generated.h5
-  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_1000000.h5
-  # number_of_jets: 100000
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_1000000.h5
+  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-top_jets_only.h5
+  number_of_jets: 300000
+  train_val_test_split: [0.5, 0.1, 0.4]
   # debug_sim_only: true
   # debug_sim_gen_fraction: 0.8
   used_flavor: Tbqq
@@ -68,7 +70,7 @@ data:
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
 
 model:
-  input_dim: 9  # this is renamed to "input_dims" for ParticleNet
+  input_dim: 7  # this is renamed to "input_dims" for ParticleNet
   # conv_params:
   #     - [7, [16, 16, 16]]
   #     - [7, [16, 16, 16]]

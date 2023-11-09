@@ -25,7 +25,7 @@ class JetClassClassifierDataModule(LightningDataModule):
         batch_size: int = 128,
         num_workers: int = 0,
         pin_memory: bool = False,
-        train_val_test_split: Tuple[int, int, int] = (0.6, 0.2, 0.2),
+        train_val_test_split: Tuple[int, int, int] = (0.5, 0.2, 0.2),
         kin_only: bool = False,
         used_flavor: Tuple[str, ...] = None,
         debug_sim_only: bool = False,
