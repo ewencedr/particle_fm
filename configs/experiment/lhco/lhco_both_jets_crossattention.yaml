@@ -5,44 +5,41 @@
 
 defaults:
   - override /data: lhco.yaml
-  - override /model: flow_matching2.yaml
+  - override /model: fm_droid_crossattention.yaml
   - override /callbacks: /lhco/lhco.yaml
-  - override /trainer: gpu.yaml
+  - override /trainer: ddp.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
 
 
-tags: ["flow_matching", "LHCO", "cond", "both_jet"]
+tags: ["flow_matching", "LHCO", "cond", "both_jet", "crossattention"]
 
 seed: 12345
+compile: False
 
 trainer:
-  min_epochs: 500
+  min_epochs: 250
   max_epochs: 5000
   gradient_clip_val: 0.5
 
 model:
   num_particles: 279
   global_cond_dim: 5 # needs to be calculated when using conditioning
-  local_cond_dim: 5
-  layers: 12
-  hidden_dim: 256
-  latent: 256
-  #scheduler:
-  #  warmup: ${trainer.min_epochs}
-  #  max_iters: ${trainer.max_epochs}
-  optimizer:
-    _target_: torch.optim.AdamW
-    _partial_: true
-    lr: 0.0003
-    weight_decay: 0.00005
-
   scheduler:
-    _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-    _partial_: true
-    T_max: ${trainer.max_epochs}
+    warmup: ${trainer.min_epochs}
+    max_iters: ${trainer.max_epochs}
+  #optimizer:
+  #  _target_: torch.optim.AdamW
+  #  _partial_: true
+  #  lr: 0.0003
+  #  weight_decay: 0.00005
+
+  #scheduler:
+  #  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  #  _partial_: true
+  #  T_max: ${trainer.max_epochs}
 
 data:
   batch_size: 128
@@ -109,7 +106,7 @@ callbacks:
       plot_efps: False
       plottype: ""
 
-task_name: "lhco_flow_matching_both_jet"
+task_name: "lhco_flow_matching_both_jet_crossattention"
 
 logger:
   wandb:

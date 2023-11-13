@@ -8,3 +8,6 @@ gen_jet: "both"
 ref_jet: "both"
 idealized: False
 use_shuffled_data: False
+use_nonrel_data: False
+n_signal: 0
+n_background: 100_000

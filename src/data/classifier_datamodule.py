@@ -10,6 +10,13 @@ import numpy as np
 from src.data.components import (
     normalize_tensor,
 )
+from src.data.components.utils import (
+    get_mjj,
+    get_jet_data,
+    get_nonrel_consts,
+    sort_consts,
+    sort_jets,
+)
 
 
 class ClassifierDataModule(LightningDataModule):
@@ -62,6 +69,9 @@ class ClassifierDataModule(LightningDataModule):
         gen_jet: str = "both",
         ref_jet: str = "both",
         use_shuffled_data: bool = False,
+        use_nonrel_data: bool = False,
+        n_signal: int = 0,
+        n_background: int = 100_000,
     ) -> None:
         """Initialize a `ClassifierDataModule`.
 
@@ -104,16 +114,20 @@ class ClassifierDataModule(LightningDataModule):
         :param stage: The stage to setup. Either `"fit"`, `"validate"`, `"test"`, or `"predict"`. Defaults to ``None``.
         """
 
-        if self.hparams.ref_jet == "both" and self.hparams.gen_jet == "both":
+        if "both" in self.hparams.ref_jet and "both" in self.hparams.gen_jet:
             self.jets_to_use = "both"
         else:
             self.jets_to_use = ""
 
-        if self.hparams.gen_jet not in ["first", "second", "both"]:
-            raise ValueError("gen_jet must be one of 'first' or 'second' or 'both'")
+        if self.hparams.gen_jet not in ["first", "second", "both", "both_first", "both_second"]:
+            raise ValueError(
+                "gen_jet must be one of 'first' or 'second' or 'both', or 'both_first', or 'both_second'"
+            )
 
-        if self.hparams.ref_jet not in ["first", "second", "both"]:
-            raise ValueError("ref_jet must be one of 'first' or 'second', or 'both'")
+        if self.hparams.ref_jet not in ["first", "second", "both", "both_first", "both_second"]:
+            raise ValueError(
+                "ref_jet must be one of 'first' or 'second', or 'both', or 'both_first', or 'both_second'"
+            )
 
         if self.hparams.gen_jet == "both" and self.hparams.ref_jet != "both":
             raise ValueError("gen_jet must be 'both' if ref_jet is 'both'")
@@ -165,16 +179,22 @@ class ClassifierDataModule(LightningDataModule):
 
             print(f"Number of background events: {len(jet_data_bckg)}")
             print(f"Number of signal events: {len(jet_data_sgnl)}")
-            n_signal = 0
-            n_background = 100_000
 
             jet_data_mixed = np.concatenate(
-                [jet_data_bckg[:n_background], jet_data_sgnl[:n_signal]]
+                [
+                    jet_data_bckg[: self.hparams.n_background],
+                    jet_data_sgnl[: self.hparams.n_signal],
+                ]
             )
             particle_data_mixed = np.concatenate(
-                [particle_data_bckg[:n_background], particle_data_sgnl[:n_signal]]
+                [
+                    particle_data_bckg[: self.hparams.n_background],
+                    particle_data_sgnl[: self.hparams.n_signal],
+                ]
             )
-            mask_mixed = np.concatenate([mask_bckg[:n_background], mask_sgnl[:n_signal]])
+            mask_mixed = np.concatenate(
+                [mask_bckg[: self.hparams.n_background], mask_sgnl[: self.hparams.n_signal]]
+            )
 
             # shuffle
             random_permutation = np.random.permutation(len(jet_data_mixed))
@@ -224,17 +244,11 @@ class ClassifierDataModule(LightningDataModule):
 
             labels_background = np.zeros(len(jet_data_background))
 
-            # jet_data_background += np.random.normal(0, 1, jet_data_background.shape)
-            # particle_data_background += np.random.normal(0, 1, particle_data_background.shape)
-
-            # if self.hparams.jets_to_use == "first":
-            #    particle_data_background = particle_data_background[:, 0]
-            #    jet_data_background = jet_data_background[:, 0]
-            #    mask_background = mask_background[:, 0]
-            # elif self.hparams.jets_to_use == "second":
-            #    particle_data_background = particle_data_background[:, 1]
-            #    jet_data_background = jet_data_background[:, 1]
-            #    mask_background = mask_background[:, 1]
+            if self.hparams.use_nonrel_data:
+                particle_data_background = get_nonrel_consts(
+                    jet_data_background, particle_data_background
+                )
+                particle_data_mixed = get_nonrel_consts(jet_data_mixed, particle_data_mixed)
 
             if self.hparams.gen_jet == "first":
                 particle_data_background = particle_data_background[:, 0]
@@ -244,6 +258,24 @@ class ClassifierDataModule(LightningDataModule):
                 particle_data_background = particle_data_background[:, 1]
                 jet_data_background = jet_data_background[:, 1]
                 mask_background = mask_background[:, 1]
+            elif self.hparams.gen_jet == "both_first":
+                particle_data_bckg_temp = particle_data_background[:, 0]
+                jet_data_bck_temp = jet_data_background[:, 0]
+                mask_bckg_temp = mask_background[:, 0]
+                particle_data_background = np.stack(
+                    (particle_data_bckg_temp, particle_data_bckg_temp), axis=1
+                )
+                jet_data_background = np.stack((jet_data_bck_temp, jet_data_bck_temp), axis=1)
+                mask_background = np.stack((mask_bckg_temp, mask_bckg_temp), axis=1)
+            elif self.hparams.gen_jet == "both_second":
+                particle_data_bckg_temp = particle_data_background[:, 1]
+                jet_data_bck_temp = jet_data_background[:, 1]
+                mask_bckg_temp = mask_background[:, 1]
+                particle_data_background = np.stack(
+                    (particle_data_bckg_temp, particle_data_bckg_temp), axis=1
+                )
+                jet_data_background = np.stack((jet_data_bck_temp, jet_data_bck_temp), axis=1)
+                mask_background = np.stack((mask_bckg_temp, mask_bckg_temp), axis=1)
 
             if self.hparams.ref_jet == "first":
                 particle_data_mixed = particle_data_mixed[:, 0]
@@ -253,6 +285,24 @@ class ClassifierDataModule(LightningDataModule):
                 particle_data_mixed = particle_data_mixed[:, 1]
                 jet_data_mixed = jet_data_mixed[:, 1]
                 mask_mixed = mask_mixed[:, 1]
+            elif self.hparams.ref_jet == "both_first":
+                particle_data_mixed_temp = particle_data_mixed[:, 0]
+                jet_data_mixed_temp = jet_data_mixed[:, 0]
+                mask_mixed_temp = mask_mixed[:, 0]
+                particle_data_mixed = np.stack(
+                    (particle_data_mixed_temp, particle_data_mixed_temp), axis=1
+                )
+                jet_data_mixed = np.stack((jet_data_mixed_temp, jet_data_mixed_temp), axis=1)
+                mask_mixed = np.stack((mask_mixed_temp, mask_mixed_temp), axis=1)
+            elif self.hparams.ref_jet == "both_second":
+                particle_data_mixed_temp = particle_data_mixed[:, 1]
+                jet_data_mixed_temp = jet_data_mixed[:, 1]
+                mask_mixed_temp = mask_mixed[:, 1]
+                particle_data_mixed = np.stack(
+                    (particle_data_mixed_temp, particle_data_mixed_temp), axis=1
+                )
+                jet_data_mixed = np.stack((jet_data_mixed_temp, jet_data_mixed_temp), axis=1)
+                mask_mixed = np.stack((mask_mixed_temp, mask_mixed_temp), axis=1)
 
             # concatenate both classes
             print(f"particle_data_mixed.shape: {particle_data_mixed.shape}")
@@ -267,17 +317,6 @@ class ClassifierDataModule(LightningDataModule):
             input_data = input_data[perm]
             input_mask = input_mask[perm]
             input_labels = input_labels[perm]
-
-            print(f"input_data.shape: {input_data.shape}")
-            print(f"input_mask.shape: {input_mask.shape}")
-            print(f"input_labels.shape: {input_labels.shape}")
-
-            # if self.hparams.jets_to_use == "first":
-            #    input_data = input_data[:, 0]
-            #    input_mask = input_mask[:, 0]
-            # elif self.hparams.jets_to_use == "second":
-            #    input_data = input_data[:, 1]
-            #    input_mask = input_mask[:, 1]
 
             print(f"input_data.shape: {input_data.shape}")
             print(f"input_mask.shape: {input_mask.shape}")

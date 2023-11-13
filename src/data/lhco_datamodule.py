@@ -204,8 +204,24 @@ class LHCODataModule(LightningDataModule):
                         particle_data.shape[0], -1, particle_data.shape[-1]
                     )
                     mask = mask.reshape(mask.shape[0], -1, mask.shape[-1])
-                    if self.hparams.conditioning:
-                        raise ValueError("Conditioning does not make sense for one_pc")
+                    jet_data = jet_data.reshape(jet_data.shape[0], -1)
+
+                    self.jet_data_raw = jet_data.copy()
+                    self.particle_data_raw = particle_data.copy()
+                    self.mask_raw = mask.copy()
+
+                    particle_data_sr = particle_data_sr.reshape(
+                        particle_data_sr.shape[0], -1, particle_data_sr.shape[-1]
+                    )
+                    mask_sr = mask_sr.reshape(mask_sr.shape[0], -1, mask_sr.shape[-1])
+                    jet_data_sr = jet_data_sr.reshape(jet_data_sr.shape[0], -1)
+
+                    self.jet_data_sr_raw = jet_data_sr.copy()
+                    self.particle_data_sr_raw = particle_data_sr.copy()
+                    self.mask_sr_raw = mask_sr.copy()
+
+                    # if self.hparams.conditioning:
+                    #    raise ValueError("Conditioning does not make sense for one_pc")
                 elif self.hparams.jet_type == "all":
                     particle_data = particle_data[:, : self.hparams.num_particles, :]
                     particle_data_sr = particle_data_sr[:, : self.hparams.num_particles, :]
