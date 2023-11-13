@@ -90,6 +90,9 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
 
     if cfg.get("train"):
         log.info("Starting training!")
+        if cfg.get("load_weights_from", False):
+            log.info(f"Loading model weights from {cfg.load_weights_from}")
+            model = model.load_from_checkpoint(cfg.load_weights_from)
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
 
     train_metrics = trainer.callback_metrics

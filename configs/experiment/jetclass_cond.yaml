@@ -19,20 +19,23 @@ tags: ["flow_matching", "JetClass", "cond"]
 
 run_note: ""
 
-seed: 12345
+seed: 160397
 
 trainer:
   min_epochs: 1
   max_epochs: 1000
   gradient_clip_val: 0.5
 
+# setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
+# load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
+
 model:
   num_particles: 128
   global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
   features: 13  # = 3 + number of `additional_part_features` (see below)
-  layers: 10 # default is 6
-  hidden_dim: 200 # default is 128
+  layers: 13 # default is 6
+  hidden_dim: 250 # default is 128
   latent: 15 # default is 10
   scheduler:
     warmup: 50
@@ -53,6 +56,7 @@ data:
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
+  conditioning_jet_type_all: True  # if true, all jet types are used for conditioning even if trained on only some of them (see `used_jet_types` above)
   additional_part_features:
     - part_d0val
     - part_d0err
@@ -73,11 +77,11 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
   jetclass_eval:
-    every_n_epochs: 50 # evaluate every n epochs
-    additional_eval_epochs: [1, 30, 75] # evaluate at these epochs as well
+    every_n_epochs: 100 # evaluate every n epochs
+    additional_eval_epochs: [30, 75] # evaluate at these epochs as well
     num_jet_samples: 50_000 # jet samples to generate
-  jetclass_eval_test:
-    num_jet_samples: 200_000 # jet samples to generate
+  # jetclass_eval_test:
+  #   num_jet_samples: 50_000 # jet samples to generate
 
   #early_stopping:
   #  monitor: "val/loss"

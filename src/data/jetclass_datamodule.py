@@ -91,11 +91,13 @@ class JetClassDataModule(LightningDataModule):
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
         conditioning_jet_type: bool = True,
+        conditioning_jet_type_all: bool = False,
         num_particles: int = 128,
         # preprocessing
         normalize: bool = True,
         normalize_sigma: int = 5,
         loss_per_jettype: bool = False,
+        conditioning_gen_filename: str = None,
         # spectator_jet_features: list = None,
     ):
         super().__init__()
@@ -307,6 +309,23 @@ class JetClassDataModule(LightningDataModule):
                 self.tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float32)  # noqa: E501
                 self.tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float32)
                 self.tensor_conditioning_test = torch.tensor(conditioning_test, dtype=torch.float32)  # noqa: E501
+
+                if self.hparams.conditioning_gen_filename is not None:
+                    pylogger.info("Using conditioning data from generator.")
+                    pylogger.info("From file: %s", self.hparams.conditioning_gen_filename)
+                    with h5py.File(self.hparams.conditioning_gen_filename, "r") as f:
+                        jet_features_gen = f["jet_features"][:]
+                        index_jet_type = get_feat_index(f["jet_features"].attrs["names_jet_features"], "jet_type")
+                        jet_types_mask = np.isin(jet_features_gen[:, index_jet_type], used_jet_types_values)  # noqa: E501
+                        conditioning_gen, _ = self._handle_conditioning(
+                            f["jet_features"][jet_types_mask], f["jet_features"].attrs["names_jet_features"], names_labels
+                        )
+                        self.mask_gen = torch.tensor(f["part_mask"][jet_types_mask], dtype=torch.float32)
+                        self.tensor_conditioning_gen = torch.tensor(conditioning_gen, dtype=torch.float32)
+                else:
+                    self.mask_gen = None
+                    self.tensor_conditioning_gen = None
+
                 # fmt: on
 
             # invert the masks from the masked arrays (numpy ma masks are True for masked values)
@@ -331,10 +350,17 @@ class JetClassDataModule(LightningDataModule):
             self.tensor_val = torch.clone(tensor_val)
 
             # revert standardization for those tensors
+            self.min_max_train_dict = {}
             for i in range(len(indices_part_features)):
                 self.tensor_train[:, :, i] = (
                     (self.tensor_train[:, :, i] * part_stds_train[i]) + part_means_train[i]
                 ) * mask_train[..., 0]
+                # calculate min and max for each feature in the training data
+                # (to shift generated data back to the original range later on)
+                self.min_max_train_dict[names_particle_features[i]] = {
+                    "min": self.tensor_train[:, :, i][mask_train[..., 0] != 0].min(),
+                    "max": self.tensor_train[:, :, i][mask_train[..., 0] != 0].max(),
+                }
                 self.tensor_test[:, :, i] = (
                     (self.tensor_test[:, :, i] * part_stds_train[i]) + part_means_train[i]
                 ) * mask_test[..., 0]
@@ -497,7 +523,13 @@ class JetClassDataModule(LightningDataModule):
             names_conditioning_data: np.array of shape (n_conditioning_features,) which
                 contains the names of the conditioning features
         """
-        categories = np.unique(jet_data[:, 0])
+        if self.hparams.conditioning_jet_type_all:
+            # use all jet types as conditioning variables
+            # for JetClass this should lead to 10 one-hot encoded values
+            categories = np.arange(len(names_labels))
+        else:
+            categories = np.unique(jet_data[:, 0])
+
         jet_data_one_hot = one_hot_encode(
             jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
         )

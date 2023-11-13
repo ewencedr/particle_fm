@@ -1539,7 +1539,7 @@ def plot_particle_features(
     for i in range(data_sim.shape[-1]):
         feature_name = feature_names[i]
         values_sim = data_sim[:, :, i][mask_sim[:, :, 0] != 0].flatten()
-        values_gen = data_gen[:, :, i][mask_sim[:, :, 0] != 0].flatten()
+        values_gen = data_gen[:, :, i][mask_gen[:, :, 0] != 0].flatten()
         # use same binning for both histograms
         _, bin_edges = np.histogram(np.concatenate([values_sim, values_gen]), bins=100)
         # use explicitly specified binning if exists, otherwise use the one from above
