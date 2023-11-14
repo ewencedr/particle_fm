@@ -20,7 +20,7 @@ defaults:
 
 tags: ["fm-classifier_test", "JetClass", "ClassifierTest"]
 run_note: ""
-seed: 1223
+seed: 12
 
 vars:
   epochs: 400
@@ -59,8 +59,9 @@ data:
   # landscape dataset for crosscheck
   # data_file: /beegfs/desy/user/birkjosc/datasets/landscape/TopLandscape/for_crosscheck_classifier_simulated_generated.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_1000000.h5
-  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-top_jets_only.h5
-  number_of_jets: 300000
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-top_jets_only.h5
+  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-top_jets_only_new_fix.h5
+  number_of_jets: 500000
   train_val_test_split: [0.5, 0.1, 0.4]
   # debug_sim_only: true
   # debug_sim_gen_fraction: 0.8
