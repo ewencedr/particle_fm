@@ -224,10 +224,19 @@ class JetClassClassifierDataModule(LightningDataModule):
         px = pt * np.cos(phi) * pf_mask[:, :, 0]
         py = pt * np.sin(phi) * pf_mask[:, :, 0]
         pz = pt * np.sinh(eta) * pf_mask[:, :, 0]
-        # ensure that energy >= momentum
-        logger.warning("Using energy equal to momentum.")
+
         p = np.sqrt(px**2 + py**2 + pz**2)
-        part_energy = p
+
+        # ensure that energy >= momentum
+        # check if part_energyrel and jet_energy is available
+        if "part_energyrel" in part_names and "jet_energy" in cond_names:
+            logger.warning("Using energy equal to momentum.")
+            part_energyrel = x_features[:, :, idx_part("part_energyrel")]
+            jet_energy = cond_features[:, idx_cond("jet_energy")]
+            part_energy = part_energyrel * jet_energy[:, None]
+        else:
+            logger.warning("part_energyrel and/or jet_energy not available.")
+            self.hparams.set_energy_equal_to_p = True
 
         if self.hparams.set_energy_equal_to_p:
             logger.warning("Setting energy equal to momentum.")
