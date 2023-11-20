@@ -1,5 +1,5 @@
 defaults:
-  - model_checkpoint.yaml
+  - model_checkpoint_default.yaml
   #- model_checkpoint2.yaml
   #- model_checkpoint3.yaml
   #- early_stopping.yaml
@@ -21,8 +21,8 @@ model_checkpoint:
   save_last: True
   auto_insert_metric_name: False
   save_top_k: 15 # save k best models (determined by above metric)
-  metric_map:
-    "val_loss": "loss"
+  # metric_map:
+  #   "val_loss": "loss"
 
 early_stopping:
  monitor: "val_loss"
