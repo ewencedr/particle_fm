@@ -23,9 +23,10 @@ run_note: ""
 seed: 12
 
 vars:
-  epochs: 400
+  epochs: 50
   warmup: 3
   val_check_interval: null
+  used_flavor: Hbb
 
 data:
   batch_size: 256  # ParT
@@ -57,15 +58,18 @@ data:
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_100000.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-16_19-12-11/evaluated_ckpts/epoch_3744/generated_data_epoch_3744_nsamples_100000.h5
   # landscape dataset for crosscheck
-  # data_file: /beegfs/desy/user/birkjosc/datasets/landscape/TopLandscape/for_crosscheck_classifier_simulated_generated.h5
+  # data_file: /beegfs/desy/user/birkjosc/datasets/landscape/TopLandscape/trainvaltest_file_for_crosscheck_classifier_simulated_generated.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_1000000.h5
   # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-top_jets_only.h5
-  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-top_jets_only_new_fix.h5
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-top_jets_only_new_fix.h5
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-Hbb_only.h5
+    # "QCD", "Hbb", "Hcc", "Hgg", "H4q", "Hqql", "Zqq", "Wqq", "Tbqq", "Tbl",
+  used_flavor: ${vars.used_flavor}
+  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_500000-${vars.used_flavor}_only_new_conditioning.h5
   number_of_jets: 500000
   train_val_test_split: [0.5, 0.1, 0.4]
   # debug_sim_only: true
   # debug_sim_gen_fraction: 0.8
-  used_flavor: Tbqq
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
 # load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
