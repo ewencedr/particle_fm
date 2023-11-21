@@ -154,6 +154,7 @@ def main():
         cond_sim = cond_sim[:n_samples_sim]
 
     if args.cond_gen_file is not None:
+        pylogger.info(f"Using conditioning from file {args.cond_gen_file} for generation.")
         mask_gen = np.array(datamodule.mask_gen)
         cond_gen = np.array(datamodule.tensor_conditioning_gen)
         if len(cond_gen) < n_samples_gen:
@@ -165,6 +166,7 @@ def main():
         cond_gen = cond_gen[:n_samples_gen]
 
     else:
+        pylogger.warning("Using conditioning from simulation for generation.")
         mask_gen = deepcopy(mask_sim)
         cond_gen = deepcopy(cond_sim)
 
