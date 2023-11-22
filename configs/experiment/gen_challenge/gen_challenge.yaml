@@ -43,11 +43,11 @@ callbacks:
     save_ema_weights_in_callback_state: True
     evaluate_ema_weights_instead: True
 
-  lhco_jet_features_eval:
-    every_n_epochs: 100
+  gen_challenge_eval:
+    every_n_epochs: 10
 
-  lhco_jet_features_eval_sr:
-    every_n_epochs: ${callbacks.lhco_jet_features_eval.every_n_epochs}
+  gen_challenge_eval_sr:
+    every_n_epochs: ${callbacks.gen_challenge_eval.every_n_epochs}
 
 task_name: "gen_challenge_flow_matching_jet_features"
 

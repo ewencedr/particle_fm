@@ -8,6 +8,8 @@ defaults:
   # - device_stats_monitor.yaml
   - rich_progress_bar.yaml
   - ema.yaml
+  - gen_challenge_eval.yaml
+  - gen_challenge_eval_sr.yaml
   #- lhco_jet_features_eval.yaml
   #- lhco_jet_features_eval_sr.yaml
   #- jetnet_eval.yaml
