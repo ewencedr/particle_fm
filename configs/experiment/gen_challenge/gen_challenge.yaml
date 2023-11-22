@@ -1,0 +1,62 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=fm_tops
+
+defaults:
+  - override /data: /gen_challenge/gen_challenge.yaml
+  - override /model: flow_matching_no_sets.yaml
+  - override /callbacks: /gen_challenge/gen_challenge.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+
+
+tags: ["flow_matching", "GenChallenge", "jet_features"]
+
+seed: 12345
+
+trainer:
+  min_epochs: 1000
+  max_epochs: 10000
+  gradient_clip_val: 0.5
+
+model:
+  features: 4
+
+#model:
+#  scheduler:
+#    warmup: ${trainer.min_epochs}
+#    max_iters: ${trainer.max_epochs}
+
+data:
+  val_fraction: 0.05
+  test_fraction: 0.35
+
+callbacks:
+  ema:
+    decay: 0.999
+    apply_ema_every_n_steps: 1
+    start_step: 0
+    save_ema_weights_in_callback_state: True
+    evaluate_ema_weights_instead: True
+
+  lhco_jet_features_eval:
+    every_n_epochs: 100
+
+  lhco_jet_features_eval_sr:
+    every_n_epochs: ${callbacks.lhco_jet_features_eval.every_n_epochs}
+
+task_name: "gen_challenge_flow_matching_jet_features"
+
+logger:
+  wandb:
+    tags: ${tags}
+    project: "GenChallenge"
+    group: "gen_challenge_matching_jet_features"
+    name: ${task_name}
+  comet:
+    project_name: "GenChallenge"
+    experiment_name: ${task_name}
