@@ -28,7 +28,10 @@ from jetnet.evaluation import w1p
 from omegaconf import OmegaConf
 
 from src.data.components import calculate_all_wasserstein_metrics
-from src.data.components.metrics import wasserstein_distance_batched
+from src.data.components.metrics import (
+    reversed_kl_divergence_batched,
+    wasserstein_distance_batched,
+)
 
 # from src.data.components.utils import calculate_jet_features
 from src.utils.data_generation import generate_data
@@ -43,6 +46,46 @@ from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; pl
 )
 
 vector.register_awkward()
+
+
+def reversed_kl_divergence_batched_different_variations(target, approx, **kwargs):
+    """Calculate the reversed KL divergence between two datasets multiple times and return mean and
+    std. Four different variations are calculated:
+
+    - with clipping
+    - without clipping
+    - with scaling
+    - without scaling
+
+    Args:
+        target (np.array): Target distribution
+        approx (np.array): Approximation of the target distribution
+        kwargs: Keyword arguments for the reversed_kl_divergence_batched function
+
+    Returns:
+        dict: Dictionary with mean and std for each variation (i.e. {"clipped":
+        {"mean": ..., "std": ...}, ...})
+    """
+    # calculate 4 times: with/without clipping + with/without scaling
+    # calculate reversed KL divergence
+    suffixes = {
+        "clipped": {"clip_approx": True, "rescale_pq": False},
+        "notclipped_scaled": {"clip_approx": False, "rescale_pq": True},
+        "clipped_scaled": {"clip_approx": True, "rescale_pq": True},
+        "notclipped_notscaled": {"clip_approx": False, "rescale_pq": False},
+    }
+
+    results = {}
+    for suffix, clipscale_kwargs in suffixes.items():
+        kl_mean, kl_std = reversed_kl_divergence_batched(
+            target=target,
+            approx=approx,
+            **kwargs,
+            **clipscale_kwargs,
+        )
+        results[suffix] = {"mean": kl_mean, "std": kl_std}
+    return results
+
 
 # set up logging for jupyter notebook
 pylogger = logging.getLogger("eval_ckpt")
@@ -129,6 +172,11 @@ def main():
     datamodule.setup()
 
     if args.cond_gen_file == "use_truth_cond":
+        pylogger.info("Using truth conditioning for generation.")
+        pylogger.info(
+            "--> setting mask_gen and tensor_conditioning_gen to mask_test and"
+            " tensor_conditioning_test"
+        )
         datamodule.mask_gen = datamodule.mask_test
         datamodule.tensor_conditioning_gen = datamodule.tensor_conditioning_test
 
@@ -153,7 +201,7 @@ def main():
         mask_sim = mask_sim[:n_samples_sim]
         cond_sim = cond_sim[:n_samples_sim]
 
-    if args.cond_gen_file is not None:
+    if args.cond_gen_file is not None and args.cond_gen_file != "use_truth_cond":
         pylogger.info(f"Using conditioning from file {args.cond_gen_file} for generation.")
         mask_gen = np.array(datamodule.mask_gen)
         cond_gen = np.array(datamodule.tensor_conditioning_gen)
@@ -460,7 +508,11 @@ def main():
     # -----------------------------------------------
     # ----- calculate metrics and plot features -----
     metrics = {}
+    # save the filename used for jet-conditioning for the generated jets
+    metrics["cond_gen_file"] = cfg.data.conditioning_gen_filename
 
+    pylogger.info("Calculating metrics")
+    pylogger.info("Calculating Wasserstein distances of jet substructure")
     # calculate wasserstein distances
     w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
         tau21_jetclass, tau21, **W_DIST_CFG
@@ -487,6 +539,39 @@ def main():
     metrics["w_dist_jetmass_std"] = w_dist_jetmass_std
     metrics["w_dist_jetpt_mean"] = w_dist_jetpt_mean
     metrics["w_dist_jetpt_std"] = w_dist_jetpt_std
+
+    pylogger.info("Calculating KLD of jet substructure")
+    # calculate reversed KL divergence
+    kl_tau21_results = reversed_kl_divergence_batched_different_variations(
+        approx=tau21, target=tau21_jetclass, **W_DIST_CFG
+    )
+    kl_tau32_results = reversed_kl_divergence_batched_different_variations(
+        approx=tau32, target=tau32_jetclass, **W_DIST_CFG
+    )
+    kl_d2_results = reversed_kl_divergence_batched_different_variations(
+        approx=d2, target=d2_jetclass, **W_DIST_CFG
+    )
+    kl_jetmass_results = reversed_kl_divergence_batched_different_variations(
+        approx=jet_mass, target=jet_mass_jetclass, **W_DIST_CFG
+    )
+    kl_jetpt_results = reversed_kl_divergence_batched_different_variations(
+        approx=jet_pt, target=jet_pt_jetclass, **W_DIST_CFG
+    )
+    for kl_suffix, kl_variant in kl_tau21_results.items():
+        metrics[f"kl_tau21_{kl_suffix}_mean"] = kl_variant["mean"]
+        metrics[f"kl_tau21_{kl_suffix}_std"] = kl_variant["std"]
+    for kl_suffix, kl_variant in kl_tau32_results.items():
+        metrics[f"kl_tau32_{kl_suffix}_mean"] = kl_variant["mean"]
+        metrics[f"kl_tau32_{kl_suffix}_std"] = kl_variant["std"]
+    for kl_suffix, kl_variant in kl_d2_results.items():
+        metrics[f"kl_d2_{kl_suffix}_mean"] = kl_variant["mean"]
+        metrics[f"kl_d2_{kl_suffix}_std"] = kl_variant["std"]
+    for kl_suffix, kl_variant in kl_jetmass_results.items():
+        metrics[f"kl_jetmass_{kl_suffix}_mean"] = kl_variant["mean"]
+        metrics[f"kl_jetmass_{kl_suffix}_std"] = kl_variant["std"]
+    for kl_suffix, kl_variant in kl_jetpt_results.items():
+        metrics[f"kl_jetpt_{kl_suffix}_mean"] = kl_variant["mean"]
+        metrics[f"kl_jetpt_{kl_suffix}_std"] = kl_variant["std"]
 
     # plot substructure
     file_name_substructure = "substructure_3plots"
@@ -540,6 +625,7 @@ def main():
             pylogger.warning(f"No samples for jet type {jet_type} found -> continue.")
             continue
 
+        pylogger.info("Calculating Wasserstein distances of jet substructure")
         w_dist_tau21_mean, w_dist_tau21_std = wasserstein_distance_batched(
             tau21_jetclass[jet_type_mask_sim], tau21[jet_type_mask_gen], **W_DIST_CFG
         )
@@ -566,6 +652,43 @@ def main():
         metrics[f"w_dist_jetmass_std_{jet_type}"] = w_dist_jetmass_std
         metrics[f"w_dist_jetpt_mean_{jet_type}"] = w_dist_jetpt_mean
         metrics[f"w_dist_jetpt_std_{jet_type}"] = w_dist_jetpt_std
+
+        pylogger.info("Calculating KLD of jet substructure")
+
+        kl_tau21_results = reversed_kl_divergence_batched_different_variations(
+            approx=tau21[jet_type_mask_gen], target=tau21_jetclass[jet_type_mask_sim], **W_DIST_CFG
+        )
+        kl_tau32_results = reversed_kl_divergence_batched_different_variations(
+            approx=tau32[jet_type_mask_gen], target=tau32_jetclass[jet_type_mask_sim], **W_DIST_CFG
+        )
+        kl_d2_results = reversed_kl_divergence_batched_different_variations(
+            approx=d2[jet_type_mask_gen], target=d2_jetclass[jet_type_mask_sim], **W_DIST_CFG
+        )
+        kl_jetmass_results = reversed_kl_divergence_batched_different_variations(
+            approx=jet_mass[jet_type_mask_gen],
+            target=jet_mass_jetclass[jet_type_mask_sim],
+            **W_DIST_CFG,
+        )
+        kl_jetpt_results = reversed_kl_divergence_batched_different_variations(
+            approx=jet_pt[jet_type_mask_gen],
+            target=jet_pt_jetclass[jet_type_mask_sim],
+            **W_DIST_CFG,
+        )
+        for kl_suffix, kl_variant in kl_tau21_results.items():
+            metrics[f"kl_tau21_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_tau21_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+        for kl_suffix, kl_variant in kl_tau32_results.items():
+            metrics[f"kl_tau32_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_tau32_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+        for kl_suffix, kl_variant in kl_d2_results.items():
+            metrics[f"kl_d2_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_d2_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+        for kl_suffix, kl_variant in kl_jetmass_results.items():
+            metrics[f"kl_jetmass_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_jetmass_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+        for kl_suffix, kl_variant in kl_jetpt_results.items():
+            metrics[f"kl_jetpt_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_jetpt_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
 
         plot_substructure(
             tau21=tau21[jet_type_mask_gen],
@@ -620,8 +743,9 @@ def main():
         if datamodule.names_conditioning is None:
             datamodule.names_conditioning = []
 
-    pylogger.info("Calculating Wasserstein distances.")
-    metrics.update(calculate_all_wasserstein_metrics(data_sim, data_gen, **W_DIST_CFG))
+    # remove this for now, since calculation of EFPs takes ages...
+    # pylogger.info("Calculating Wasserstein distances for all jet types")
+    # metrics.update(calculate_all_wasserstein_metrics(data_sim, data_gen, **W_DIST_CFG))
 
     for jet_type, jet_type_idx in jet_types_dict.items():
         pylogger.info(f"Plotting jet type {jet_type}")
@@ -643,11 +767,99 @@ def main():
             continue
 
         # calculate metrics and add to dict
-        metrics_this_type = calculate_all_wasserstein_metrics(
-            data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen], **W_DIST_CFG
+        # metrics_this_type = calculate_all_wasserstein_metrics(
+        #     data_sim[jet_type_mask_sim], data_gen[jet_type_mask_gen], **W_DIST_CFG
+        # )
+        # for key, value in metrics_this_type.items():
+        #     metrics[f"{key}_{jet_type}"] = value
+
+        # select the particle features for this jet type
+        data_sim_this_type = data_sim[jet_type_mask_sim]
+        data_gen_this_type = data_gen[jet_type_mask_gen]
+        mask_sim_this_type = mask_sim[jet_type_mask_sim]
+        mask_gen_this_type = mask_gen[jet_type_mask_gen]
+
+        pylogger.info("Calculating KL divergence for each particle feature")
+
+        for i, part_feature_name in enumerate(part_names_sim):
+            particle_feat_kld = reversed_kl_divergence_batched_different_variations(
+                target=data_sim_this_type[:, :, i],
+                approx=data_gen_this_type[:, :, i],
+                **W_DIST_CFG,
+            )
+            for kl_suffix, kl_variant in particle_feat_kld.items():
+                metrics[f"kl_{part_feature_name}_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+                metrics[f"kl_{part_feature_name}_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+
+        # calculate IP significance of charged particles
+        def idx_part(name):
+            return list(part_names_sim).index(name)
+
+        # fmt: off
+        is_charged_sim = np.logical_and(
+            (data_sim_this_type[:, :, idx_part("part_isPhoton")]) == 0,
+            (data_sim_this_type[:, :, idx_part("part_isNeutralHadron")]) == 0,
         )
-        for key, value in metrics_this_type.items():
-            metrics[f"{key}_{jet_type}"] = value
+        is_charged_gen = np.logical_and(
+            (data_gen_this_type[:, :, idx_part("part_isPhoton")]) == 0,
+            (data_gen_this_type[:, :, idx_part("part_isNeutralHadron")]) == 0,
+        )
+        is_charged_and_nonmasked_sim = np.logical_and(is_charged_sim, mask_sim_this_type[..., 0])
+        is_charged_and_nonmasked_gen = np.logical_and(is_charged_gen, mask_gen_this_type[..., 0])
+
+        sd0_sim = data_sim_this_type[:, :, idx_part("part_d0val")] / data_sim_this_type[:, :, idx_part("part_d0err")]
+        sd0_gen = data_gen_this_type[:, :, idx_part("part_d0val")] / data_gen_this_type[:, :, idx_part("part_d0err")]
+        sdz_sim = data_sim_this_type[:, :, idx_part("part_dzval")] / data_sim_this_type[:, :, idx_part("part_dzerr")]
+        sdz_gen = data_gen_this_type[:, :, idx_part("part_dzval")] / data_gen_this_type[:, :, idx_part("part_dzerr")]
+        # fmt: on
+
+        sd0_sim_charged = sd0_sim[is_charged_and_nonmasked_sim]
+        sd0_gen_charged = sd0_gen[is_charged_and_nonmasked_gen]
+        sdz_sim_charged = sdz_sim[is_charged_and_nonmasked_sim]
+        sdz_gen_charged = sdz_gen[is_charged_and_nonmasked_gen]
+        sd0_charged_kld = reversed_kl_divergence_batched_different_variations(
+            target=sd0_sim_charged,
+            approx=sd0_gen_charged,
+            **W_DIST_CFG,
+        )
+        sd0_kld = reversed_kl_divergence_batched_different_variations(
+            target=sd0_sim,
+            approx=sd0_gen,
+            **W_DIST_CFG,
+        )
+        sdz_charged_kld = reversed_kl_divergence_batched_different_variations(
+            target=sdz_sim_charged,
+            approx=sdz_gen_charged,
+            **W_DIST_CFG,
+        )
+        sdz_kld = reversed_kl_divergence_batched_different_variations(
+            target=sdz_sim,
+            approx=sdz_gen,
+            **W_DIST_CFG,
+        )
+        for kl_suffix, kl_variant in sd0_charged_kld.items():
+            metrics[f"kl_part_sd0_charged_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_part_sd0_charged_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+        for kl_suffix, kl_variant in sd0_kld.items():
+            metrics[f"kl_part_sd0_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_part_sd0_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+        for kl_suffix, kl_variant in sdz_charged_kld.items():
+            metrics[f"kl_part_sdz_charged_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_part_sdz_charged_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+        for kl_suffix, kl_variant in sdz_kld.items():
+            metrics[f"kl_part_sdz_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
+            metrics[f"kl_part_sdz_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
+
+        plot_particle_features(
+            data_gen=data_gen[jet_type_mask_gen],
+            data_sim=data_sim[jet_type_mask_sim],
+            mask_gen=mask_gen[jet_type_mask_gen],
+            mask_sim=mask_sim[jet_type_mask_sim],
+            feature_names=datamodule.names_particle_features,
+            legend_label_sim="JetClass",
+            legend_label_gen="Generated",
+            plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
+        )
 
         # calculate the w1 distance for each particle feature
         pylogger.info("Calculating w1 distance for each particle feature.")
@@ -665,29 +877,23 @@ def main():
             metrics[f"w_dist_{part_feature_name}_mean_{jet_type}"] = w1_mean
             metrics[f"w_dist_{part_feature_name}_std_{jet_type}"] = w1_std
 
-        plot_particle_features(
-            data_gen=data_gen[jet_type_mask_gen],
-            data_sim=data_sim[jet_type_mask_sim],
-            mask_gen=mask_gen[jet_type_mask_gen],
-            mask_sim=mask_sim[jet_type_mask_sim],
-            feature_names=datamodule.names_particle_features,
-            legend_label_sim="JetClass",
-            legend_label_gen="Generated",
-            plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
-        )
-
     yaml_path = output_dir / f"eval_metrics_{n_samples_gen}{suffix}.yml"
     pylogger.info(f"Writing final evaluation metrics to {yaml_path}")
 
     # transform numpy.float64 for better readability in yaml file
-    metrics = {k: float(v) for k, v in metrics.items()}
-    metrics["w1_calc_num_eval_samples"] = W_DIST_CFG["num_eval_samples"]
-    metrics["w1_calc_num_batches"] = W_DIST_CFG["num_batches"]
+    metrics_final = {}
+    for key, value in metrics.items():
+        if not isinstance(value, str):
+            metrics_final[key] = float(value)
+        else:
+            metrics_final[key] = value
+    metrics_final["w1_kld_calc_num_eval_samples"] = W_DIST_CFG["num_eval_samples"]
+    metrics_final["w1_kld_calc_num_batches"] = W_DIST_CFG["num_batches"]
     # write to yaml file
     with open(yaml_path, "w") as outfile:
-        yaml.dump(metrics, outfile, default_flow_style=False)
+        yaml.dump(metrics_final, outfile, default_flow_style=False)
     # also print to terminal
-    print(pd.DataFrame.from_dict(metrics, orient="index"))
+    print(pd.DataFrame.from_dict(metrics_final, orient="index"))
 
 
 if __name__ == "__main__":
