@@ -19,8 +19,8 @@ tags: ["flow_matching", "GenChallenge", "jet_features"]
 seed: 12345
 
 trainer:
-  min_epochs: 1000
-  max_epochs: 10000
+  min_epochs: 20
+  max_epochs: 500
   gradient_clip_val: 0.5
 
 model:
@@ -32,8 +32,8 @@ model:
 #    max_iters: ${trainer.max_epochs}
 
 data:
-  val_fraction: 0.05
-  test_fraction: 0.35
+  val_fraction: 0.20
+  test_fraction: 0.20
 
 callbacks:
   ema:
@@ -45,9 +45,19 @@ callbacks:
 
   gen_challenge_eval:
     every_n_epochs: 10
+    generation_config:
+      batch_size: 2048
+      ode_solver: "midpoint"
+      ode_steps: 500
+      verbose: False
 
   gen_challenge_eval_sr:
     every_n_epochs: ${callbacks.gen_challenge_eval.every_n_epochs}
+    generation_config:
+      batch_size: 2048
+      ode_solver: "midpoint"
+      ode_steps: 500
+      verbose: False
 
 task_name: "gen_challenge_flow_matching_jet_features"
 

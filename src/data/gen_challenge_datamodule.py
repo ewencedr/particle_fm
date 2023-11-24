@@ -8,6 +8,9 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from src.utils.pylogger import get_pylogger
+from sklearn import preprocessing
+from sklearn.pipeline import make_pipeline
+from src.utils.preprocessing import LogitScaler
 
 from .components import normalize_tensor
 
@@ -98,6 +101,9 @@ class GenChallengeDataModule(LightningDataModule):
         self.tensor_conditioning_val_sr: Optional[torch.Tensor] = None
         self.tensor_conditioning_test_sr: Optional[torch.Tensor] = None
 
+        self.preprocessing_pipeline: Optional[preprocessing.Pipeline] = None
+        self.preprocessing_pipeline_cond: Optional[preprocessing.Pipeline] = None
+
     def prepare_data(self):
         """Download data if needed.
 
@@ -184,84 +190,120 @@ class GenChallengeDataModule(LightningDataModule):
             tensor_conditioning_train_sr = torch.tensor(conditioning_train_sr, dtype=torch.float)
             tensor_conditioning_val_sr = torch.tensor(conditioning_val_sr, dtype=torch.float)
             tensor_conditioning_test_sr = torch.tensor(conditioning_test_sr, dtype=torch.float)
+
             if self.hparams.normalize:
-                if self.hparams.set_data:
-                    means = np.mean(dataset_train, axis=(0, 1))
-                    stds = np.std(dataset_train, axis=(0, 1))
-                else:
-                    means = np.mean(dataset_train, axis=0)
-                    stds = np.std(dataset_train, axis=0)
+                pipeline = make_pipeline(preprocessing.StandardScaler()).fit(dataset_train)
+
+                # means = pipeline.mean_
+                # stds = pipeline.scale_
+
+                # if self.hparams.set_data:
+                #    means = np.mean(dataset_train, axis=(0, 1))
+                #    stds = np.std(dataset_train, axis=(0, 1))
+                # else:
+                #    means = np.mean(dataset_train, axis=0)
+                #    stds = np.std(dataset_train, axis=0)
 
                 means_cond = torch.mean(tensor_conditioning_train, axis=0)
                 stds_cond = torch.std(tensor_conditioning_train, axis=0)
 
-                # Training
-                normalized_dataset_train = normalize_tensor(
-                    np.copy(dataset_train), means, stds, sigma=self.hparams.normalize_sigma
+                pipeline_cond = make_pipeline(preprocessing.StandardScaler()).fit(
+                    tensor_conditioning_train
                 )
+
+                self.preprocessing_pipeline = pipeline
+                self.preprocessing_pipeline_cond = pipeline_cond
+                # Training
+                # normalized_dataset_train = normalize_tensor(
+                #    np.copy(dataset_train), means, stds, sigma=self.hparams.normalize_sigma
+                # )
+
+                normalized_dataset_train = pipeline.transform(dataset_train)
+
                 tensor_train = torch.tensor(normalized_dataset_train, dtype=torch.float)
 
-                tensor_conditioning_train = normalize_tensor(
-                    tensor_conditioning_train,
-                    means_cond,
-                    stds_cond,
-                    sigma=self.hparams.normalize_sigma,
+                # tensor_conditioning_train = normalize_tensor(
+                #    tensor_conditioning_train,
+                #    means_cond,
+                #    stds_cond,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                tensor_conditioning_train = torch.tensor(
+                    pipeline_cond.transform(tensor_conditioning_train), dtype=torch.float
                 )
 
-                normalized_dataset_train_sr = normalize_tensor(
-                    np.copy(dataset_train_sr), means, stds, sigma=self.hparams.normalize_sigma
-                )
+                # normalized_dataset_train_sr = normalize_tensor(
+                #    np.copy(dataset_train_sr), means, stds, sigma=self.hparams.normalize_sigma
+                # )
+                normalized_dataset_train_sr = pipeline.transform(dataset_train_sr)
                 tensor_train_sr = torch.tensor(normalized_dataset_train_sr, dtype=torch.float)
-                tensor_conditioning_train_sr = normalize_tensor(
-                    tensor_conditioning_train_sr,
-                    means_cond,
-                    stds_cond,
-                    sigma=self.hparams.normalize_sigma,
+                # tensor_conditioning_train_sr = normalize_tensor(
+                #    tensor_conditioning_train_sr,
+                #    means_cond,
+                #    stds_cond,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                tensor_conditioning_train_sr = torch.tensor(
+                    pipeline_cond.transform(tensor_conditioning_train_sr), dtype=torch.float
                 )
 
                 # Validation
-                normalized_dataset_val = normalize_tensor(
-                    np.copy(dataset_val),
-                    means,
-                    stds,
-                    sigma=self.hparams.normalize_sigma,
-                )
+                # normalized_dataset_val = normalize_tensor(
+                #    np.copy(dataset_val),
+                #    means,
+                #    stds,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                normalized_dataset_val = pipeline.transform(dataset_val)
                 tensor_val = torch.tensor(normalized_dataset_val, dtype=torch.float)
 
-                tensor_conditioning_val = normalize_tensor(
-                    tensor_conditioning_val,
-                    means_cond,
-                    stds_cond,
-                    sigma=self.hparams.normalize_sigma,
+                # tensor_conditioning_val = normalize_tensor(
+                #    tensor_conditioning_val,
+                #    means_cond,
+                #    stds_cond,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                tensor_conditioning_val = torch.tensor(
+                    pipeline_cond.transform(tensor_conditioning_val), dtype=torch.float
                 )
 
-                normalized_dataset_val_sr = normalize_tensor(
-                    np.copy(dataset_val_sr),
-                    means,
-                    stds,
-                    sigma=self.hparams.normalize_sigma,
-                )
+                # normalized_dataset_val_sr = normalize_tensor(
+                #    np.copy(dataset_val_sr),
+                #    means,
+                #    stds,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                normalized_dataset_val_sr = pipeline.transform(dataset_val_sr)
                 tensor_val_sr = torch.tensor(normalized_dataset_val_sr, dtype=torch.float)
-                tensor_conditioning_val_sr = normalize_tensor(
-                    tensor_conditioning_val_sr,
-                    means_cond,
-                    stds_cond,
-                    sigma=self.hparams.normalize_sigma,
+                # tensor_conditioning_val_sr = normalize_tensor(
+                #    tensor_conditioning_val_sr,
+                #    means_cond,
+                #    stds_cond,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                tensor_conditioning_val_sr = torch.tensor(
+                    pipeline_cond.transform(tensor_conditioning_val_sr), dtype=torch.float
                 )
 
                 # Test
-                tensor_conditioning_test = normalize_tensor(
-                    tensor_conditioning_test,
-                    means_cond,
-                    stds_cond,
-                    sigma=self.hparams.normalize_sigma,
+                # tensor_conditioning_test = normalize_tensor(
+                #    tensor_conditioning_test,
+                #    means_cond,
+                #    stds_cond,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                tensor_conditioning_test = torch.tensor(
+                    pipeline_cond.transform(tensor_conditioning_test), dtype=torch.float
                 )
 
-                tensor_conditioning_test_sr = normalize_tensor(
-                    tensor_conditioning_test_sr,
-                    means_cond,
-                    stds_cond,
-                    sigma=self.hparams.normalize_sigma,
+                # tensor_conditioning_test_sr = normalize_tensor(
+                #    tensor_conditioning_test_sr,
+                #    means_cond,
+                #    stds_cond,
+                #    sigma=self.hparams.normalize_sigma,
+                # )
+                tensor_conditioning_test_sr = torch.tensor(
+                    pipeline_cond.transform(tensor_conditioning_test_sr), dtype=torch.float
                 )
 
             unnormalized_tensor_train = torch.tensor(dataset_train, dtype=torch.float)
@@ -279,13 +321,23 @@ class GenChallengeDataModule(LightningDataModule):
             mask_test = torch.ones_like(tensor_test[..., 0]).unsqueeze(-1)
 
             if self.hparams.normalize:
+                print(f"tensor train: {tensor_train.shape}")
+                print(f"mask train: {mask_train.shape}")
+                print(f"tensor conditioning train: {tensor_conditioning_train.shape}")
+                print(f"tensor train dtype {tensor_train.dtype}")
+                print(f"mask train dtype {mask_train.dtype}")
+                print(f"tensor conditioning train dtype {tensor_conditioning_train.dtype}")
+
+                print(f"Tensor train: {tensor_train}")
+                print(f"Mask train: {mask_train}")
+                print(f"Tensor conditioning train: {tensor_conditioning_train}")
                 self.data_train = TensorDataset(
                     tensor_train, mask_train, tensor_conditioning_train
                 )
                 self.data_val = TensorDataset(tensor_val, mask_val, tensor_conditioning_val)
                 self.data_test = TensorDataset(tensor_test, mask_test, tensor_conditioning_test)
-                self.means = torch.tensor(means)
-                self.stds = torch.tensor(stds)
+                # self.means = torch.tensor(means)
+                # self.stds = torch.tensor(stds)
                 self.cond_means = means_cond
                 self.cond_stds = stds_cond
             else:

@@ -25,7 +25,7 @@ from src.schedulers.logging_scheduler import (
     epochs10000,
     nolog10000,
 )
-from src.utils.data_generation import generate_data
+from src.utils.data_generation import generate_data, generate_data_v2
 from src.utils.lhco_utils import plot_unprocessed_data_lhco, sort_by_pt
 from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
 from src.utils.pylogger import get_pylogger
@@ -203,13 +203,11 @@ class GenChallengeEvaluationCallback(pl.Callback):
                 warnings.warn("EMA Callback is not initialized. Using normal weights.")
 
             # Generate data
-            data, generation_time = generate_data(
+            data, generation_time = generate_data_v2(
                 model=pl_module,
                 num_jet_samples=len(cond),
                 cond=torch.tensor(cond),
-                normalized_data=trainer.datamodule.hparams.normalize,
-                means=trainer.datamodule.means,
-                stds=trainer.datamodule.stds,
+                preprocessing_pipeline=trainer.datamodule.preprocessing_pipeline,
                 **self.generation_config,
             )
 
