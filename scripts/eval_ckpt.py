@@ -543,19 +543,29 @@ def main():
     pylogger.info("Calculating KLD of jet substructure")
     # calculate reversed KL divergence
     kl_tau21_results = reversed_kl_divergence_batched_different_variations(
-        approx=tau21, target=tau21_jetclass, **W_DIST_CFG
+        approx=tau21,
+        target=tau21_jetclass,
+        num_batches=10,
     )
     kl_tau32_results = reversed_kl_divergence_batched_different_variations(
-        approx=tau32, target=tau32_jetclass, **W_DIST_CFG
+        approx=tau32,
+        target=tau32_jetclass,
+        num_batches=10,
     )
     kl_d2_results = reversed_kl_divergence_batched_different_variations(
-        approx=d2, target=d2_jetclass, **W_DIST_CFG
+        approx=d2,
+        target=d2_jetclass,
+        num_batches=10,
     )
     kl_jetmass_results = reversed_kl_divergence_batched_different_variations(
-        approx=jet_mass, target=jet_mass_jetclass, **W_DIST_CFG
+        approx=jet_mass,
+        target=jet_mass_jetclass,
+        num_batches=10,
     )
     kl_jetpt_results = reversed_kl_divergence_batched_different_variations(
-        approx=jet_pt, target=jet_pt_jetclass, **W_DIST_CFG
+        approx=jet_pt,
+        target=jet_pt_jetclass,
+        num_batches=10,
     )
     for kl_suffix, kl_variant in kl_tau21_results.items():
         metrics[f"kl_tau21_{kl_suffix}_mean"] = kl_variant["mean"]
@@ -656,23 +666,29 @@ def main():
         pylogger.info("Calculating KLD of jet substructure")
 
         kl_tau21_results = reversed_kl_divergence_batched_different_variations(
-            approx=tau21[jet_type_mask_gen], target=tau21_jetclass[jet_type_mask_sim], **W_DIST_CFG
+            approx=tau21[jet_type_mask_gen],
+            target=tau21_jetclass[jet_type_mask_sim],
+            num_batches=10,
         )
         kl_tau32_results = reversed_kl_divergence_batched_different_variations(
-            approx=tau32[jet_type_mask_gen], target=tau32_jetclass[jet_type_mask_sim], **W_DIST_CFG
+            approx=tau32[jet_type_mask_gen],
+            target=tau32_jetclass[jet_type_mask_sim],
+            num_batches=10,
         )
         kl_d2_results = reversed_kl_divergence_batched_different_variations(
-            approx=d2[jet_type_mask_gen], target=d2_jetclass[jet_type_mask_sim], **W_DIST_CFG
+            approx=d2[jet_type_mask_gen],
+            target=d2_jetclass[jet_type_mask_sim],
+            num_batches=10,
         )
         kl_jetmass_results = reversed_kl_divergence_batched_different_variations(
             approx=jet_mass[jet_type_mask_gen],
             target=jet_mass_jetclass[jet_type_mask_sim],
-            **W_DIST_CFG,
+            num_batches=10,
         )
         kl_jetpt_results = reversed_kl_divergence_batched_different_variations(
             approx=jet_pt[jet_type_mask_gen],
             target=jet_pt_jetclass[jet_type_mask_sim],
-            **W_DIST_CFG,
+            num_batches=10,
         )
         for kl_suffix, kl_variant in kl_tau21_results.items():
             metrics[f"kl_tau21_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
@@ -785,7 +801,9 @@ def main():
             particle_feat_kld = reversed_kl_divergence_batched_different_variations(
                 target=data_sim_this_type[:, :, i],
                 approx=data_gen_this_type[:, :, i],
-                **W_DIST_CFG,
+                mask_target=mask_sim_this_type[..., 0] == 1,
+                mask_approx=mask_gen_this_type[..., 0] == 1,
+                num_batches=10,
             )
             for kl_suffix, kl_variant in particle_feat_kld.items():
                 metrics[f"kl_{part_feature_name}_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
@@ -813,29 +831,33 @@ def main():
         sdz_gen = data_gen_this_type[:, :, idx_part("part_dzval")] / data_gen_this_type[:, :, idx_part("part_dzerr")]
         # fmt: on
 
-        sd0_sim_charged = sd0_sim[is_charged_and_nonmasked_sim]
-        sd0_gen_charged = sd0_gen[is_charged_and_nonmasked_gen]
-        sdz_sim_charged = sdz_sim[is_charged_and_nonmasked_sim]
-        sdz_gen_charged = sdz_gen[is_charged_and_nonmasked_gen]
         sd0_charged_kld = reversed_kl_divergence_batched_different_variations(
-            target=sd0_sim_charged,
-            approx=sd0_gen_charged,
-            **W_DIST_CFG,
+            target=sd0_sim,
+            approx=sd0_gen,
+            mask_target=is_charged_and_nonmasked_sim,
+            mask_approx=is_charged_and_nonmasked_gen,
+            num_batches=W_DIST_CFG["num_batches"],
         )
         sd0_kld = reversed_kl_divergence_batched_different_variations(
             target=sd0_sim,
             approx=sd0_gen,
-            **W_DIST_CFG,
+            mask_target=mask_sim_this_type[..., 0] == 1,
+            mask_approx=mask_gen_this_type[..., 0] == 1,
+            num_batches=W_DIST_CFG["num_batches"],
         )
         sdz_charged_kld = reversed_kl_divergence_batched_different_variations(
-            target=sdz_sim_charged,
-            approx=sdz_gen_charged,
-            **W_DIST_CFG,
+            target=sdz_sim,
+            approx=sdz_gen,
+            mask_target=is_charged_and_nonmasked_sim,
+            mask_approx=is_charged_and_nonmasked_gen,
+            num_batches=W_DIST_CFG["num_batches"],
         )
         sdz_kld = reversed_kl_divergence_batched_different_variations(
             target=sdz_sim,
             approx=sdz_gen,
-            **W_DIST_CFG,
+            mask_target=mask_sim_this_type[..., 0] == 1,
+            mask_approx=mask_gen_this_type[..., 0] == 1,
+            num_batches=W_DIST_CFG["num_batches"],
         )
         for kl_suffix, kl_variant in sd0_charged_kld.items():
             metrics[f"kl_part_sd0_charged_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
@@ -863,19 +885,19 @@ def main():
 
         # calculate the w1 distance for each particle feature
         pylogger.info("Calculating w1 distance for each particle feature.")
-        w1p_means_this_type, w1p_stds_this_type = w1p(
-            jets1=data_sim[jet_type_mask_sim],
-            jets2=data_gen[jet_type_mask_gen],
-            mask1=mask_sim[jet_type_mask_sim],
-            mask2=mask_gen[jet_type_mask_gen],
-            exclude_zeros=True,
-            **W_DIST_CFG,
-        )
+        # w1p_means_this_type, w1p_stds_this_type = w1p(
+        #     jets1=data_sim[jet_type_mask_sim],
+        # jets2=data_gen[jet_type_mask_gen],
+        # mask1=mask_sim[jet_type_mask_sim],
+        # mask2=mask_gen[jet_type_mask_gen],
+        # exclude_zeros=True,
+        # **W_DIST_CFG,
+        # )
         # add to dict
-        for i, part_feature_name in enumerate(part_names_sim):
-            w1_mean, w1_std = w1p_means_this_type[i], w1p_stds_this_type[i]
-            metrics[f"w_dist_{part_feature_name}_mean_{jet_type}"] = w1_mean
-            metrics[f"w_dist_{part_feature_name}_std_{jet_type}"] = w1_std
+        # for i, part_feature_name in enumerate(part_names_sim):
+        #     w1_mean, w1_std = w1p_means_this_type[i], w1p_stds_this_type[i]
+        #     metrics[f"w_dist_{part_feature_name}_mean_{jet_type}"] = w1_mean
+        #     metrics[f"w_dist_{part_feature_name}_std_{jet_type}"] = w1_std
 
     yaml_path = output_dir / f"eval_metrics_{n_samples_gen}{suffix}.yml"
     pylogger.info(f"Writing final evaluation metrics to {yaml_path}")

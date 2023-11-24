@@ -276,11 +276,13 @@ def calc_reverse_kld(
     return kld_value
 
 
-def reversed_kl_divergence_batched(
+def reversed_kl_divergence_batched_bootstrapping(
     target: np.array,
     approx: np.array,
-    num_eval_samples: int,
-    num_batches: int,
+    mask_target: np.array = None,
+    mask_approx: np.array = None,
+    num_eval_samples: int = 50_000,
+    num_batches: int = 10,
     nbins: int = 100,
     clip_approx: bool = False,
     rescale_pq: bool = False,
@@ -292,6 +294,8 @@ def reversed_kl_divergence_batched(
     Parameters:
     - target: Target probability distribution P
     - approx: Approximated probability distribution Q
+    - mask_target: Mask for the target distribution
+    - mask_approx: Mask for the approximated distribution
     - num_eval_samples: Number of samples to use for each KL divergence calculation
     - num_batches: Number of times to calculate the KL divergence
     - nbins: Number of equiprobable bins to use for the KL divergence calculation
@@ -326,8 +330,12 @@ def reversed_kl_divergence_batched(
         # i.e. we want to select random jets, and then include all particles from
         # those jets
         if len(rand_target.shape) > 1:
+            if mask_target is not None:
+                rand_target = rand_target[mask_target[rand1]]
             rand_target = rand_target.flatten()
         if len(rand_approx.shape) > 1:
+            if mask_approx is not None:
+                rand_approx = rand_approx[mask_approx[rand2]]
             rand_approx = rand_approx.flatten()
         # calculate the reverse KL divergence with equiprobable bins
         reversed_kld, p_i, q_i, bins = calc_reverse_kld(
@@ -347,6 +355,91 @@ def reversed_kl_divergence_batched(
             print(f"logfrac: {np.log(p_i / q_i)}")
         reversed_kld_values.append(reversed_kld)
 
+    reversed_kld_mean = np.mean(reversed_kld_values)
+    reversed_kld_std = np.std(reversed_kld_values)
+    return reversed_kld_mean, reversed_kld_std
+
+
+def reversed_kl_divergence_batched(
+    target: np.array,
+    approx: np.array,
+    mask_target: np.array = None,
+    mask_approx: np.array = None,
+    num_batches: int = 10,
+    nbins: int = 100,
+    clip_approx: bool = False,
+    rescale_pq: bool = False,
+    verbose: bool = False,
+):
+    """Calculate the reverse KL divergence between two probability distributions multiple times and
+    return mean and std.
+
+    Parameters:
+    - target: Target probability distribution P
+    - approx: Approximated probability distribution Q
+    - mask_target: Mask for the target distribution
+    - mask_approx: Mask for the approximated distribution
+    - num_batches: Number of times to calculate the KL divergence
+    - nbins: Number of equiprobable bins to use for the KL divergence calculation
+    - clip_approx: Clip the approximated distribution to the range of the target distribution
+    - rescale_pq: Rescale the distributions to sum to 1
+    - verbose: Print additional information
+
+    Returns:
+    - reversed_kld_mean: Mean of the reverse KL divergence over all batches
+    - reversed_kld_std: Standard deviation of the reverse KL divergence over all batches
+    """
+
+    seed = 42
+    rng = np.random.default_rng(seed)
+
+    if len(target.shape) > 1:
+        print("Warning: Target distribution has more than one dimension")
+        print(f"target.shape: {target.shape}")
+        print("---> Batches will be selected along first dimension, and then flattened")
+
+    target_batches = np.array_split(target, num_batches)
+    approx_batches = np.array_split(approx, num_batches)
+
+    if mask_target is not None:
+        mask_target_batches = np.array_split(mask_target, num_batches)
+    if mask_approx is not None:
+        mask_approx_batches = np.array_split(mask_approx, num_batches)
+
+    reversed_kld_values = []
+    for i, (target_batch, approx_batch) in enumerate(zip(target_batches, approx_batches)):
+        # flatten the arrays if they have more than one dimension
+        # i.e. we want to select random jets, and then include all particles from
+        # those jets
+        if len(target_batch.shape) > 1:
+            if mask_target is not None:
+                target_batch = target_batch[mask_target_batches[i]]
+            target_batch = target_batch.flatten()
+        if len(approx_batch.shape) > 1:
+            if mask_approx is not None:
+                approx_batch = approx_batch[mask_approx_batches[i]]
+            approx_batch = approx_batch.flatten()
+
+        # calculate the reverse KL divergence with equiprobable bins
+        reversed_kld, p_i, q_i, bins = calc_reverse_kld(
+            target=target_batch,
+            approx=approx_batch,
+            nbins=nbins,
+            clip_approx=clip_approx,
+            return_pi_qi_bins=True,
+            rescale_pq=rescale_pq,
+            verbose=verbose,
+        )
+        if np.isnan(reversed_kld):
+            print("Warning: NaN encountered in reversed KL divergence")
+            print(f"p_i: {p_i}")
+            print(f"q_i: {q_i}")
+            print(f"frac: {p_i / q_i}")
+            print(f"logfrac: {np.log(p_i / q_i)}")
+        reversed_kld_values.append(reversed_kld)
+        # print(f"Batch {i+1}/{num_batches} : {len(target_batch)} samples KLD:{reversed_kld:.4f}")
+
+    print(f"KLD values: {reversed_kld_values}")
     reversed_kld_mean = np.mean(reversed_kld_values)
     reversed_kld_std = np.std(reversed_kld_values)
     return reversed_kld_mean, reversed_kld_std
