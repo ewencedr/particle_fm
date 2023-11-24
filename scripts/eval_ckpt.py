@@ -884,7 +884,7 @@ def main():
         )
 
         # calculate the w1 distance for each particle feature
-        pylogger.info("Calculating w1 distance for each particle feature.")
+        # pylogger.info("Calculating w1 distance for each particle feature.")
         # w1p_means_this_type, w1p_stds_this_type = w1p(
         #     jets1=data_sim[jet_type_mask_sim],
         # jets2=data_gen[jet_type_mask_gen],
