@@ -32,8 +32,10 @@ model:
 #    max_iters: ${trainer.max_epochs}
 
 data:
-  val_fraction: 0.20
-  test_fraction: 0.20
+  val_sets:
+    - 3
+  test_sets: 
+    - 4
 
 callbacks:
   ema:

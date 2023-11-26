@@ -57,8 +57,8 @@ class GenChallengeDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        val_fraction: float = 0.15,
-        test_fraction: float = 0.15,
+        val_sets: list = [3],
+        test_sets: list = [4],
         batch_size: int = 256,
         num_workers: int = 32,
         pin_memory: bool = False,
@@ -138,51 +138,100 @@ class GenChallengeDataModule(LightningDataModule):
             data_load3_sr = np.load(f"{self.hparams.data_dir}/innerdata_kfold_3.npy")
             data_load4_sr = np.load(f"{self.hparams.data_dir}/innerdata_kfold_4.npy")
 
-            data_load_sr = np.concatenate(
-                (data_load0_sr, data_load1_sr, data_load2_sr, data_load3_sr, data_load4_sr), axis=0
-            )
+            data_load_list = [data_load0, data_load1, data_load2, data_load3, data_load4]
+            data_load_list_sr = [
+                data_load0_sr,
+                data_load1_sr,
+                data_load2_sr,
+                data_load3_sr,
+                data_load4_sr,
+            ]
 
-            conditioning = np.expand_dims(data_load[:, 0], -1)  # mjj
-            data = data_load[:, 1:]  # features
+            # data_load_sr = np.concatenate(
+            #    (data_load0_sr, data_load1_sr, data_load2_sr, data_load3_sr, data_load4_sr), axis=0
+            # )
+            #
+            # conditioning = np.expand_dims(data_load[:, 0], -1)  # mjj
+            # data = data_load[:, 1:]  # features
+            #
+            # conditioning_sr = np.expand_dims(data_load_sr[:, 0], -1)  # mjj
+            # data_sr = data_load_sr[:, 1:]  # features
 
-            conditioning_sr = np.expand_dims(data_load_sr[:, 0], -1)  # mjj
-            data_sr = data_load_sr[:, 1:]  # features
-
-            # data splitting
-            n_samples_val = int(self.hparams.val_fraction * len(data))
-            n_samples_test = int(self.hparams.test_fraction * len(data))
-            n_samples_val_sr = int(self.hparams.val_fraction * len(data_sr))
-            n_samples_test_sr = int(self.hparams.test_fraction * len(data_sr))
-
-            dataset_train, dataset_val, dataset_test = np.split(
-                data,
+            data_train = np.concatenate(
                 [
-                    len(data) - (n_samples_val + n_samples_test),
-                    len(data) - n_samples_test,
+                    data_load_list[i]
+                    for i in range(5)
+                    if i not in self.hparams.val_sets + self.hparams.test_sets
                 ],
+                axis=0,
             )
-            dataset_train_sr, dataset_val_sr, dataset_test_sr = np.split(
-                data_sr,
+            data_val = np.concatenate([data_load_list[i] for i in self.hparams.val_sets], axis=0)
+            data_test = np.concatenate([data_load_list[i] for i in self.hparams.test_sets], axis=0)
+            data_train_sr = np.concatenate(
                 [
-                    len(data_sr) - (n_samples_val_sr + n_samples_test_sr),
-                    len(data_sr) - n_samples_test_sr,
+                    data_load_list_sr[i]
+                    for i in range(5)
+                    if i not in self.hparams.val_sets + self.hparams.test_sets
                 ],
+                axis=0,
+            )
+            data_val_sr = np.concatenate(
+                [data_load_list_sr[i] for i in self.hparams.val_sets], axis=0
+            )
+            data_test_sr = np.concatenate(
+                [data_load_list_sr[i] for i in self.hparams.test_sets], axis=0
             )
 
-            conditioning_train, conditioning_val, conditioning_test = np.split(
-                conditioning,
-                [
-                    len(conditioning) - (n_samples_val + n_samples_test),
-                    len(conditioning) - n_samples_test,
-                ],
-            )
-            conditioning_train_sr, conditioning_val_sr, conditioning_test_sr = np.split(
-                conditioning_sr,
-                [
-                    len(conditioning_sr) - (n_samples_val_sr + n_samples_test_sr),
-                    len(conditioning_sr) - n_samples_test_sr,
-                ],
-            )
+            dataset_train = data_train[:, 1:]
+            dataset_val = data_val[:, 1:]
+            dataset_test = data_test[:, 1:]
+            dataset_train_sr = data_train_sr[:, 1:]
+            dataset_val_sr = data_val_sr[:, 1:]
+            dataset_test_sr = data_test_sr[:, 1:]
+
+            # mjj conditioning
+            conditioning_train = np.expand_dims(data_train[:, 0], -1)
+            conditioning_val = np.expand_dims(data_val[:, 0], -1)
+            conditioning_test = np.expand_dims(data_test[:, 0], -1)
+            conditioning_train_sr = np.expand_dims(data_train_sr[:, 0], -1)
+            conditioning_val_sr = np.expand_dims(data_val_sr[:, 0], -1)
+            conditioning_test_sr = np.expand_dims(data_test_sr[:, 0], -1)
+
+            ## data splitting
+            # n_samples_val = int(self.hparams.val_fraction * len(data))
+            # n_samples_test = int(self.hparams.test_fraction * len(data))
+            # n_samples_val_sr = int(self.hparams.val_fraction * len(data_sr))
+            # n_samples_test_sr = int(self.hparams.test_fraction * len(data_sr))
+
+            # dataset_train, dataset_val, dataset_test = np.split(
+            #    data,
+            #    [
+            #        len(data) - (n_samples_val + n_samples_test),
+            #        len(data) - n_samples_test,
+            #    ],
+            # )
+            # dataset_train_sr, dataset_val_sr, dataset_test_sr = np.split(
+            #    data_sr,
+            #    [
+            #        len(data_sr) - (n_samples_val_sr + n_samples_test_sr),
+            #        len(data_sr) - n_samples_test_sr,
+            #    ],
+            # )
+            #
+            # conditioning_train, conditioning_val, conditioning_test = np.split(
+            #    conditioning,
+            #    [
+            #        len(conditioning) - (n_samples_val + n_samples_test),
+            #        len(conditioning) - n_samples_test,
+            #    ],
+            # )
+            # conditioning_train_sr, conditioning_val_sr, conditioning_test_sr = np.split(
+            #    conditioning_sr,
+            #    [
+            #        len(conditioning_sr) - (n_samples_val_sr + n_samples_test_sr),
+            #        len(conditioning_sr) - n_samples_test_sr,
+            #    ],
+            # )
 
             tensor_conditioning_train = torch.tensor(conditioning_train, dtype=torch.float)
             tensor_conditioning_val = torch.tensor(conditioning_val, dtype=torch.float)
