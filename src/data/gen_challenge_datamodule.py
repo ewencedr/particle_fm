@@ -192,7 +192,9 @@ class GenChallengeDataModule(LightningDataModule):
             tensor_conditioning_test_sr = torch.tensor(conditioning_test_sr, dtype=torch.float)
 
             if self.hparams.normalize:
-                pipeline = make_pipeline(preprocessing.StandardScaler()).fit(dataset_train)
+                pipeline = make_pipeline(LogitScaler(), preprocessing.StandardScaler()).fit(
+                    dataset_train
+                )
 
                 # means = pipeline.mean_
                 # stds = pipeline.scale_
@@ -328,9 +330,12 @@ class GenChallengeDataModule(LightningDataModule):
                 print(f"mask train dtype {mask_train.dtype}")
                 print(f"tensor conditioning train dtype {tensor_conditioning_train.dtype}")
 
-                print(f"Tensor train: {tensor_train}")
-                print(f"Mask train: {mask_train}")
-                print(f"Tensor conditioning train: {tensor_conditioning_train}")
+                print(f"Tensor train: {np.count_nonzero(np.isnan(np.array(tensor_train)))}")
+                print(f"Mask train: {np.count_nonzero(np.isnan(np.array(mask_train)))}")
+                print(
+                    "Tensor conditioning train:"
+                    f" {np.count_nonzero(np.isnan(np.array(tensor_conditioning_train)))}"
+                )
                 self.data_train = TensorDataset(
                     tensor_train, mask_train, tensor_conditioning_train
                 )
