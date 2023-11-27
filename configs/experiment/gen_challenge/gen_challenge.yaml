@@ -36,6 +36,7 @@ data:
     - 3
   test_sets: 
     - 4
+  logit_transform: True
 
 callbacks:
   ema:

@@ -8,3 +8,4 @@ val_sets:
 test_sets: 
 - 4
 normalize: True
+logit_transform: True

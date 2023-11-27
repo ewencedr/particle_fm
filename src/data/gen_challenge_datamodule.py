@@ -69,6 +69,7 @@ class GenChallengeDataModule(LightningDataModule):
         normalize_sigma: int = 5,
         set_data: bool = False,
         variable_jet_sizes: bool = False,
+        logit_transform: bool = False,
     ):
         super().__init__()
 
@@ -241,9 +242,12 @@ class GenChallengeDataModule(LightningDataModule):
             tensor_conditioning_test_sr = torch.tensor(conditioning_test_sr, dtype=torch.float)
 
             if self.hparams.normalize:
-                pipeline = make_pipeline(LogitScaler(), preprocessing.StandardScaler()).fit(
-                    dataset_train
-                )
+                if self.hparams.logit_transform:
+                    pipeline = make_pipeline(LogitScaler(), preprocessing.StandardScaler()).fit(
+                        dataset_train
+                    )
+                else:
+                    pipeline = make_pipeline(preprocessing.StandardScaler()).fit(dataset_train)
 
                 # means = pipeline.mean_
                 # stds = pipeline.scale_
