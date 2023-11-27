@@ -50,7 +50,7 @@ callbacks:
     generation_config:
       batch_size: 2048
       ode_solver: "midpoint"
-      ode_steps: 500
+      ode_steps: 200
       verbose: False
 
   gen_challenge_eval_sr:
@@ -58,7 +58,7 @@ callbacks:
     generation_config:
       batch_size: 2048
       ode_solver: "midpoint"
-      ode_steps: 500
+      ode_steps: 200
       verbose: False
 
 task_name: "gen_challenge_flow_matching_jet_features"

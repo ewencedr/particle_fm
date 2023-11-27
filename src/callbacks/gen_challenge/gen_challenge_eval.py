@@ -258,30 +258,61 @@ class GenChallengeEvaluationCallback(pl.Callback):
 
             # Compare generated data to background data
 
+            samples = np.concatenate([cond, data], axis=1)
+            bckg_data = np.concatenate([background_cond, background_data], axis=1)
+
             label_map = {
-                "0": r"$m_{J_1}$",
-                "1": r"$\Delta m_J$",
-                "2": r"$\tau_{41}^{J_1}$",
-                "3": r"$\tau_{41}^{J_2}$",
+                "0": r"$m_{jj}$",
+                "1": r"$m_{J_1}$",
+                "2": r"$\Delta m_J$",
+                "3": r"$\tau_{41}^{J_1}$",
+                "4": r"$\tau_{41}^{J_2}$",
             }
-            fig, axs = plt.subplots(1, 4, figsize=(20, 5))
-            for index, ax in enumerate(axs.reshape(-1)):
-                x_min, x_max = min(np.min(background_data[:, index]), np.min(data[:, index])), max(
-                    np.max(background_data[:, index]), np.max(data[:, index])
+            fig, ax = plt.subplots(2, 5, figsize=(35, 8), gridspec_kw={"height_ratios": [3, 1]})
+            for i in range(5):
+                hist_data = ax[0, i].hist(
+                    bckg_data[:, i],
+                    bins=100,
+                    label="data background",
+                    density=True,
+                    histtype="stepfilled",
                 )
-                bins = 100
-                hist1 = ax.hist(
-                    background_data[:, index],
-                    bins=bins,
-                    label="train data",
-                    range=[x_min, x_max],
-                    alpha=0.5,
+                binning = hist_data[1]
+                hist_samples = ax[0, i].hist(
+                    samples[:, i],
+                    bins=binning,
+                    label="sampled background",
+                    density=True,
+                    histtype="step",
                 )
-                ax.hist(data[:, index], bins=hist1[1], label="generated", histtype="step")
-                ax.set_xlabel(f"{label_map[str(index)]}")
-                ax.set_yscale("log")
-                if index == 0:
-                    ax.legend(frameon=False)
+                data_hist = np.histogram(bckg_data[:, i], bins=binning, density=False)[0]
+                sample_hist = np.histogram(samples[:, i], bins=binning, density=False)[0]
+
+                data_scale_factor = np.sum(data_hist) * np.diff(binning)
+                sample_scale_factor = np.sum(sample_hist) * np.diff(binning)
+                if i == 2:
+                    ax[0, i].legend(loc="best", frameon=False)
+                ax[0, i].set_xlabel(f"{label_map[str(i)]}")
+                ax[0, i].set_yscale("log")
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    ax[1, i].axhline(1.0, color="black", linestyle="-", alpha=0.8)
+                    next(ax[1, i]._get_lines.prop_cycler)
+                    ax[1, i].errorbar(
+                        0.5 * (binning[:-1] + binning[1:]),
+                        data_hist / sample_hist * sample_scale_factor / data_scale_factor,
+                        linestyle="none",
+                        marker=".",
+                        yerr=np.sqrt(data_hist)
+                        / sample_hist
+                        * sample_scale_factor
+                        / data_scale_factor,
+                    )
+                    ax[1, i].set_ylim(0.85, 1.15)
+                    # ax[1,i].set_ylim(0.3, 1.7)
+
+                if i == 0:
+                    ax[0, i].set_ylabel("Events (norm.)")
+                    ax[1, i].set_ylabel("Data/Sample (norm.)")
             plt.tight_layout()
             plot_name = "_lhco_jet_features"
             plt.savefig(f"{self.image_path}{plot_name}.png")
