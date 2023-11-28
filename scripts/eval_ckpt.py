@@ -795,6 +795,17 @@ def main():
         mask_sim_this_type = mask_sim[jet_type_mask_sim]
         mask_gen_this_type = mask_gen[jet_type_mask_gen]
 
+        plot_particle_features(
+            data_gen=data_gen[jet_type_mask_gen],
+            data_sim=data_sim[jet_type_mask_sim],
+            mask_gen=mask_gen[jet_type_mask_gen],
+            mask_sim=mask_sim[jet_type_mask_sim],
+            feature_names=datamodule.names_particle_features,
+            legend_label_sim="JetClass",
+            legend_label_gen="Generated",
+            plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
+        )
+
         pylogger.info("Calculating KL divergence for each particle feature")
 
         for i, part_feature_name in enumerate(part_names_sim):
@@ -812,6 +823,20 @@ def main():
         # calculate IP significance of charged particles
         def idx_part(name):
             return list(part_names_sim).index(name)
+
+        if (
+            "part_d0val" not in part_names_sim
+            or "part_d0err" not in part_names_sim
+            or "part_dzval" not in part_names_sim
+            or "part_dzerr" not in part_names_sim
+            or "part_isPhoton" not in part_names_sim
+            or "part_isNeutralHadron" not in part_names_sim
+        ):
+            pylogger.warning(
+                "Not calculating IP significance, since necessary features are missing."
+            )
+            pylogger.warning("--> skipping")
+            continue
 
         # fmt: off
         is_charged_sim = np.logical_and(
@@ -871,17 +896,6 @@ def main():
         for kl_suffix, kl_variant in sdz_kld.items():
             metrics[f"kl_part_sdz_{kl_suffix}_mean_{jet_type}"] = kl_variant["mean"]
             metrics[f"kl_part_sdz_{kl_suffix}_std_{jet_type}"] = kl_variant["std"]
-
-        plot_particle_features(
-            data_gen=data_gen[jet_type_mask_gen],
-            data_sim=data_sim[jet_type_mask_sim],
-            mask_gen=mask_gen[jet_type_mask_gen],
-            mask_sim=mask_sim[jet_type_mask_sim],
-            feature_names=datamodule.names_particle_features,
-            legend_label_sim="JetClass",
-            legend_label_gen="Generated",
-            plot_path=plots_dir / f"epoch_{ckpt_epoch}_particle_features_{jet_type}.pdf",
-        )
 
         # calculate the w1 distance for each particle feature
         # pylogger.info("Calculating w1 distance for each particle feature.")
