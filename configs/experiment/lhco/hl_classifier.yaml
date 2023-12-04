@@ -28,7 +28,7 @@ task_name: "hl_classifier"
 callbacks:
   early_stopping:
     monitor: "val/acc"
-    patience: 10
+    patience: 100
     mode: "max"
 
 logger:

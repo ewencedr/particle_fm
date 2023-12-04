@@ -220,6 +220,13 @@ class HLClassifierLitModule(LightningModule):
             }
         return {"optimizer": optimizer}
 
+    @torch.no_grad()
+    def classify(self, data: torch.Tensor) -> torch.Tensor:
+        """Classify data."""
+        preds = self.forward(data).squeeze()
+        preds = torch.sigmoid(preds)
+        return preds
+
 
 if __name__ == "__main__":
     _ = HLClassifierLitModule(None, None, None)
