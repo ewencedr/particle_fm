@@ -22,8 +22,8 @@ net_config:
     act_h: lrlu
     nrm: layer
   cae_config:
-    model_dim: 64
-    num_layers: 3
+    model_dim: 128
+    num_layers: 8
     mha_config:
       num_heads: 16
       init_zeros: True

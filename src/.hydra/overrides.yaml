@@ -1,4 +1,3 @@
-- experiment=/lhco/lhco_both_jets2
-- task_name=setup2 y-jet
-- trainer=ddp
-- data.jet_type=y
+- task_name=both_jets_continue_2_earlystop
+- ckpt_path=/beegfs/desy/user/ewencedr/deep-learning/logs/both_jets_continue/runs/2023-09-19_18-00-23/checkpoints/last-EMA.ckpt
+- experiment=lhco/lhco_both_jets

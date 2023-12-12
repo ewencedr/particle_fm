@@ -77,6 +77,9 @@ class HLClassifierDataModule(LightningDataModule):
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
 
+        self.means = None
+        self.stds = None
+
     def prepare_data(self) -> None:
         """Download data if needed. Lightning ensures that `self.prepare_data()` is called only
         within a single process on CPU, so you can safely add your downloading logic within. In
@@ -99,14 +102,27 @@ class HLClassifierDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            path_truth = f"{self.hparams.data_dir}/lhco/high_level/cathode_id.h5"
-            path_data = f"{self.hparams.data_dir}/lhco/high_level/{self.hparams.file_name}.h5"
+            # path_truth = f"{self.hparams.data_dir}/lhco/high_level/cathode_id.h5"
+            # path_data = f"{self.hparams.data_dir}/lhco/high_level/{self.hparams.file_name}.h5"
+            #
+            # with h5py.File(path_truth, "r") as f:
+            #    data_truth = f["data"][:]
+            #
+            # with h5py.File(path_data, "r") as f:
+            #    data = f["data"][:]
 
-            with h5py.File(path_truth, "r") as f:
-                data_truth = f["data"][:]
+            save_path_true = (
+                "/beegfs/desy/user/ewencedr/data/generative_challenge/gen_data_true.npy"
+            )
 
-            with h5py.File(path_data, "r") as f:
-                data = f["data"][:]
+            path_data = "/beegfs/desy/user/ewencedr/data/generative_challenge/gen_data.npy"
+            data = np.load(path_data)
+            data_truth = np.load(save_path_true)
+
+            data = data[:, :4]
+            data_truth = data_truth[:, :4]
+
+            data = data[: len(data_truth)]
 
             labels_true = np.expand_dims(np.ones(len(data_truth)), axis=-1)
             labels_false = np.expand_dims(np.zeros(len(data)), axis=-1)
@@ -143,6 +159,9 @@ class HLClassifierDataModule(LightningDataModule):
             # preprocess data
             mean = np.mean(data_train, axis=0)
             std = np.std(data_train, axis=0)
+
+            self.means = mean
+            self.stds = std
 
             data_train = normalize_tensor(
                 torch.tensor(data_train).clone(), torch.tensor(mean), torch.tensor(std)

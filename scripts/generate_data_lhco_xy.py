@@ -107,18 +107,38 @@ def main(params):
     model_y = model_y.load_from_checkpoint(ckpt_y)
     print(f"Model loaded from {ckpt_y}")
 
-    if use_signal_region:
-        cond_x = datamodule_x.jet_data_sr_raw
-        mask_x = datamodule_x.mask_sr_raw
-        cond_y = datamodule_y.jet_data_sr_raw
-        mask_y = datamodule_y.mask_sr_raw
-        mjj = datamodule_x.mjj_sr
-    else:
-        cond_x = datamodule_x.jet_data_raw[:120_000]
-        mask_x = datamodule_x.mask_raw[:120_000]
+    if params.conditioning_file == "data":
+        print(f"Use data as conditioning data")
+        if use_signal_region:
+            cond_x = datamodule_x.jet_data_sr_raw
+            mask_x = datamodule_x.mask_sr_raw
+            cond_y = datamodule_y.jet_data_sr_raw
+            mask_y = datamodule_y.mask_sr_raw
+            mjj = datamodule_x.mjj_sr
+        else:
+            cond_x = datamodule_x.jet_data_raw[:120_000]
+            mask_x = datamodule_x.mask_raw[:120_000]
         cond_y = datamodule_y.jet_data_raw[:120_000]
         mask_y = datamodule_y.mask_raw[:120_000]
         mjj = datamodule_x.mjj[:120_000]
+
+    else:
+        print(f"Use {params.conditioning_file} as conditioning data")
+        with h5py.File(params.conditioning_file, "r") as f:
+            cond_x = f["jet_features_x"][:]
+            mask_x = f["mask_x"][:]
+            cond_y = f["jet_features_y"][:]
+            mask_y = f["mask_y"][:]
+            mjj = f["mjj"][:]
+
+            cond_x = cond_x[:, : datamodule_x.jet_data_sr_raw.shape[-1]]
+            cond_y = cond_y[:, : datamodule_y.jet_data_sr_raw.shape[-1]]
+            print(f"Using {datamodule_x.jet_data_sr_raw.shape[-1]} variables for conditioning")
+            print(f"cond x shape: {cond_x.shape}")
+            print(f"cond y shape: {cond_y.shape}")
+            print(f"mask x shape: {mask_x.shape}")
+            print(f"mask y shape: {mask_y.shape}")
+            print(f"mjj shape: {mjj.shape}")
 
     normalized_cond_x = normalize_tensor(
         torch.Tensor(cond_x).clone(),
@@ -135,7 +155,7 @@ def main(params):
     )
 
     print("Generating data first jet")
-    torch.manual_seed(9999)
+    torch.manual_seed(1111)
     data_x, generation_time_x = generate_data(
         model_x,
         num_jet_samples=len(mask_x),
@@ -154,7 +174,6 @@ def main(params):
     )
 
     print("Generating data second jet")
-    torch.manual_seed(9999)
     data_y, generation_time_y = generate_data(
         model_y,
         num_jet_samples=len(mask_y),
@@ -516,6 +535,13 @@ if __name__ == "__main__":
         "-sr",
         default="True",
         help="sample in signal region",
+    )
+
+    parser.add_argument(
+        "--conditioning_file",
+        "-cond",
+        default="data",
+        help="file containing the conditioning data",
     )
 
     params = parser.parse_args()
