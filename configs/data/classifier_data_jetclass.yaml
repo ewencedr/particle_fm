@@ -1,0 +1,6 @@
+_target_: src.data.jetclass_classifier_datamodule.JetClassClassifierDataModule
+data_dir: ${paths.data_dir}
+data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-10-03_08-48-00/evaluated_ckpts/epoch_499/eval_output_epoch_499_nsamples_1000000.h5
+batch_size: 128
+num_workers: 32
+pin_memory: False

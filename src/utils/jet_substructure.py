@@ -7,16 +7,22 @@ high-level substructure observables.
 from https://github.com/DebajyotiS/PC-JeDi/blob/EPiC-JeDi/src/jet_substructure.py
 """
 
+import os
 from pathlib import Path
 from typing import Union
 
+import awkward as ak
+import fastjet
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pyjet
 import pytorch_lightning as pl
 import torch as T
+import vector
 from tqdm import tqdm
+
+vector.register_awkward()
 
 
 def locals_to_mass_and_pt(csts: T.Tensor, mask: T.BoolTensor) -> T.Tensor:
@@ -433,6 +439,7 @@ def dump_hlvs(
     ecf2s = []
     ecf3s = []
     d2s = []
+    d2s_new = []
 
     # Get the mask of the jets so that the padded elements dont contribute
     masks = np.any(jets != 0, axis=-1)
@@ -495,6 +502,7 @@ def dump_hlvs(
 
         # ATLAS D2
         d2s.append((ecf3 * sum_pt) / (ecf2**2))
+        d2s_new.append((ecf3) / (ecf2**3))
 
     # Save all the data to an HDF file
     with h5py.File(h5file + ".h5", mode="w") as file:
@@ -508,6 +516,7 @@ def dump_hlvs(
         file.create_dataset("ecf2", data=ecf2s)
         file.create_dataset("ecf3", data=ecf3s)
         file.create_dataset("d2", data=d2s)
+        file.create_dataset("d2_new", data=d2s_new)
         file.create_dataset("pt", data=pt)
         file.create_dataset("mass", data=mass)
 
@@ -542,3 +551,151 @@ def dump_hlvs(
         ax11.set_title("mass")
         plt.tight_layout()
         fig.savefig(h5file + ".png")
+
+
+# new implementation based on fastjet and awkward arrays
+
+# substructure calculations
+def calc_deltaR(particles, jet):
+    jet = ak.unflatten(ak.flatten(jet), counts=1)
+    return particles.deltaR(jet)
+
+
+class JetSubstructure:
+    """Class to calculate and store the jet substructure variables.
+
+    Definitions as in slide 7 here:
+    https://indico.cern.ch/event/760557/contributions/3262382/attachments/1796645/2929179/lltalk.pdf
+    """
+
+    def __init__(self, particles, R=0.8, beta=1.0):
+        """Run the jet clustering and calculate the substructure variables. The clustering is
+        performed with the kt algorithm and the WTA pt scheme.
+
+        Parameters
+        ----------
+        particles : awkward array
+            The particles that are clustered into jets.
+        R : float, optional
+            The jet radius, by default 0.8
+        beta : float, optional
+            The beta parameter for N-subjettiness, by default 1.0
+        """
+        self.R = R
+        self.beta = beta
+        self.particles = particles
+        self.particles_sum = ak.sum(particles, axis=1)
+        self.jet_mass = self.particles_sum.mass
+        self.jet_pt = self.particles_sum.pt
+        jetdef = fastjet.JetDefinition(fastjet.kt_algorithm, self.R, fastjet.WTA_pt_scheme)
+        print("Clustering jets with fastjet")
+        print("Jet definition:", jetdef)
+        self.cluster = fastjet.ClusterSequence(particles, jetdef)
+        self.inclusive_jets = self.cluster.inclusive_jets()
+        self.exclusive_jets_1 = self.cluster.exclusive_jets(n_jets=1)
+        self.exclusive_jets_2 = self.cluster.exclusive_jets(n_jets=2)
+        self.exclusive_jets_3 = self.cluster.exclusive_jets(n_jets=3)
+
+        print("Calculating N-subjettiness")
+        self._calc_d0()
+        self._calc_tau1()
+        self._calc_tau2()
+        self._calc_tau3()
+        self.tau21 = self.tau2 / self.tau1
+        self.tau32 = self.tau3 / self.tau2
+        print("Calculating D2")
+        # D2 as defined in https://arxiv.org/pdf/1409.6298.pdf
+        self.d2 = self.cluster.exclusive_jets_energy_correlator(njets=1, func="d2")
+
+    def _calc_d0(self):
+        """Calculate the d0 values."""
+        self.d0 = ak.sum(self.particles.pt * self.R**self.beta, axis=1)
+
+    def _calc_tau1(self):
+        """Calculate the tau1 values."""
+        self.delta_r_1i = calc_deltaR(self.particles, self.exclusive_jets_1[:, :1])
+        self.pt_i = self.particles.pt
+        # calculate the tau1 values
+        self.tau1 = ak.sum(self.pt_i * self.delta_r_1i**self.beta, axis=1) / self.d0
+
+    def _calc_tau2(self):
+        """Calculate the tau2 values."""
+        delta_r_1i = calc_deltaR(self.particles, self.exclusive_jets_2[:, :1])
+        delta_r_2i = calc_deltaR(self.particles, self.exclusive_jets_2[:, 1:2])
+        self.pt_i = self.particles.pt
+        # add new axis to make it broadcastable
+        min_delta_r = ak.min(
+            ak.concatenate(
+                [
+                    delta_r_1i[..., np.newaxis] ** self.beta,
+                    delta_r_2i[..., np.newaxis] ** self.beta,
+                ],
+                axis=-1,
+            ),
+            axis=-1,
+        )
+        self.tau2 = ak.sum(self.pt_i * min_delta_r, axis=1) / self.d0
+
+    def _calc_tau3(self):
+        """Calculate the tau3 values."""
+        delta_r_1i = calc_deltaR(self.particles, self.exclusive_jets_3[:, :1])
+        delta_r_2i = calc_deltaR(self.particles, self.exclusive_jets_3[:, 1:2])
+        delta_r_3i = calc_deltaR(self.particles, self.exclusive_jets_3[:, 2:3])
+        self.pt_i = self.particles.pt
+        min_delta_r = ak.min(
+            ak.concatenate(
+                [
+                    delta_r_1i[..., np.newaxis] ** self.beta,
+                    delta_r_2i[..., np.newaxis] ** self.beta,
+                    delta_r_3i[..., np.newaxis] ** self.beta,
+                ],
+                axis=-1,
+            ),
+            axis=-1,
+        )
+        self.tau3 = ak.sum(self.pt_i * min_delta_r, axis=1) / self.d0
+
+
+def calc_substructure(
+    particles_sim,
+    particles_gen,
+    R=0.8,
+    filename=None,
+):
+    """Calculate the substructure variables for the given particles and save them to a file.
+
+    Parameters
+    ----------
+    particles_sim : awkward array
+        The particles of the simulated jets.
+    particles_gen : awkward array
+        The particles of the generated jets.
+    R : float, optional
+        The jet radius, by default 0.8
+    filename : str, optional
+        The filename to save the results to, by default None (don't save)
+    """
+    if filename is None:
+        print("No filename given, won't save the results.")
+    else:
+        if os.path.exists(filename):
+            print(f"File {filename} already exists, won't overwrite.")
+            return
+        print(f"Saving results to {filename}")
+
+    substructure_sim = JetSubstructure(particles_sim, R=R)
+    substructure_gen = JetSubstructure(particles_gen, R=R)
+    names = [
+        "tau1",
+        "tau2",
+        "tau3",
+        "tau21",
+        "tau32",
+        "d2",
+        "jet_mass",
+        "jet_pt",
+    ]
+    with h5py.File(filename, "w") as f:
+        for name in names:
+            f[f"{name}_sim"] = substructure_sim.__dict__[name]
+            f[f"{name}_gen"] = substructure_gen.__dict__[name]

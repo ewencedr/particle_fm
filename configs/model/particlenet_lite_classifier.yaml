@@ -1,0 +1,54 @@
+_target_: src.models.jetclass_classifiers.ParticleNetPL
+
+conv_params:
+    # ParticleNet
+    # - [16, [64, 64, 64]]
+    # - [16, [128, 128, 128]]
+    # - [16, [256, 256, 256]]
+    # ParticleNet-Lite
+    - [7, [32, 32, 32]]
+    - [7, [64, 64, 64]]
+# fc_params: [[256, 0.1]] # ParticleNet
+fc_params: [[128, 0.1]] # ParticleNet-Lite
+input_dim: null
+num_classes: 10
+use_fusion: False
+use_fts_bn: True
+use_counts: True
+for_inference: False
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0001  # as listed in paper
+
+# scheduler:
+#   _target_: torch.optim.lr_scheduler.OneCycleLR
+#   _partial_: true
+#   max_lr: 0.005
+#   div_factor: 10  # initial_lr = max_lr / div_factor --> 0.0005
+#   final_div_factor:   # final_lr = initial_lr / final_div_factor -->
+#   epochs: 200
+
+# scheduler:
+#   _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
+#   _partial_: true
+#   warmup: 5
+#   max_iters: 100
+
+# using the values listed in the paper https://arxiv.org/abs/1902.08570
+scheduler:
+  _target_: src.schedulers.lr_scheduler.OneCycleCooldown
+  _partial_: true
+  warmup: 8
+  cooldown: 8
+  cooldown_final: 4
+  max_lr: 0.001
+  initial_lr: 0.0005
+  final_lr: 0.00005
+  max_iters: 200
+
+# scheduler:
+#   _target_: torch.optim.lr_scheduler.ConstantLR
+#   _partial_: true

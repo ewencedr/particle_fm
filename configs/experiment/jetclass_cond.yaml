@@ -7,7 +7,7 @@ defaults:
   - override /data: jetclass.yaml
   - override /model: flow_matching.yaml
   - override /callbacks: jetclass.yaml
-  - override /trainer: gpu.yaml
+  - override /trainer: ddp.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -23,7 +23,7 @@ seed: 160397
 
 trainer:
   min_epochs: 1
-  max_epochs: 1000
+  max_epochs: 500
   gradient_clip_val: 0.5
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
@@ -31,15 +31,15 @@ trainer:
 
 model:
   num_particles: 128
-  global_cond_dim: 10 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
+  global_cond_dim: 12 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
   features: 13  # = 3 + number of `additional_part_features` (see below)
-  layers: 13 # default is 6
-  hidden_dim: 250 # default is 128
-  latent: 15 # default is 10
+  layers: 20 # default is 6
+  hidden_dim: 300 # default is 128
+  latent: 16 # default is 10
   scheduler:
-    warmup: 50
-    max_iters: 1000
+    warmup: 20
+    max_iters: 500
 
 data:
   loss_per_jettype: true
@@ -51,8 +51,9 @@ data:
   normalize: True
   normalize_sigma: 5
   # conditioning
-  conditioning_pt: False
-  conditioning_eta: False
+  conditioning_pt: True
+  conditioning_energy: False
+  conditioning_eta: True
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
@@ -68,6 +69,7 @@ data:
     - part_isPhoton
     - part_isElectron
     - part_isMuon
+    # - part_energyrel
 
 callbacks:
   ema:

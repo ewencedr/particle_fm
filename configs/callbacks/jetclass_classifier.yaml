@@ -1,0 +1,40 @@
+defaults:
+  - model_checkpoint_default.yaml
+  #- model_checkpoint2.yaml
+  #- model_checkpoint3.yaml
+  #- early_stopping.yaml
+  - model_summary.yaml
+  - lr_monitor.yaml
+  # - device_stats_monitor.yaml
+  - rich_progress_bar.yaml
+  # - ema.yaml
+  # - jetclass_eval_test.yaml  # ignore for now since crashes with sigterm 15
+  # - jetclass_eval.yaml
+  - jetclass_eval_classifier.yaml
+  - _self_
+
+model_checkpoint:
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "loss_{val_loss:.5f}_epoch_{epoch:03d}"
+  monitor: "val_loss"
+  mode: "min"
+  save_last: True
+  auto_insert_metric_name: False
+  save_top_k: 15 # save k best models (determined by above metric)
+  # metric_map:
+  #   "val_loss": "loss"
+
+early_stopping:
+ monitor: "val_loss"
+ patience: 20
+ mode: "min"
+
+model_summary:
+  max_depth: -1
+
+# ema:
+#   decay: 0.999
+#   apply_ema_every_n_steps: 1
+#   start_step: 0
+#   save_ema_weights_in_callback_state: true
+#   evaluate_ema_weights_instead: true

@@ -1480,9 +1480,10 @@ def plot_full_substructure(
     save_name: str = None,
 ) -> None:
     """Plot all substructure distributions."""
-    fig, axs = plt.subplots(4, 3, figsize=(15, 20))
+    fig, axs = plt.subplots(4, 4, figsize=(15, 20))
 
-    for i, ax in enumerate(axs.flatten()):
+    for i, ax in enumerate(range(len(data_substructure_jetnet))):
+        ax = axs.flatten()[i]
         hist_jetnet = ax.hist(
             data_substructure_jetnet[i],
             bins=bins,
@@ -1492,9 +1493,10 @@ def plot_full_substructure(
         )
         ax.hist(data_substructure[i], bins=hist_jetnet[1], label=f"{model_name}", histtype="step")
         ax.set_title(keys[i])
-        ax.legend(loc="best", frameon=False)
+        if i == 0:
+            ax.legend(loc="best", frameon=False)
 
-    plt.legend(loc="best", frameon=False)
+    # plt.legend(loc="best", frameon=False)
     plt.tight_layout()
     if save_fig:
         plt.savefig(f"{save_folder}{save_name}.png", bbox_inches="tight")

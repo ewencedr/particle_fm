@@ -1,0 +1,97 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=jetclass_classifier
+
+defaults:
+  - override /data: classifier_data_jetclass.yaml
+  # - override /model: mlp_classifier.yaml
+  # - override /model: particlenet_classifier.yaml
+  # - override /model: ParT_classifier.yaml
+  - override /model: epic_classifier_jetclass.yaml
+  - override /callbacks: jetclass_classifier.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+# add here checkpoint to continue training
+# ckpt_path: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass_cond_jettype/runs/2023-08-10_16-36-26/checkpoints/last-EMA.ckpt
+
+tags: ["fm-classifier_test", "JetClass", "ClassifierTest"]
+run_note: ""
+seed: 122
+
+vars:
+  epochs: 200
+  warmup: 3
+  val_check_interval: null
+
+data:
+  # kin_only: true
+  batch_size: 512
+  # number_of_jets: 100000
+  use_weaver_axes_convention: false
+  data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-11_14-22-33/evaluated_ckpts/epoch_753/generated_data_epoch_753_nsamples_1000000.h5
+  # data_file: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-09-16_19-12-11/evaluated_ckpts/epoch_3744/generated_data_epoch_3744_nsamples_100000.h5
+  # data_file: /beegfs/desy/user/birkjosc/datasets/landscape/TopLandscape/for_crosscheck_classifier_simulated_generated.h5  # change num_points in model to 200
+  pf_features_list:
+    - part_etarel
+    - part_dphi
+    - log_part_pt
+    - log_part_energy
+    - log_part_ptrel
+    - log_part_energyrel
+    - part_deltaR
+    - part_charge
+    - part_isChargedHadron
+    - part_isNeutralHadron
+    - part_isPhoton
+    - part_isElectron
+    - part_isMuon
+    - tanh_part_d0val
+    - part_d0err
+    - tanh_part_dzval
+    - part_dzerr
+  # debug_sim_only: true
+  used_flavor: Tbqq
+
+# setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
+# load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
+
+model:
+  net_config:
+    dropout: 0.3
+    input_dim: 17
+    out_dim: 2
+    # num_points: 200 # top tagging landscape
+#   input_dims: 7  # ParticleNet
+#   input_dim: 7  # ParT
+#   num_classes: 2
+#   scheduler:
+#     warmup: ${vars.warmup}
+#     max_iters: ${vars.epochs}
+#   optimizer:
+#     lr: 0.0001
+
+  #early_stopping:
+  #  monitor: "val/loss"
+  #  patience: 2000
+  #  mode: "min"
+
+task_name: "jetclass_classifier"
+
+trainer:
+  min_epochs: 1
+  max_epochs: ${vars.epochs}
+  val_check_interval: ${vars.val_check_interval}
+  gradient_clip_val: 0.5
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "flow_matching_jetclass"
+    name: ${task_name}
+  comet:
+    experiment_name: null
+    project_name: "flow-matching-classifierTest"

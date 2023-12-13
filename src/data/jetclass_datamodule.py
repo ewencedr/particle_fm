@@ -87,6 +87,7 @@ class JetClassDataModule(LightningDataModule):
         verbose: bool = True,
         variable_jet_sizes: bool = True,
         conditioning_pt: bool = True,
+        conditioning_energy: bool = True,
         conditioning_eta: bool = True,
         conditioning_mass: bool = True,
         conditioning_num_particles: bool = True,
@@ -139,6 +140,7 @@ class JetClassDataModule(LightningDataModule):
         return sum(
             [
                 self.hparams.conditioning_pt,
+                self.hparams.conditioning_energy,
                 self.hparams.conditioning_eta,
                 self.hparams.conditioning_mass,
                 self.hparams.conditioning_num_particles,
@@ -315,14 +317,24 @@ class JetClassDataModule(LightningDataModule):
                     pylogger.info("From file: %s", self.hparams.conditioning_gen_filename)
                     with h5py.File(self.hparams.conditioning_gen_filename, "r") as f:
                         jet_features_gen = f["jet_features"][:]
+                        part_mask_gen = f["part_mask"][:]
                         index_jet_type = get_feat_index(f["jet_features"].attrs["names_jet_features"], "jet_type")
+                        pylogger.info(
+                            "Filtering conditioning data for generation for jet types: %s",
+                            self.hparams.used_jet_types
+                        )
                         jet_types_mask = np.isin(jet_features_gen[:, index_jet_type], used_jet_types_values)  # noqa: E501
                         conditioning_gen, _ = self._handle_conditioning(
-                            f["jet_features"][jet_types_mask], f["jet_features"].attrs["names_jet_features"], names_labels
+                            jet_features_gen[jet_types_mask],
+                            f["jet_features"].attrs["names_jet_features"],
+                            names_labels
                         )
-                        self.mask_gen = torch.tensor(f["part_mask"][jet_types_mask], dtype=torch.float32)
+                        pylogger.info("Number of jets in conditioning gen data: %s", len(conditioning_gen))
+                        self.mask_gen = torch.tensor(part_mask_gen[jet_types_mask], dtype=torch.float32)
                         self.tensor_conditioning_gen = torch.tensor(conditioning_gen, dtype=torch.float32)
+                        pylogger.info("Done processing the conditioning data.")
                 else:
+                    pylogger.warning("No conditioning data from generator used. Will used the truth conditioning data!.")
                     self.mask_gen = None
                     self.tensor_conditioning_gen = None
 
@@ -530,6 +542,7 @@ class JetClassDataModule(LightningDataModule):
         else:
             categories = np.unique(jet_data[:, 0])
 
+        pylogger.info("Using one-hot encoding for jet types: %s", categories)
         jet_data_one_hot = one_hot_encode(
             jet_data, categories=[categories], num_other_features=jet_data.shape[1] - 1
         )
@@ -537,6 +550,7 @@ class JetClassDataModule(LightningDataModule):
         one_hot_len = len(categories)
         if (
             not self.hparams.conditioning_pt
+            and not self.hparams.conditioning_energy
             and not self.hparams.conditioning_eta
             and not self.hparams.conditioning_mass
             and not self.hparams.conditioning_num_particles
@@ -555,6 +569,9 @@ class JetClassDataModule(LightningDataModule):
         if self.hparams.conditioning_pt:
             keep_col.append(get_feat_index(names_jet_data, "jet_pt") + one_hot_len - 1)
             names_conditioning_data.append("jet_pt")
+        if self.hparams.conditioning_energy:
+            keep_col.append(get_feat_index(names_jet_data, "jet_energy") + one_hot_len - 1)
+            names_conditioning_data.append("jet_energy")
         if self.hparams.conditioning_eta:
             keep_col.append(get_feat_index(names_jet_data, "jet_eta") + one_hot_len - 1)
             names_conditioning_data.append("jet_eta")

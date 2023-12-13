@@ -1,0 +1,25 @@
+_target_: src.models.jetclass_classifiers.HighLevelClassifier
+
+net_config:
+  fc_params:
+    - [256, 0.1]
+    - [256, 0.1]
+    - [256, 0.1]
+    - [128, 0.1]
+  input_dim: 13
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.01
+
+scheduler:
+  _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
+  _partial_: true
+  warmup: 5
+  max_iters: 100
+
+# scheduler:
+#   _target_: torch.optim.lr_scheduler.ConstantLR
+#   _partial_: true

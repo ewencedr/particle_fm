@@ -290,6 +290,7 @@ class JetClassEvaluationCallback(pl.Callback):
                 variable_set_sizes=trainer.datamodule.hparams.variable_jet_sizes,
                 mask=torch.tensor(mask),
                 normalized_data=trainer.datamodule.hparams.normalize,
+                normalize_sigma=trainer.datamodule.hparams.normalize_sigma,
                 means=trainer.datamodule.means,
                 stds=trainer.datamodule.stds,
                 **self.generation_config,

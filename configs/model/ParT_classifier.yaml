@@ -1,0 +1,51 @@
+_target_: src.models.jetclass_classifiers.ParticleTransformerPL
+
+input_dim: 7
+num_classes: 10
+# network configurations
+pair_input_dim: 4
+use_pre_activation_pair: False
+embed_dims: [128, 512, 128]
+pair_embed_dims: [64, 64, 64]
+num_heads: 8
+num_layers: 8
+num_cls_layers: 2
+block_params: null
+cls_block_params:
+  dropout: 0
+  attn_dropout: 0
+  activation_dropout: 0
+fc_params: []
+activation: "gelu"
+# misc
+trim: True
+for_inference: False
+
+# lr: 0.001
+
+# optimizer:
+#   _target_: torch.optim.Adam
+#   _partial_: true
+#   lr: 0.001
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001  # ParT paper uses RAdam optimizer with initial lr of 0.001
+  weight_decay: 0
+
+# using the method listed in the paper https://arxiv.org/abs/1902.08570, but with other parameters
+# scheduler:
+#   _target_: src.schedulers.lr_scheduler.OneCycleCooldown
+#   _partial_: true
+#   warmup: 4
+#   cooldown: 10
+#   cooldown_final: 10
+#   max_lr: 0.0002
+#   initial_lr: 0.00003
+#   final_lr: 0.00002
+#   max_iters: 200
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ConstantLR
+  _partial_: true

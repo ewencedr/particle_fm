@@ -23,6 +23,7 @@ from .components.losses import (
 )
 from .components.solver import ddim_sampler, euler_maruyama_sampler
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
+from .components.transformer import Transformer
 
 logger = get_pylogger("fm_module")
 

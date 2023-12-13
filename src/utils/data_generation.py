@@ -104,6 +104,8 @@ def generate_data(
             )
         if normalized_data:
             if pt_standardization:
+                # TODO: the sigma=10 and sigma=5 are hardcoded here, which
+                # is not ideal. This should be fixed.
                 jet_samples_batch[..., :2] = inverse_normalize_tensor(
                     jet_samples_batch[..., :2], means[:2], stds[:2], sigma=10
                 )
