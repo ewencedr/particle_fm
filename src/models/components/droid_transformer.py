@@ -1,4 +1,5 @@
 """Some classes to describe transformer architectures.
+
 adapted from https://github.com/rodem-hep/pcdroid/blob/master/src/utils/transformers.py
 """
 
@@ -18,12 +19,10 @@ def merge_masks(
     attn_bias: Union[T.Tensor, None],
     query: T.Size,
 ) -> Union[None, T.BoolTensor]:
-    """Create a full attention mask which incoporates the padding information
-    and the bias terms.
+    """Create a full attention mask which incorporates the padding information and the bias terms.
 
-    New philosophy is just to define a kv_mask, and let the q_mask be
-    ones. Let the padded nodes receive what they want! Their outputs
-    dont matter and they don't add to computation anyway!!!
+    New philosophy is just to define a kv_mask, and let the q_mask be ones. Let the padded nodes
+    receive what they want! Their outputs dont matter and they don't add to computation anyway!!!
     """
 
     # Create the full mask which combines the attention and padding masks
@@ -64,8 +63,7 @@ def my_scaled_dot_product_attention(
     attn_act: callable = partial(softmax, dim=-1),
     pad_val: float = -float("inf"),
 ) -> T.Tensor:
-    """Computes the scaled dot product attention using the given query, key,
-    and value tensors.
+    """Computes the scaled dot product attention using the given query, key, and value tensors.
 
     Parameters
     ----------
@@ -119,7 +117,7 @@ def my_scaled_dot_product_attention(
 class MultiHeadedAttentionBlock(nn.Module):
     """Generic Multiheaded Attention.
 
-    Takes in three sequences with dim: (batch, sqeuence, features)
+    Takes in three sequences with dim: (batch, sequence, features)
     - q: The primary sequence queries (determines output sequence length)
     - k: The attending sequence keys (determines incoming information)
     - v: The attending sequence values
@@ -150,7 +148,7 @@ class MultiHeadedAttentionBlock(nn.Module):
     4) Flatten out the head dimension and pass through final linear layer
     - Optional layer norm before linear layer using `do_layer_norm=True`
     - The output can also be zeroed on init using `init_zeros=True`
-    - results are same as if attention was done seperately for each head and concat
+    - results are same as if attention was done separately for each head and concat
     - dim: batch, q_seq, head_dim * num_heads
     """
 
@@ -168,7 +166,7 @@ class MultiHeadedAttentionBlock(nn.Module):
         Args:
             model_dim: The dimension of the model
             num_heads: The number of different attention heads to process in parallel
-                - Must allow interger division into model_dim
+                - Must allow integer division into model_dim
             drp: The dropout probability used in the MHA operation
             init_zeros: If the final linear layer is initialised with zero weights
             do_selfattn: Only self attention should only be used if the
@@ -287,8 +285,7 @@ class MultiHeadedAttentionBlock(nn.Module):
 
 
 class TransformerEncoderLayer(nn.Module):
-    """A transformer encoder layer based on the GPT-2+Normformer style
-    arcitecture.
+    """A transformer encoder layer based on the GPT-2+Normformer style architecture.
 
     We choose a cross between Normformer and FoundationTransformers as they have often
     proved to be the most stable to train
@@ -339,7 +336,7 @@ class TransformerEncoderLayer(nn.Module):
         attn_bias: T.Tensor | None = None,
         attn_mask: Optional[T.BoolTensor] = None,
     ) -> T.Tensor:
-        "Pass through the layer using residual connections and layer normalisation"
+        """Pass through the layer using residual connections and layer normalisation."""
         x = x + self.self_attn(
             self.norm1(x), kv_mask=mask, attn_mask=attn_mask, attn_bias=attn_bias
         )
@@ -393,7 +390,7 @@ class TransformerCrossAttentionLayer(nn.Module):
         kv_mask: Optional[T.BoolTensor] = None,
         ctxt: T.Tensor | None = None,
     ) -> T.Tensor:
-        "Pass through the layer using residual connections and layer normalisation"
+        """Pass through the layer using residual connections and layer normalisation."""
         q_seq = q_seq + self.cross_attn(self.norm1(q_seq), self.norm0(kv_seq), kv_mask=kv_mask)
         q_seq = q_seq + self.dense(self.norm2(q_seq), ctxt)
 
@@ -401,8 +398,7 @@ class TransformerCrossAttentionLayer(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    """A stack of N transformer encoder layers followed by a final
-    normalisation step.
+    """A stack of N transformer encoder layers followed by a final normalisation step.
 
     Sequence -> Sequence
     """
@@ -417,7 +413,7 @@ class TransformerEncoder(nn.Module):
     ) -> None:
         """
         Args:
-            model_dim: Feature sieze for input, output, and all intermediate layers
+            model_dim: Feature size for input, output, and all intermediate layers
             num_layers: Number of encoder layers used
             mha_config: Keyword arguments for the mha block
             dense_config: Keyword arguments for the dense network in each layer
@@ -553,11 +549,10 @@ class FullTransformerEncoder(nn.Module):
 
 
 class CrossAttentionEncoder(nn.Module):
-    """A type of encoder which includes uses cross attention to move to and
-    from the original sequence. Self attention is used in the learned sequence
-    steps.
+    """A type of encoder which includes uses cross attention to move to and from the original
+    sequence. Self attention is used in the learned sequence steps.
 
-    Sequence -> Squence
+    Sequence -> Sequence
 
     It is non resizing, so model_dim must be used for inputs and outputs
     """
@@ -625,8 +620,7 @@ class CrossAttentionEncoder(nn.Module):
 
 
 class FullCrossAttentionEncoder(nn.Module):
-    """A cross attention encoder with added input and output embedding
-    networks.
+    """A cross attention encoder with added input and output embedding networks.
 
     Sequence -> Sequence
     """
@@ -726,7 +720,7 @@ class MLPBlock(nn.Module):
     - layer normalisation [Optional]
     - dropout [Optional]
 
-    Only the input of the block is concatentated with context information.
+    Only the input of the block is concatenated with context information.
     For residual blocks, the input is added to the output of the final layer.
     """
 
@@ -819,8 +813,7 @@ class MLPBlock(nn.Module):
         return temp
 
     def __repr__(self) -> str:
-        """Generate a one line string summing up the components of the
-        block."""
+        """Generate a one line string summing up the components of the block."""
         string = str(self.inpt_dim)
         if self.ctxt_dim:
             string += f"({self.ctxt_dim})"
@@ -833,8 +826,8 @@ class MLPBlock(nn.Module):
 
 
 class DenseNetwork(nn.Module):
-    """A dense neural network made from a series of consecutive MLP blocks and
-    context injection layers."""
+    """A dense neural network made from a series of consecutive MLP blocks and context injection
+    layers."""
 
     def __init__(
         self,
@@ -869,7 +862,7 @@ class DenseNetwork(nn.Module):
             The number of context features. The context feature use is determined by
             ctxt_type, by default 0
         hddn_dim : Union[int, list], optional
-            The width of each hidden block. If a list it overides depth, by default 32
+            The width of each hidden block. If a list it overrides depth, by default 32
         num_blocks : int, optional
             The number of hidden blocks, can be overwritten by hddn_dim, by default 1
         n_lyr_pbk : int, optional
@@ -1046,8 +1039,8 @@ def get_act(name: str) -> nn.Module:
 
 
 def get_nrm(name: str, outp_dim: int) -> nn.Module:
-    """Return a 1D pytorch normalisation layer given a name and a output size
-    Returns None object if name is none."""
+    """Return a 1D pytorch normalisation layer given a name and a output size Returns None object
+    if name is none."""
     if name == "batch":
         return nn.BatchNorm1d(outp_dim)
     if name == "layer":

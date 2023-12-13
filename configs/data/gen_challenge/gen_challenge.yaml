@@ -5,7 +5,7 @@ num_workers: 32
 pin_memory: False
 val_sets:
 - 3
-test_sets: 
+test_sets:
 - 4
 normalize: True
 logit_transform: True

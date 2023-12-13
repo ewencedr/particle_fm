@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
-from torchmetrics.classification import Accuracy, AUROC
+from torchmetrics.classification import AUROC, Accuracy
 
 from .components.epic import EPiC_discriminator
 

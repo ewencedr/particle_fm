@@ -34,7 +34,7 @@ model:
 data:
   val_sets:
     - 3
-  test_sets: 
+  test_sets:
     - 4
   logit_transform: True
 

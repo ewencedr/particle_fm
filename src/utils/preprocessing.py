@@ -1,14 +1,11 @@
 import numpy as np
-
-from scipy.special import logit, expit
-from sklearn.preprocessing import MinMaxScaler
 import torch
+from scipy.special import expit, logit
+from sklearn.preprocessing import MinMaxScaler
 
 
 class Preprocessing:
-    """
-    Preprocessing class for data preprocessing
-    """
+    """Preprocessing class for data preprocessing."""
 
     default_config = {
         "standardize": {"means": [], "stds": [], "sigma": 1, "set_data": False},
@@ -19,9 +16,7 @@ class Preprocessing:
         self.config = config
 
     def preprocess(self, data: np.ndarray | torch.Tensor):
-        """
-        Preprocess data
-        """
+        """Preprocess data."""
         if isinstance(data, torch.Tensor):
             data = data.numpy()
 
@@ -33,7 +28,6 @@ class Preprocessing:
             raise ValueError("Preprocessing method not supported")
 
     def reverse_preprocess(self, data):
-
         if "standardize" in self.config:
             return self.reverse_standardize(data)
         elif "logit" in self.config:
@@ -41,46 +35,41 @@ class Preprocessing:
         else:
             raise ValueError("Preprocessing method not supported")
 
-    def standardize(self, data):
-        """
-        Standardize data
-        """
-        if isinstance(data, np.ndarray):
-            data = torch.from_numpy(data)
-        data = standardize_tensor(
-            data,
-            self.config["standardize"]["means"],
-            self.config["standardize"]["stds"],
-            self.config["standardize"]["sigma"],
-        )
-
-        return data
-
-    def reverse_standardize(self, data):
-        """
-        Reverse standardize data
-        """
-        if isinstance(data, np.ndarray):
-            data = torch.from_numpy(data)
-        data = inverse_normalize_tensor(
-            data,
-            self.config["standardize"]["means"],
-            self.config["standardize"]["stds"],
-            self.config["standardize"]["sigma"],
-        )
-        return data
+    # def standardize(self, data):
+    #    """Standardize data."""
+    #    if isinstance(data, np.ndarray):
+    #        data = torch.from_numpy(data)
+    #    data = standardize_tensor(
+    #        data,
+    #        self.config["standardize"]["means"],
+    #        self.config["standardize"]["stds"],
+    #        self.config["standardize"]["sigma"],
+    #    )
+    #
+    #    return data
+    #
+    # def reverse_standardize(self, data):
+    #    """Reverse standardize data."""
+    #    if isinstance(data, np.ndarray):
+    #        data = torch.from_numpy(data)
+    #    data = inverse_normalize_tensor(
+    #        data,
+    #        self.config["standardize"]["means"],
+    #        self.config["standardize"]["stds"],
+    #        self.config["standardize"]["sigma"],
+    #    )
+    #    return data
 
     def logit(self, data):
-        """ """
+        """"""
 
 
 class LogitScaler(MinMaxScaler):
-    """Preprocessing scaler that performs a logit transformation on top
-    of the sklean MinMaxScaler. It scales to a range [0+epsilon, 1-epsilon]
-    before applying the logit. Setting a small finitie epsilon avoids
-    features being mapped to exactly 0 and 1 before the logit is applied.
-    If the logit does encounter values beyond (0, 1), it outputs nan for
-    these values.
+    """Preprocessing scaler that performs a logit transformation on top of the sklean MinMaxScaler.
+
+    It scales to a range [0+epsilon, 1-epsilon] before applying the logit. Setting a small finitie
+    epsilon avoids features being mapped to exactly 0 and 1 before the logit is applied. If the
+    logit does encounter values beyond (0, 1), it outputs nan for these values.
     """
 
     _parameter_constraints: dict = {

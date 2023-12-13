@@ -5,12 +5,12 @@ import h5py
 import numpy as np
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, TensorDataset
-
-from src.utils.pylogger import get_pylogger
 from sklearn import preprocessing
 from sklearn.pipeline import make_pipeline
+from torch.utils.data import DataLoader, Dataset, TensorDataset
+
 from src.utils.preprocessing import LogitScaler
+from src.utils.pylogger import get_pylogger
 
 from .components import normalize_tensor
 
@@ -198,7 +198,7 @@ class GenChallengeDataModule(LightningDataModule):
             conditioning_val_sr = np.expand_dims(data_val_sr[:, 0], -1)
             conditioning_test_sr = np.expand_dims(data_test_sr[:, 0], -1)
 
-            ## data splitting
+            # data splitting
             # n_samples_val = int(self.hparams.val_fraction * len(data))
             # n_samples_test = int(self.hparams.test_fraction * len(data))
             # n_samples_val_sr = int(self.hparams.val_fraction * len(data_sr))

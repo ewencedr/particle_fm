@@ -24,7 +24,7 @@ trainer:
   gradient_clip_val: 0.5
 
 model:
-  net_config: 
+  net_config:
     num_sup_sets: 1
 
 callbacks:

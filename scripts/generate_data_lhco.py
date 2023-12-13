@@ -3,37 +3,35 @@ import sys
 
 sys.path.append("../")
 
-from os.path import join
-
 import argparse
+from os.path import join
 
 import energyflow as ef
 import h5py
 import hydra
+
+# plots and metrics
+import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.neighbors import KernelDensity
 
-# plots and metrics
-import matplotlib.pyplot as plt
-
-from src.data.components.metrics import wasserstein_distance_batched
-from src.utils.jet_substructure import dump_hlvs
-
 from src.data.components import (
     calculate_all_wasserstein_metrics,
     inverse_normalize_tensor,
     normalize_tensor,
 )
+from src.data.components.metrics import wasserstein_distance_batched
 from src.utils.data_generation import generate_data
+from src.utils.jet_substructure import dump_hlvs
 from src.utils.plotting import (
     apply_mpl_styles,
     plot_data,
-    prepare_data_for_plotting,
-    plot_substructure,
     plot_full_substructure,
+    plot_substructure,
+    prepare_data_for_plotting,
 )
 
 apply_mpl_styles()
@@ -90,7 +88,7 @@ def main(params):
     print(f"Model loaded from {ckpt}")
 
     if params.conditioning_file == "data":
-        print(f"Use data as conditioning data")
+        print("Use data as conditioning data")
         if use_signal_region:
             cond_x = datamodule.jet_data_sr_raw[:, 0]
             mask_x = datamodule.mask_sr_raw[:, 0]
@@ -359,7 +357,7 @@ def main(params):
         data_folder,
         "lhco",
         "substructure",
-        f"idealized_substr",
+        "idealized_substr",
     )
 
     dump_hlvs(
@@ -475,7 +473,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--folder",
         "-f",
-        default="/beegfs/desy/user/ewencedr/deep-learning/logs/lhco all jets/runs/2023-08-25_14-42-49",
+        default=(
+            "/beegfs/desy/user/ewencedr/deep-learning/logs/lhco all jets/runs/2023-08-25_14-42-49"
+        ),
         help="folder of the model to generate from",
         type=str,
     )

@@ -1,9 +1,9 @@
 import awkward as ak
 import energyflow as ef
+import fastjet as fj
 import matplotlib.pyplot as plt
 import numpy as np
 import vector
-import fastjet as fj
 
 
 def plot_unprocessed_data_lhco(

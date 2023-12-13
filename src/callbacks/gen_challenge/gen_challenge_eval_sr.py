@@ -39,8 +39,8 @@ log = get_pylogger("GenChallengeEvaluationCallbackSR")
 
 
 class GenChallengeEvaluationCallbackSR(pl.Callback):
-    """Create a callback to evaluate the model on the test dataset of the GenChallenge dataset and log the
-    results to loggers. Currently supported are CometLogger and WandbLogger.
+    """Create a callback to evaluate the model on the test dataset of the GenChallenge dataset and
+    log the results to loggers. Currently supported are CometLogger and WandbLogger.
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.
@@ -236,10 +236,10 @@ class GenChallengeEvaluationCallbackSR(pl.Callback):
             # data = np.reshape(data, (data.shape[0], -1))
             # background_data = np.reshape(background_data, (background_data.shape[0], -1))
             #
-            ## Calculate mjj
+            # Calculate mjj
             # p4_x_jet = ef.p4s_from_ptyphims(data[:, 0:4])
             # p4_y_jet = ef.p4s_from_ptyphims(data[:, 5:9])
-            ## get mjj from p4_jets
+            # get mjj from p4_jets
             # sum_p4 = p4_x_jet + p4_y_jet
             # mjj = ef.ms_from_p4s(sum_p4)
             #

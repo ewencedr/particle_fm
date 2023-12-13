@@ -19,7 +19,7 @@ from src.schedulers.logging_scheduler import (
     nolog10000,
 )
 from src.utils.data_generation import generate_data
-from src.utils.lhco_utils import plot_unprocessed_data_lhco, cluster_data
+from src.utils.lhco_utils import cluster_data, plot_unprocessed_data_lhco
 from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
 from src.utils.pylogger import get_pylogger
 

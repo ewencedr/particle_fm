@@ -1,18 +1,16 @@
 from typing import Any, Dict, Optional, Tuple
 
+import energyflow as ef
+import h5py
+import numpy as np
 import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
-import h5py
-import energyflow as ef
-import numpy as np
 
-from src.data.components import (
-    normalize_tensor,
-)
+from src.data.components import normalize_tensor
 from src.data.components.utils import (
-    get_mjj,
     get_jet_data,
+    get_mjj,
     get_nonrel_consts,
     sort_consts,
     sort_jets,
@@ -121,12 +119,14 @@ class ClassifierDataModule(LightningDataModule):
 
         if self.hparams.gen_jet not in ["first", "second", "both", "both_first", "both_second"]:
             raise ValueError(
-                "gen_jet must be one of 'first' or 'second' or 'both', or 'both_first', or 'both_second'"
+                "gen_jet must be one of 'first' or 'second' or 'both', or 'both_first', or"
+                " 'both_second'"
             )
 
         if self.hparams.ref_jet not in ["first", "second", "both", "both_first", "both_second"]:
             raise ValueError(
-                "ref_jet must be one of 'first' or 'second', or 'both', or 'both_first', or 'both_second'"
+                "ref_jet must be one of 'first' or 'second', or 'both', or 'both_first', or"
+                " 'both_second'"
             )
 
         if self.hparams.gen_jet == "both" and self.hparams.ref_jet != "both":
@@ -232,7 +232,7 @@ class ClassifierDataModule(LightningDataModule):
 
             # TODO length of both classes should not need to be the same
             if self.hparams.idealized:
-                print(f"Using background as background")
+                print("Using background as background")
                 jet_data_background = jet_data_bckg[: len(particle_data_mixed)]
                 particle_data_background = particle_data_bckg[: len(particle_data_mixed)]
                 mask_background = mask_bckg[: len(particle_data_mixed)]

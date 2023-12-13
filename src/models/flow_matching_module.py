@@ -13,8 +13,10 @@ from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_encoder, IterativeNormLayer
-from .components.droid_transformer import FullTransformerEncoder, FullCrossAttentionEncoder
-from .components.transformer import Transformer
+from .components.droid_transformer import (
+    FullCrossAttentionEncoder,
+    FullTransformerEncoder,
+)
 from .components.losses import (
     ConditionalFlowMatchingLoss,
     ConditionalFlowMatchingOTLoss,

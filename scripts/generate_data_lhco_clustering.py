@@ -3,39 +3,37 @@ import sys
 
 sys.path.append("../")
 
-from os.path import join
-
 import argparse
+from os.path import join
 
 import energyflow as ef
 import h5py
 import hydra
+
+# plots and metrics
+import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.neighbors import KernelDensity
 
-# plots and metrics
-import matplotlib.pyplot as plt
-
-from src.data.components.metrics import wasserstein_distance_batched
-from src.utils.jet_substructure import dump_hlvs
-
 from src.data.components import (
     calculate_all_wasserstein_metrics,
     inverse_normalize_tensor,
     normalize_tensor,
 )
+from src.data.components.metrics import wasserstein_distance_batched
 from src.utils.data_generation import generate_data
+from src.utils.jet_substructure import dump_hlvs
+from src.utils.lhco_utils import cluster_data
 from src.utils.plotting import (
     apply_mpl_styles,
     plot_data,
-    prepare_data_for_plotting,
-    plot_substructure,
     plot_full_substructure,
+    plot_substructure,
+    prepare_data_for_plotting,
 )
-from src.utils.lhco_utils import cluster_data
 
 apply_mpl_styles()
 
@@ -222,7 +220,7 @@ def main(params):
         data_folder,
         "lhco",
         "substructure",
-        f"idealized_substr",
+        "idealized_substr",
     )
 
     dump_hlvs(
@@ -338,7 +336,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--folder",
         "-f",
-        default="/beegfs/desy/user/ewencedr/deep-learning/logs/bigPC-v3 with logging/runs/2023-09-18_00-16-20",
+        default=(
+            "/beegfs/desy/user/ewencedr/deep-learning/logs/bigPC-v3 with"
+            " logging/runs/2023-09-18_00-16-20"
+        ),
         help="folder of the model to generate from",
         type=str,
     )

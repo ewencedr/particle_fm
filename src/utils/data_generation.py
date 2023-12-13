@@ -188,7 +188,8 @@ def generate_data_v2(
     ode_steps: int = 100,
     preprocessing_pipeline=None,
 ):
-    """Generate data with a model in batches and measure time. For data that uses scikit learn preprocessing pipeline.
+    """Generate data with a model in batches and measure time. For data that uses scikit learn
+    preprocessing pipeline.
 
     Args:
         model (_type_): Model with sample method

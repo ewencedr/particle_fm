@@ -1,3 +1,4 @@
+import time
 import warnings
 from typing import Any, Callable, Dict, Mapping, Optional
 
@@ -5,7 +6,6 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
-import time
 
 from src.callbacks.ema import EMA
 from src.data.components import calculate_all_wasserstein_metrics

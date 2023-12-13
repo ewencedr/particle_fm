@@ -3,20 +3,20 @@ import sys
 
 sys.path.append("../")
 
+import argparse
 from os.path import join
 
 import energyflow as ef
 import h5py
 import hydra
+
+# plots and metrics
+import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.neighbors import KernelDensity
-import argparse
-
-# plots and metrics
-import matplotlib.pyplot as plt
 
 from src.data.components import (
     calculate_all_wasserstein_metrics,
@@ -28,16 +28,13 @@ from src.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plo
 
 apply_mpl_styles()
 
-from jetnet.evaluation import w1efp, w1m, w1p
-from src.utils.jet_substructure import dump_hlvs
-from src.data.components.metrics import wasserstein_distance_batched
-from src.utils.plotting import (
-    plot_substructure,
-    plot_full_substructure,
-)
-
 # set env variable DATA_DIR again because of hydra
 from dotenv import load_dotenv
+from jetnet.evaluation import w1efp, w1m, w1p
+
+from src.data.components.metrics import wasserstein_distance_batched
+from src.utils.jet_substructure import dump_hlvs
+from src.utils.plotting import plot_full_substructure, plot_substructure
 
 load_dotenv()
 os.environ["DATA_DIR"] = os.environ.get("DATA_DIR")

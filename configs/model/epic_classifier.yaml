@@ -28,4 +28,3 @@ net_config:
   t_global_cat: False
   num_points: 279
   num_sup_sets: 2
-

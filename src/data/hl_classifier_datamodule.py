@@ -1,13 +1,12 @@
 from typing import Any, Dict, Optional, Tuple
 
+import h5py
+import numpy as np
 import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
-import h5py
-import numpy as np
-from src.data.components import (
-    normalize_tensor,
-)
+
+from src.data.components import normalize_tensor
 
 
 class HLClassifierDataModule(LightningDataModule):
