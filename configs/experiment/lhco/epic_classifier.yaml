@@ -35,8 +35,8 @@ callbacks:
     verbose: true
 
 data:
-  #gendatafile: "lhco-xy-10layer-256latent-logpt-new2m_sr-midpoint-300_shuffled"
-  gendatafile: "lhco-xy-10layer-256latent-logpt-nnew_sr-midpoint-300"
+  gendatafile: "lhco-xy-10layer-256latent-logpt-new2m_sr-midpoint-300_shuffled"
+  #gendatafile: "lhco-xy-10layer-256latent-logpt-nnew_sr-midpoint-300"
   #gendatafile: "FPCD_LHCO_SR_shuffled"
 
 task_name: "epic_classifier"

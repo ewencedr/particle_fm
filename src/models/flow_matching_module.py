@@ -13,6 +13,8 @@ from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
 from .components import EPiC_encoder, IterativeNormLayer
+from .components.droid_transformer import FullTransformerEncoder, FullCrossAttentionEncoder
+from .components.transformer import Transformer
 from .components.losses import (
     ConditionalFlowMatchingLoss,
     ConditionalFlowMatchingOTLoss,
@@ -26,6 +28,7 @@ from .components.transformer import Transformer
 logger = get_pylogger("fm_module")
 
 
+# TODO put EPiC model config also in separate dictionary (net_config)
 class ode_wrapper(torch.nn.Module):
     """Wraps model to ode solver compatible format. Also important for solving various types of
     ODEs.
@@ -146,6 +149,22 @@ class CNF(nn.Module):
                 input_dim=input_dim,
                 **net_config,
             )
+        elif model == "droid_fulltransformer":
+            self.net = FullTransformerEncoder(
+                inpt_dim=input_dim,
+                outp_dim=features,
+                ctxt_dim=global_cond_dim + 2 * frequencies,
+                **net_config,
+            )
+        elif model == "droid_fullcrossattention":
+            self.net = FullCrossAttentionEncoder(
+                inpt_dim=input_dim,
+                outp_dim=features,
+                ctxt_dim=global_cond_dim + 2 * frequencies,
+                **net_config,
+            )
+        else:
+            raise NotImplementedError(f"Model {model} not implemented.")
 
         self.register_buffer("frequencies", 2 ** torch.arange(frequencies) * torch.pi)
         self.activation = activation

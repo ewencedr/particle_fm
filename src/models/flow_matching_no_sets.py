@@ -34,7 +34,7 @@ class ode_wrapper(torch.nn.Module):
         self.mask = mask
         self.cond = cond
 
-    def forward(self, t, x):
+    def forward(self, t, x, *args, **kwargs):
         return self.model(t, x, mask=self.mask, cond=self.cond)
 
 
@@ -46,7 +46,7 @@ class CNF(nn.Module):
         activation: str = "Tanh",
     ):
         super().__init__()
-        self.net = small_cond_ResNet_model(
+        self.net = small_cond_MLP_model(
             features, features, dim_t=2 * freqs, dim_cond=1, activation=activation
         )
 
