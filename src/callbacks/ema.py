@@ -135,8 +135,10 @@ class EMA(Callback):
                 )
             else:
                 warnings.warn(
-                    "we were unable to find the associated EMA weights when re-loading, "
-                    "training will start with new EMA weights.",
+                    (
+                        "we were unable to find the associated EMA weights when re-loading, "
+                        "training will start with new EMA weights."
+                    ),
                     UserWarning,
                 )
 

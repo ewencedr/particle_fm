@@ -160,11 +160,9 @@ def calculate_all_wasserstein_metrics(
 
 
 def kl_divergence(p, q, rescale: bool = False, verbose: bool = False):
-    r"""
-    Calculate the Kullback-Leibler divergence between two probability distributions.
-    KLD(P || Q) = \sum_i [ P(i) * log(P(i) / Q(i)) ]
-    (could have also used scipy.stats.entropy, but this implementation is more flexible
-    and allows for (not) rescaling the distributions to sum to 1).
+    r"""Calculate the Kullback-Leibler divergence between two probability distributions. KLD(P || Q)
+    = \sum_i [ P(i) * log(P(i) / Q(i)) ] (could have also used scipy.stats.entropy, but this
+    implementation is more flexible and allows for (not) rescaling the distributions to sum to 1).
     The scipy implementation rescales by default.
 
     Parameters:
@@ -232,10 +230,9 @@ def calc_reverse_kld(
     rescale_pq: bool = False,
     verbose: bool = False,
 ):
-    r"""
-    Calculate the reverse KL divergence between two probability distributions.
-    Reverse KL divergence is defined as KL(Q || P) = \sum_i [ Q(i) * log(Q(i) / P(i)) ]
-    (i.e. swap P and Q compared to the normal KL divergence).
+    r"""Calculate the reverse KL divergence between two probability distributions. Reverse KL
+    divergence is defined as KL(Q || P) = \sum_i [ Q(i) * log(Q(i) / P(i)) ] (i.e. swap P and Q
+    compared to the normal KL divergence).
 
     Parameters:
     - target: Target probability distribution P

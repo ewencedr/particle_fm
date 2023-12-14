@@ -89,7 +89,7 @@ The experiments include
   <summary>
     <b>fm_tops30</b>
   </summary>
-  EPiC Flow Matching trained on top30 dataset with no additional conditioning. Jet size conditioning is a neccessity for the architecture
+  EPiC Flow Matching trained on top30 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
 </details>
 <details>
   <summary>
@@ -101,7 +101,7 @@ The experiments include
   <summary>
     <b>fm_tops150</b>
   </summary>
-  EPiC Flow Matching trained on top150 dataset with no additional conditioning. Jet size conditioning is a neccessity for the architecture
+  EPiC Flow Matching trained on top150 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
 </details>
 <details>
   <summary>
@@ -119,7 +119,7 @@ The experiments include
   <summary>
     <b>diffusion_tops30</b>
   </summary>
-  EPiC Jedi (DDIM diffusion based) trained on top30 dataset with no additional conditioning. Jet size conditioning is a neccessity for the architecture
+  EPiC Jedi (DDIM diffusion based) trained on top30 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
 </details>
 <details>
   <summary>
@@ -131,7 +131,7 @@ The experiments include
   <summary>
     <b>diffusion_tops150</b>
   </summary>
-  EPiC Jedi (DDIM diffusion based) trained on top150 dataset with no additional conditioning. Jet size conditioning is a neccessity for the architecture
+  EPiC Jedi (DDIM diffusion based) trained on top150 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
 </details>
 <details>
   <summary>

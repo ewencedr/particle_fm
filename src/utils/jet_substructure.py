@@ -1,10 +1,10 @@
 """Module with functions related to calculating jet substructure.
 
-All of these are essentially based around pyjet.PseudoJet objects and/or
-their constituent particles and calculates some of the most popular
-high-level substructure observables.
+All of these are essentially based around pyjet.PseudoJet objects and/or their constituent
+particles and calculates some of the most popular high-level substructure observables.
 
-from https://github.com/DebajyotiS/PC-JeDi/blob/EPiC-JeDi/src/jet_substructure.py
+from
+https://github.com/DebajyotiS/PC-JeDi/blob/EPiC-JeDi/src/jet_substructure.py
 """
 
 import os
@@ -39,7 +39,7 @@ def locals_to_mass_and_pt(csts: T.Tensor, mask: T.BoolTensor) -> T.Tensor:
     phi = csts[..., 1]
     pt = csts[..., 2].exp()
 
-    # Calculate the total jet values in cartensian coordinates, include mask for sum
+    # Calculate the total jet values in cartesian coordinates, include mask for sum
     jet_px = (pt * T.cos(phi) * mask).sum(axis=-1)
     jet_py = (pt * T.sin(phi) * mask).sum(axis=-1)
     jet_pz = (pt * T.sinh(eta) * mask).sum(axis=-1)
@@ -70,7 +70,7 @@ def numpy_locals_to_mass_and_pt(
     phi = csts[..., 1]
     pt = np.exp(csts[..., 2]) * mask if pt_logged else csts[..., 2]
 
-    # Calculate the total jet values in cartensian coordinates, include mask for sum
+    # Calculate the total jet values in cartesian coordinates, include mask for sum
     jet_px = (pt * np.cos(phi) * mask).sum(axis=-1)
     jet_py = (pt * np.sin(phi) * mask).sum(axis=-1)
     jet_pz = (pt * np.sinh(eta) * mask).sum(axis=-1)
@@ -304,15 +304,14 @@ class Substructure:
     def ecf2(self):
         """Calculates the degree-2 energy correlation factor.
 
-        Calculates the degree-2 energy correlation factor of the constituent
-        particles. Takes transverse momenta and delta_r distances into account:
+        Calculates the degree-2 energy correlation factor of the constituent particles. Takes
+        transverse momenta and delta_r distances into account:
 
         >> sum (i<j in cnsts) pt(i) * pt(j) * delta_r(i, j)
 
-        To avoid for-loop nesting, creates an array of unique index pairs, then
-        uses those to access the constituent particles to be able to vectorise
-        the operation. Internal function calc_ecf2(i, j) takes lists of
-        components.
+        To avoid for-loop nesting, creates an array of unique index pairs, then uses those to
+        access the constituent particles to be able to vectorise the operation. Internal function
+        calc_ecf2(i, j) takes lists of components.
         """
         indices = np.arange(len(self._cnsts), dtype=np.uint8)
         idx_pairs = np.array(np.meshgrid(indices, indices)).T.reshape(-1, 2)
@@ -330,16 +329,15 @@ class Substructure:
     def ecf3(self):
         """Calculates the degree-3 energy correlation factor.
 
-        Calculates the degree-3 energy correlation factor of the constituent
-        particles. Takes transverse momenta and delta_r distances into account:
+        Calculates the degree-3 energy correlation factor of the constituent particles. Takes
+        transverse momenta and delta_r distances into account:
 
-        >> sum (i<j<k in cnsts) pt(i) * pt(j) * pt(k)
-        >>                      * delta_r(i, j) * delta_r(j, k) * delta_r(k, i)
+        >> sum (i<j<k in cnsts) pt(i) * pt(j) * pt(k) >>                      * delta_r(i, j) *
+        delta_r(j, k) * delta_r(k, i)
 
-        To avoid for-loop nesting, creates array of unique index triplets, then
-        uses those to access the constituent particles to be able to vectorise
-        the operation. Internal function calc_ecf2(i, j, k) takes lists of
-        components.
+        To avoid for-loop nesting, creates array of unique index triplets, then uses those to
+        access the constituent particles to be able to vectorise the operation. Internal function
+        calc_ecf2(i, j, k) takes lists of components.
         """
         indices = np.arange(len(self._cnsts), dtype=np.uint8)
         idx_pairs = np.array(np.meshgrid(indices, indices, indices)).T.reshape(-1, 3)
@@ -554,6 +552,7 @@ def dump_hlvs(
 
 
 # new implementation based on fastjet and awkward arrays
+
 
 # substructure calculations
 def calc_deltaR(particles, jet):

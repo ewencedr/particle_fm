@@ -648,7 +648,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             n_samples (int): Number of samples to generate.
             cond (torch.Tensor, optional): Data on which the model is conditioned. Defaults to None.
             mask (torch.Tensor, optional): Mask for data generation. Defaults to None.
-            ode_solver (str, optonal): ODE solver to use. Defaults to "dopri5_zuko".
+            ode_solver (str, optional): ODE solver to use. Defaults to "dopri5_zuko".
 
         Returns:
             torch.Tensor: Generated samples

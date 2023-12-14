@@ -25,7 +25,7 @@ def numpy_locals_to_mass_and_pt(
     phi = csts[..., 1]
     pt = np.exp(csts[..., 2]) * mask if pt_logged else csts[..., 2]
 
-    # Calculate the total jet values in cartensian coordinates, include mask for sum
+    # Calculate the total jet values in cartesian coordinates, include mask for sum
     jet_px = (pt * np.cos(phi) * mask).sum(axis=-1)
     jet_py = (pt * np.sin(phi) * mask).sum(axis=-1)
     jet_pz = (pt * np.sinh(eta) * mask).sum(axis=-1)

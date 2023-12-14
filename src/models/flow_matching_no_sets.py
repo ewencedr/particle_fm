@@ -222,7 +222,7 @@ class FLowMatchingNoSetsLitModule(pl.LightningModule):
         Args:
             n_samples (int): Number of samples to generate.
             cond (torch.Tensor, optional): Data on which the model is conditioned. Defaults to None.
-            ode_solver (str, optonal): ODE solver to use. Defaults to "midpoint".
+            ode_solver (str, optional): ODE solver to use. Defaults to "midpoint".
 
         Returns:
             torch.Tensor: Generated samples

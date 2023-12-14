@@ -38,7 +38,7 @@ class OneCycleCooldown(_LRScheduler):
         max_iters,
         final_lr=1e-6,
     ):
-        """optimizer (Optimizer): Wrapped optimizer.
+        """Optimizer (Optimizer): Wrapped optimizer.
 
         warmup: number of epochs to warmup for.
         cooldown: number of epochs to cooldown for.

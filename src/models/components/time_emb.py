@@ -9,7 +9,8 @@ import torch.nn as nn
 class GaussianFourierProjection(nn.Module):
     """Gaussian random features for encoding time steps.
 
-    Inspired by https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing#scrollTo=YyQtV7155Nht
+    Inspired by
+    https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing#scrollTo=YyQtV7155Nht
     """
 
     def __init__(self, embed_dim, scale=30.0):
