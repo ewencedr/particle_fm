@@ -405,9 +405,8 @@ class JetNetFinalEvaluationCallback(pl.Callback):
         """Get checkpoint path based on the selected checkpoint callback."""
         if self.ckpt_path is None:
             if self.use_ema:
-                if (
-                    type(trainer.checkpoint_callbacks[self.nr_checkpoint_callbacks])
-                    == EMAModelCheckpoint
+                if isinstance(
+                    trainer.checkpoint_callbacks[self.nr_checkpoint_callbacks], EMAModelCheckpoint
                 ):
                     if use_last_checkpoint:
                         return trainer.checkpoint_callbacks[
