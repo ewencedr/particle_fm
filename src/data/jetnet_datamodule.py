@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from jetnet.datasets import JetNet
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from src.utils.pylogger import get_pylogger
 
@@ -19,7 +19,7 @@ from .components import (
 log = get_pylogger("JetNetDataModule")
 
 
-# TODO variable_jet_sizes=False does not work with conditioning
+# TODO variable_jet_sizes=False might work with conditioning
 class JetNetDataModule(LightningDataModule):
     """LightningDataModule for JetNet dataset. If no conditioning is used, the conditioning tensor
     will be a tensor of zeros.

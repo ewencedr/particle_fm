@@ -5,8 +5,8 @@
 
 defaults:
   - override /data: /jetnet/jetnet_tops_30_jedi.yaml
-  - override /model: flow_matching.yaml
-  - override /callbacks: jetnet.yaml
+  - override /model: diffusion.yaml
+  - override /callbacks: /jetnet/jetnet.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops30", "uncond"]
+tags: ["diffusion", "tops30", "uncond"]
 
 seed: 12345
 
@@ -27,6 +27,7 @@ model:
   num_particles: 30
   global_cond_dim: 0 # needs to be calculated when using conditioning
   local_cond_dim: 0
+
 
 data:
   jet_type:

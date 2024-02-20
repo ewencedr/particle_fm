@@ -6,7 +6,7 @@
 defaults:
   - override /data: /jetnet/jetnet_tops_30_jedi.yaml
   - override /model: flow_matching_transformer.yaml
-  - override /callbacks: jetnet.yaml
+  - override /callbacks: /jetnet/jetnet.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
