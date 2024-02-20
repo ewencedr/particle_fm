@@ -22,6 +22,7 @@ from .components.losses import (
     ConditionalFlowMatchingOTLoss,
     DiffusionLoss,
     FlowMatchingLoss,
+    DroidLoss,
 )
 from .components.solver import ddim_sampler, euler_maruyama_sampler
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
@@ -459,7 +460,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
                 flows=self.flows, sigma=sigma, diff_config=diff_config, criterion=criterion
             )
         elif loss_type == "droid":
-            self.loss = FlowMatchingLoss(flows=self.flows, sigma=sigma, criterion=criterion)
+            self.loss = DroidLoss(flows=self.flows, sigma=sigma, criterion=criterion)
         else:
             raise NotImplementedError(f"Loss type {loss_type} not implemented.")
 
