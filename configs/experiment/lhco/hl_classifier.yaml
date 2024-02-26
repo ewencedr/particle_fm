@@ -31,6 +31,10 @@ callbacks:
     patience: 100
     mode: "max"
 
+data:
+  file_name1: "data1"
+  file_name2: "data2"
+
 logger:
   wandb:
     tags: ${tags}

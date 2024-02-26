@@ -50,7 +50,8 @@ class HLClassifierDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        file_name: str = "cathode_v",
+        file_name1: str = "data1",
+        file_name2: str = "data2",
         train_val_test_split: Tuple[float, float, float] = (0.70, 0.15, 0.15),
         batch_size: int = 128,
         num_workers: int = 0,
@@ -101,20 +102,10 @@ class HLClassifierDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            # path_truth = f"{self.hparams.data_dir}/lhco/high_level/cathode_id.h5"
-            # path_data = f"{self.hparams.data_dir}/lhco/high_level/{self.hparams.file_name}.h5"
-            #
-            # with h5py.File(path_truth, "r") as f:
-            #    data_truth = f["data"][:]
-            #
-            # with h5py.File(path_data, "r") as f:
-            #    data = f["data"][:]
+            save_path_true = self.hparams.data_dir + self.hparams.file_name1 + ".npy"
+            # path_data = "/beegfs/desy/user/ewencedr/data/generative_challenge/gen_data.npy"
+            path_data = self.hparams.data_dir + self.hparams.file_name2 + ".npy"
 
-            save_path_true = (
-                "/beegfs/desy/user/ewencedr/data/generative_challenge/gen_data_true.npy"
-            )
-
-            path_data = "/beegfs/desy/user/ewencedr/data/generative_challenge/gen_data.npy"
             data = np.load(path_data)
             data_truth = np.load(save_path_true)
 

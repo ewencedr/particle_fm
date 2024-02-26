@@ -1,6 +1,7 @@
 _target_: src.data.hl_classifier_datamodule.HLClassifierDataModule
 data_dir: ${paths.data_dir}
-file_name: cathode_v
+file_name1: data1
+file_name2: data2
 batch_size: 128
 num_workers: 32
 pin_memory: False
