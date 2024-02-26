@@ -4,10 +4,10 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: lhco.yaml
+  - override /data: /lhco/lhco.yaml
   - override /model: fm_droid_transformer.yaml
   - override /callbacks: /lhco/lhco.yaml
-  - override /trainer: ddp.yaml
+  - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -52,7 +52,7 @@ data:
   test_fraction: 0.35
   use_all_data: False
   shuffle_data: False
-  file_suffix_processed_data: "_masssorted"
+  file_suffix_processed_data: ""
   log_pt: True
   pt_standardization: False
   multiplicity_conditioning: True

@@ -1,4 +1,4 @@
-_target_: src.data.lhco_bruteforce_datamodule.LHCOBruteforceDataModule
+_target_: src.data.lhco_complex_data_datamodule.LHCOComplexDataDataModule
 data_dir: ${paths.data_dir}
 batch_size: 1024
 num_workers: 32

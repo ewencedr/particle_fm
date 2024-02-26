@@ -18,12 +18,11 @@ from .components import (
     one_hot_encode,
 )
 
-log = get_pylogger("JetNetDataModule")
+log = get_pylogger("LHCOComplexDataDataModule")
 
 
-# TODO datadir
-class LHCOBruteforceDataModule(LightningDataModule):
-    """LightningDataModule for LHCO dataset. If no conditioning is used, the conditioning tensor
+class LHCOComplexDataDataModule(LightningDataModule):
+    """LightningDataModule for LHCO dataset, where the data is processed such that both jets are combined into one data structure. If no conditioning is used, the conditioning tensor
     will be a tensor of zeros.
 
     Args:

@@ -8,7 +8,7 @@ defaults:
   # - device_stats_monitor.yaml
   - rich_progress_bar.yaml
   - ema.yaml
-  - lhco_bruteforce_eval.yaml
+  - lhco_complex_data_eval.yaml
   #- jetnet_eval.yaml
   #- jetnet_final_eval.yaml
   - _self_

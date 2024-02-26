@@ -103,7 +103,6 @@ class HLClassifierDataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             save_path_true = self.hparams.data_dir + self.hparams.file_name1 + ".npy"
-            # path_data = "/beegfs/desy/user/ewencedr/data/generative_challenge/gen_data.npy"
             path_data = self.hparams.data_dir + self.hparams.file_name2 + ".npy"
 
             data = np.load(path_data)

@@ -4,7 +4,7 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: lhco.yaml
+  - override /data: /lhco/lhco.yaml
   - override /model: flow_matching.yaml
   - override /callbacks: /lhco/lhco.yaml
   - override /trainer: gpu.yaml
@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "LHCO", "cond", "y_jet"]
+tags: ["flow_matching", "LHCO", "cond", "x_jet"]
 
 seed: 12345
 
@@ -35,7 +35,7 @@ data:
   normalize: True
   conditioning: True
   relative_coords: True
-  jet_type: "y"
+  jet_type: "x"
   num_particles: ${model.num_particles}
   val_fraction: 0.05
   test_fraction: 0.35
@@ -53,7 +53,7 @@ callbacks:
   lhco_eval:
     every_n_epochs: 100 # evaluate every n epochs
     num_jet_samples: -1 # jet samples to generate
-    model_name: "lhco_flow_matching_y_jet"
+    model_name: "lhco_flow_matching_x_jet"
     log_epoch_zero: True
     data_type: "val"
     w_dist_config:
@@ -72,7 +72,7 @@ callbacks:
   lhco_eval_sr:
     every_n_epochs: 100 # evaluate every n epochs
     num_jet_samples: -1 # jet samples to generate
-    model_name: "lhco_flow_matching_y_jet_sr"
+    model_name: "lhco_flow_matching_x_jet_sr"
     log_epoch_zero: True
     data_type: "test"
     w_dist_config:
@@ -88,7 +88,7 @@ callbacks:
       plot_efps: False
       plottype: ""
 
-task_name: "lhco_flow_matching_y_jet"
+task_name: "lhco_flow_matching_x_jet"
 
 logger:
   wandb:

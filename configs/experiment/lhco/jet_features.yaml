@@ -4,7 +4,7 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: lhco_jet_feature.yaml
+  - override /data: /lhco/lhco_jet_feature.yaml
   - override /model: flow_matching_no_sets.yaml
   - override /callbacks: /lhco/lhco_jet_feature.yaml
   - override /trainer: gpu.yaml
