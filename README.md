@@ -5,9 +5,9 @@
 [![python](https://img.shields.io/badge/-Python_3.10-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![pytorch](https://img.shields.io/badge/PyTorch_2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
 [![lightning](https://img.shields.io/badge/-Lightning_2.0+-792ee5?logo=pytorchlightning&logoColor=white)](https://pytorchlightning.ai/)
-[![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
+[![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/) <br>
 [![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
-[![isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/) <br>
+[![isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 <a href="https://github.com/ashleve/lightning-hydra-template"><img alt="Template" src="https://img.shields.io/badge/-Lightning--Hydra--Template-017F2F?style=flat&logo=github&labelColor=gray"></a>
 
 [![arxiv](http://img.shields.io/badge/arXiv-2310.00049-B31B1B.svg)](https://arxiv.org/abs/2310.00049)
@@ -16,9 +16,14 @@
 
 </div>
 
-## Description
+## ℹ️ Description
 
-This repository contains multiple (mostly) generative neural networks and multiple datasets from particle physics. The focus lies on continuous time generative models for point clouds. Diffusion/ Score-based models / Continuous Normalizing Flows are in this repository combined under the Flow Matching framework, where these models differ only in the loss function.
+This repository contains multiple (mostly) generative neural networks and multiple datasets from particle physics. The focus lies on continuous time generative models for point clouds. Diffusion/ Score-based models / Continuous Normalizing Flows (CNFs) are in this repository combined under the [Flow Matching](https://arxiv.org/abs/2210.02747) (FM) framework, where these models differ only in the loss function.
+
+This repository contains code for the following papers as well as additional models and datasets. For the code repository that only contain the code for the papers, please refer to the repositories linked in the papers.
+- [EPiC-ly Fast Particle Cloud Generation with Flow-Matching and Diffusion](https://arxiv.org/abs/2310.00049); Erik Buhmann, Cedric Ewen, Darius A. Faroughy, Tobias Golling, Gregor Kasieczka, Matthew Leigh, Guillaume Quétant, John Andrew Raine, Debajyoti Sengupta, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/EPiC-FM)
+- [Full Phase Space Resonant Anomaly Detection](https://arxiv.org/abs/2310.06897); Erik Buhmann, Cedric Ewen, Gregor Kasieczka, Vinicius Mikuni, Benjamin Nachman, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/LHCO_EPiC-FM)
+- [Flow Matching Beyond Kinematics: Generating Jets with Particle-ID and Trajectory Displacement Information](https://arxiv.org/abs/2312.00123); Joschka Birk, Erik Buhmann, Cedric Ewen, Gregor Kasieczka, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/beyond_kinematics) 
 
 ## 🤖 Models
 
@@ -109,14 +114,19 @@ Click on the dataset to get more information about the dataset, the features, an
   - Many settings for trainings (e.g. conditioning on selected features, training on muliple jet types, etc.)
 
 - <b>Download and Preprocessing</b>
-  Can be downloaded from [Zenodo](https://zenodo.org/records/6619768).
+  Can be downloaded from [Zenodo](https://zenodo.org/records/6619768) by following the instructions from [jet-universe/particle_transformer](https://github.com/jet-universe/particle_transformer).
+  Adjust the paths in the `configs/preprocessing/data.yaml` and run 
+
+  ```bash
+  python scripts/prepare_dataset.py && python scripts/preprocessing.py
+  ```
 
 </details>
 <details>
   <summary>
-    <b>CaloChallenge?</b>
+    <b>CaloChallenge</b>
   </summary>
-  To be implemented
+  TBD
 </details>
 <details>
   <summary>
@@ -128,7 +138,7 @@ Click on the dataset to get more information about the dataset, the features, an
 
 </details>
 
-## Additional Features
+## 🌟 Additional Features
 
 - Training and Evaluation of models
 - Callbacks for logging and visualization
@@ -140,31 +150,7 @@ Click on the dataset to get more information about the dataset, the features, an
 
 ## ⚡️ Quickstart
 
-### Preconfigured Experiments
-
-Note, that this repository was originally used for a research project and is now being adapted to be more general. The following configurations have been used in the original project and should work. However, not all combinations of architectures and loss functions have been tested, yet and some cases might create errors. Please contact me for any issues.
-
-## Continue
-
-The repository contains a set of preconfigured experiments that can be used to train and evaluate the models. The experiments are defined in the [configs/experiment/](configs/experiment/) folder. The experiments are defined in yaml files and can be used to train and evaluate the models. The experiments include the model, dataset, and training parameters.
-
-\*\*\* List of experiments \*\*\*
-
-### Build your own experiment
-
-### Training
-
-This is the official repository implementing the EPiC Flow Matching point cloud generative machine learning models from arxiv1111.11111.
-
-EPiC Flow Matching is a [Continuous Normalising Flow](https://arxiv.org/abs/1806.07366) that is trained with a simulation-free approach called [Flow Matching](https://arxiv.org/abs/2210.02747). The model uses [DeepSet](https://arxiv.org/abs/1703.06114) based [EPiC layers](https://arxiv.org/abs/2301.08128) for the architecture, which allows for good scalability to high set sizes.
-
-Additionally to the EPiC Flow Matching model, this repository also implements various other loss functions that correspond to other flow matching/diffusion-based models, like [Conditional Flow Matching](https://arxiv.org/abs/2302.00482) and [DDIM](https://arxiv.org/abs/2010.02502) based [PC-Jedi](https://arxiv.org/abs/2303.05376).
-
-The models are tested on the [JetNet dataset](https://zenodo.org/record/6975118). The JetNet dataset is used in particle physics to test point cloud generative deep learning architectures. It consists of simulated particle jets produced by proton-proton collisions in a simplified detector. The dataset is split into jets originating from tops, light quarks, gluons, W bosons, and Z bosons and has a maximum number of 150 particles per jet.
-
-This repository uses [pytorch lightning](https://www.pytorchlightning.ai/index.html), [hydra](https://hydra.cc/docs/intro/) for model configurations and supports logging with [comet](https://www.comet.com/site/) and [wandb](https://wandb.ai/site). For a deeper explanation of how to use this repository, please have a look at the [template](https://github.com/ashleve/lightning-hydra-template) directly.
-
-## How to run
+### ⚙️ Installation
 
 Install dependencies
 
@@ -193,14 +179,16 @@ LOG_DIR="/folder/folder/"
 COMET_API_TOKEN="XXXXXXXXXX"
 ```
 
+### 🧠 Training
+
 Train model with default configuration
 
 ```bash
-# train on CPU
-python src/train.py trainer=cpu
-
-# train on GPU
+# train on one GPU
 python src/train.py trainer=gpu
+
+# train on multiple GPUs
+python src/train.py trainer=ddp
 ```
 
 Train model with chosen experiment configuration from [configs/experiment/](configs/experiment/)
@@ -215,83 +203,9 @@ You can override any parameter from command line like this
 python src/train.py trainer.max_epochs=20 data.batch_size=64
 ```
 
-The experiments include
+### 📈 Evaluation
 
-<details>
-  <summary>
-    <b>fm_tops30_cond</b>
-  </summary>
-  EPiC Flow Matching trained on top30 dataset with conditioning on jet mass and pt
-</details>
-<details>
-  <summary>
-    <b>fm_tops30</b>
-  </summary>
-  EPiC Flow Matching trained on top30 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
-</details>
-<details>
-  <summary>
-    <b>fm_tops150_cond</b>
-  </summary>
-  EPiC Flow Matching trained on top150 dataset with conditioning on jet mass and pt
-</details>
-<details>
-  <summary>
-    <b>fm_tops150</b>
-  </summary>
-  EPiC Flow Matching trained on top150 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
-</details>
-<details>
-  <summary>
-    <b>fm_alljet150_cond</b>
-  </summary>
-  EPiC Flow Matching trained on all jet types with a maximum of 150 particles per jet and conditioning on jet mass and pt.
-</details>
-<details>
-  <summary>
-    <b>diffusion_tops30_cond</b>
-  </summary>
-  EPiC Jedi (DDIM diffusion based) trained on top30 dataset with conditioning on jet mass and pt
-</details>
-<details>
-  <summary>
-    <b>diffusion_tops30</b>
-  </summary>
-  EPiC Jedi (DDIM diffusion based) trained on top30 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
-</details>
-<details>
-  <summary>
-    <b>diffusion_tops150_cond</b>
-  </summary>
-  EPiC Jedi (DDIM diffusion based) trained on top150 dataset with conditioning on jet mass and pt
-</details>
-<details>
-  <summary>
-    <b>diffusion_tops150</b>
-  </summary>
-  EPiC Jedi (DDIM diffusion based) trained on top150 dataset with no additional conditioning. Jet size conditioning is a necessity for the architecture
-</details>
-<details>
-  <summary>
-    <b>diffusion_alljet150_cond</b>
-  </summary>
-  EPiC Jedi (DDIM diffusion based) trained on all jet types with a maximum of 150 particles per jet and conditioning on jet mass and pt.
-</details>
-<br>
-<details>
-  <summary>
-    <b>lhco/bigPC</b>
-  </summary>
-  In this training, the two dijet events of the LHCO dataset are put into one large point cloud, i.e. a point cloud of size 558 (2*279). This is more difficult for the model to learn and a clustering after training is also necessary to get the two dijet events back. However, the generation also works well and this shows that a model can learn large point clouds with less restrictions.
-</details>
-<details>
-  <summary>
-    <b>lhco/bigPC</b>
-  </summary>
-  In this training, the two dijet events of the LHCO dataset are put into one large point cloud, i.e. a point cloud of size 558 (2*279).
-</details>
-
-During training and evaluation, metrics and plots can be logged via comet and wandb. After training the model will be evaluated automatically and the final results will be saved locally and logged via the selected loggers. The evaluation can also be manually started like this
+During training and evaluation, metrics and plots are automatically evaluated via custom lightning callbacks and logged via comet and wandb. After training most models will also be evaluated automatically and the final results will be saved locally and logged via the selected loggers. The evaluation can also be manually started like this
 
 ```bash
 python src/eval.py experiment=experiment_name.yaml ckpt_path=checkpoint_path
@@ -305,27 +219,83 @@ python src/eval.py cfg_path=<cfg_file_path> ckpt_path=<checkpoint_path>
 
 Notebooks are available to quickly train, evaluate models and create plots.
 
-## Contributing
 
-Please feel free to contribute to this repository. If you have any questions, feel free to open an issue or contact me directly. When contributing, please make sure to follow style guidelines specified in the pre-commit hooks.
+## 🚀 Preconfigured Experiments
 
-## Note of Caution
+The experiments are defined in yaml files and specify which loss function and architecture to use, which dataset to use, and which hyperparameters to use. Feel free to create your own experiments, but some preconfigured experiments are available in the [configs/experiment/](configs/experiment/) folder. 
 
-This repository was originally used for a research project and is now being adapted to be more general. The preconfigured use cases have been tested and should work. However, some code might be a bit specific to a certain use case and could be generalized further to allow for more flexibility. Please contact me for any issues.
+<b>Click on the dataset names</b> to find out more about all the available experiments for the dataset.
 
-TODO
 
-- [ ] Context Normaliser should be deleted
+<details>
+  <summary>
+    <b>JetNet Dataset</b>
+  </summary>
+  For the JetNet dataset, the experiments from the paper [2310.00049](https://arxiv.org/abs/2310.00049) are available: 
 
-- [ ] create separate preprocessing class/ change all datamodels to scipy preprocessing
+  - `fm_tops30_cond`, `fm_tops30`, `fm_tops150_cond`, `fm_tops150`, where all are EPiC Flow Matching models trained on the top dataset. The numbers indicate whether the model is trained on the top30 or top150 dataset and the `_cond` indicates that the model is conditioned on the jet mass and pt.
+  - `diffusion_tops30_cond`, `diffusion_tops30`, `diffusion_tops150_cond`, `diffusion_tops150`, where all are EPiC-JeDi models trained on the top dataset. The numbers indicate whether the model is trained on the top30 or top150 dataset and the `_cond` indicates that the model is conditioned on the jet mass and pt.
 
-- [ ] does transformer work?
+  Although not shown in the paper, the models can easily be trained on different combinations of jet types and jet sizes. Examples are:
+  - `fm_alljet150_cond`, which is an EPiC Flow Matching model trained on all jet types with a maximum of 150 particles per jet and conditioning on jet mass and pt.
+  - `diffusion_alljet150_cond`, which is an EPiC-JeDi model trained on all jet types with a maximum of 150 particles per jet and conditioning on jet mass and pt.
+</details>
 
-- model folder is okay
 
-## Citation
+<details>
+  <summary>
+    <b>LHCO Dataset</b>
+  </summary>
+The LHCO dataset consists of two dijets per event, which allows for multiple ways of generating these two jets. By clustering the event into two jets, both jets can be seen as a single point cloud similarly to the JetNet dataset. Using this clustering, the following experiments are available for the point cloud models:
 
-When using this repository in research, please cite the original papers:
+
+- `lhco/both_jets`  One EPiC-FM model trained on point clouds of jet 1 and jet 2 at the same time (experiment from the paper [2310.06897](https://arxiv.org/abs/2310.06897)) 
+- `lhco/x_jet` / `lhco_y_jet` One EPiC-FM model trained on one point cloud, where `lhco/x_jet` trains the model on jet 1 and `lhco/y_jet` trains the model on jet 2
+- `lhco/jets_crossattention` Same as `lhco/both_jets` but with a crossattention transformer from [2307.06836](https://arxiv.org/abs/2307.06836) instead of the EPiC architecture
+- `lhco/transformer` Same as `lhco/both_jets` but with a full transformer from [2307.06836](https://arxiv.org/abs/2307.06836) instead of the EPiC architecture
+
+All these models require a conditioning on the jet features of the full dijet event:
+
+- `lhco/jet_features` FM-Model with fully connected architecture trained on the jet features of both dijets to condition the generation of the point clouds (experiment from the paper [2310.06897](https://arxiv.org/abs/2310.06897))
+
+
+Instead of the two step approach, the event can also be generated in more complex ways:
+
+- `lhco/bigPC` Both point clouds of the dijets are put into one large point cloud and the model is trained on this large point cloud. In the evaluation, the point cloud is clustered into two jets again
+- `lhco/wholeEvent` The generative model can also directly be trained on the whole event, which is more difficult for the model to learn and a clustering for evaluation is also necessary. However, this still works well and shows that these models are powerful enough to learn large point clouds with less restrictions.
+
+
+Additionally, <b>classifiers</b> are available to check, if the generated events are distinguishable from the original events.
+
+- `lhco/epic_classifier` point cloud classifier based on the EPiC architecture. Paths to data must be specified in the config file.
+- `lhco/hl_classifier` fully connected classifier as in [2109.00546](https://arxiv.org/abs/2109.00546) to compare high level features. Paths to data must be specified in the config file.
+</details>
+<details>
+  <summary>
+    <b>JetClass Dataset</b>
+  </summary>
+  
+  - `jetclass/jetclass_cond` EPiC Flow Matching model trained on the JetClass dataset and conditioned
+  - `jetclass/jetclass_classifier` After evaluating the generative model, a classifier test can be run. For this, the paths to the generated data needs to be specified in the config file.
+</details>
+<details>
+  <summary>
+    <b>CaloChallenge Dataset</b>
+  </summary>
+  TBD
+</details>
+
+## 🫱🏼‍🫲🏽 Contributing
+
+Please feel free to contribute to this repository. If you have any questions, feel free to open an issue or contact me directly. When contributing, please make sure to follow style guidelines by using the pre-commit hooks.
+
+## ⚠ Note of Caution
+
+This repository was originally used for a research project and is now being adapted to be more general. The experiments published in the papers have been tested and should work. All other preconfigured experiments should work but might have some minor issues and some configurations of datasets/models might not work out of the box. Some code might be a bit specific to a certain use case and could be generalized further to allow for more flexibility. Additionally, some leftovers from development might also still exist that don't work. Please create an issue if you encounter any problems or have any questions.
+
+## 📚 Citation
+
+When using this repository in research, please cite the following papers:
 
 ```bibtex
 @misc{birk2023flow,
@@ -359,3 +329,16 @@ When using this repository in research, please cite the original papers:
       primaryClass={hep-ph}
 }
 ```
+
+
+## TODOs
+
+- [ ] Context Normaliser should be deleted
+
+- [ ] create separate preprocessing class/ change all datamodels to scipy preprocessing
+
+- [ ] does transformer work?
+
+- [ ] clean up notebooks
+- [ ] add dataset
+- [ ] setup file for installation
