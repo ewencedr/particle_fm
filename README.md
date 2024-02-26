@@ -2,7 +2,6 @@
 
 # Particle-FM/Diffusion
 
-
 [![python](https://img.shields.io/badge/-Python_3.10-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![pytorch](https://img.shields.io/badge/PyTorch_2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
 [![lightning](https://img.shields.io/badge/-Lightning_2.0+-792ee5?logo=pytorchlightning&logoColor=white)](https://pytorchlightning.ai/)
@@ -26,18 +25,20 @@ This repository contains multiple (mostly) generative neural networks and multip
 ### Generative Models
 
 #### Architectures:
+
 - [EPiC](https://arxiv.org/abs/2301.08128) (for Sets, based on [DeepSets](https://arxiv.org/abs/1703.06114))
 - [Full Transformer](https://arxiv.org/abs/2307.06836) (for Sets)
 - [CrossAttention Transformer](https://arxiv.org/abs/2307.06836) (for Sets)
 - Fully Connected
 
 #### Loss Functions:
-  - [Flow Matching](https://arxiv.org/abs/2210.02747)
-  - [Conditional Flow Matching](https://arxiv.org/abs/2302.00482)
-  - [OT Conditional Flow Matching](https://arxiv.org/abs/2302.00482)
-  - [PC-JeDi](https://arxiv.org/abs/2303.05376) (based on [Score-Based Models through SDEs](https://arxiv.org/abs/2011.13456))
-  - [PC-Droid](https://arxiv.org/abs/2307.06836) (based on [EDM Diffusion](https://arxiv.org/abs/2206.00364))
-  - [Flow Matching with Self-Conditioning](https://arxiv.org/abs/2310.05764) (only implemented in notebook)
+
+- [Flow Matching](https://arxiv.org/abs/2210.02747)
+- [Conditional Flow Matching](https://arxiv.org/abs/2302.00482)
+- [OT Conditional Flow Matching](https://arxiv.org/abs/2302.00482)
+- [PC-JeDi](https://arxiv.org/abs/2303.05376) (based on [Score-Based Models through SDEs](https://arxiv.org/abs/2011.13456))
+- [PC-Droid](https://arxiv.org/abs/2307.06836) (based on [EDM Diffusion](https://arxiv.org/abs/2206.00364))
+- [Flow Matching with Self-Conditioning](https://arxiv.org/abs/2310.05764) (only implemented in notebook)
 
 ### Classification Models
 
@@ -45,62 +46,71 @@ This repository contains multiple (mostly) generative neural networks and multip
 - Fully Connected Classifier
 
 ## 📊 Datasets
+
 Click on the dataset to get more information about the dataset, the features, and how to download it.
 
 <details>
   <summary>
     <b>JetNet</b>
   </summary>
-  
-  - <b>Description:</b> ([dataset reference](https://arxiv.org/abs/2106.11535))
-      - Simulated particle jets produced by proton-proton collisions in a simplified detector. The dataset is split into jets originating from tops, light quarks, gluons, W bosons, and Z bosons and has a maximum number of 150 particles per jet.
 
-  - <b>Features:</b>
+- <b>Description:</b> ([dataset reference](https://arxiv.org/abs/2106.11535))
 
-    - Lightning DataModule for easy exchange of datasets
-    - Preprocessing and postprocessing of data
-    - Evaluation during training and after training with comet and wandb
-    - Many settings for trainings (e.g. conditioning on selected features, training on muliple jet types, etc.)
-  - <b>Download</b>
-    Can be downloaded from [Zenodo](https://zenodo.org/records/6975118) and should be saved under `data_folder_specified_in_env/jetnet/` 
+  - Simulated particle jets produced by proton-proton collisions in a simplified detector. The dataset is split into jets originating from tops, light quarks, gluons, W bosons, and Z bosons and has a maximum number of 150 particles per jet.
+
+- <b>Features:</b>
+
+  - Lightning DataModule for easy exchange of datasets
+  - Preprocessing and postprocessing of data
+  - Evaluation during training and after training with comet and wandb
+  - Many settings for trainings (e.g. conditioning on selected features, training on muliple jet types, etc.)
+
+- <b>Download</b>
+  Can be downloaded from [Zenodo](https://zenodo.org/records/6975118) and should be saved under `data_folder_specified_in_env/jetnet/`
+
 </details>
 
 <details>
   <summary>
-    <b>LHC Olympics</b> 
+    <b>LHC Olympics</b>
   </summary>
-  
-  - <b>Description:</b> ([dataset reference](https://lhco2020.github.io/homepage/))
-      - A dataset for Anomaly Detection, where the generative models are used to generate the Standard Model background. It consists of 1M QCD simulated dijet events that after clustering result in 2 jets per event with up to 279 particles per jet.
 
-  - <b>Features:</b>
+- <b>Description:</b> ([dataset reference](https://lhco2020.github.io/homepage/))
 
-    - Lightning DataModule for easy exchange of datasets
-    - Preprocessing and postprocessing of data
-    - Evaluation during training and after training with comet and wandb
-    - Many settings for trainings (e.g. conditioning on selected features, training separately on dijets, on both dijety, on the whole event, etc.)
-  - <b>Download and Preprocessing</b>
-    Can be downloaded from [Zenodo](https://zenodo.org/records/6466204). The  `events_anomalydetection_v2.h5` is the file needed as it contains all the particles from an event. Before using, the events need to be clustered and brought into point cloud format. This preprocessing can be done with this [Code](https://github.com/ewencedr/FastJet-LHCO).
-    The preprocessed data should be saved under `your_spedata_folder_specified_in_envlhco/`
+  - A dataset for Anomaly Detection, where the generative models are used to generate the Standard Model background. It consists of 1M QCD simulated dijet events that after clustering result in 2 jets per event with up to 279 particles per jet.
+
+- <b>Features:</b>
+
+  - Lightning DataModule for easy exchange of datasets
+  - Preprocessing and postprocessing of data
+  - Evaluation during training and after training with comet and wandb
+  - Many settings for trainings (e.g. conditioning on selected features, training separately on dijets, on both dijety, on the whole event, etc.)
+
+- <b>Download and Preprocessing</b>
+  Can be downloaded from [Zenodo](https://zenodo.org/records/6466204). The  `events_anomalydetection_v2.h5` is the file needed as it contains all the particles from an event. Before using, the events need to be clustered and brought into point cloud format. This preprocessing can be done with this [Code](https://github.com/ewencedr/FastJet-LHCO).
+  The `events_anomalydetection_v2.h5` and the preprocessed data should be saved under `your_spedata_folder_specified_in_env/lhco`
+
 </details>
-
 
 <details>
   <summary>
     <b>JetClass</b>
   </summary>
 
-  - <b>Description:</b> ([dataset reference](https://arxiv.org/abs/2202.03772))
-      - Simulated particle jets like in JetNet, but  JetClass provided much more data, more jet types and more particle features.
+- <b>Description:</b> ([dataset reference](https://arxiv.org/abs/2202.03772))
 
-  - <b>Features:</b>
+  - Simulated particle jets like in JetNet, but  JetClass provided much more data, more jet types and more particle features.
 
-    - Lightning DataModule for easy exchange of datasets
-    - Preprocessing and postprocessing of data
-    - Evaluation during training and after training with comet and wandb
-    - Many settings for trainings (e.g. conditioning on selected features, training on muliple jet types, etc.)
-  - <b>Download and Preprocessing</b>
-    Can be downloaded from [Zenodo](https://zenodo.org/records/6619768).
+- <b>Features:</b>
+
+  - Lightning DataModule for easy exchange of datasets
+  - Preprocessing and postprocessing of data
+  - Evaluation during training and after training with comet and wandb
+  - Many settings for trainings (e.g. conditioning on selected features, training on muliple jet types, etc.)
+
+- <b>Download and Preprocessing</b>
+  Can be downloaded from [Zenodo](https://zenodo.org/records/6619768).
+
 </details>
 <details>
   <summary>
@@ -113,18 +123,20 @@ Click on the dataset to get more information about the dataset, the features, an
     <b>TwoMoons</b>
   </summary>
 
-  - <b>Description:</b> ([dataset reference](https://lhco2020.github.io/homepage/))
-      - Simple toy dataset for testing the models in the notebook. Does not need to be downloaded because the dataset can be generated via a [scikit-learn function](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_moons.html).
+- <b>Description:</b> ([dataset reference](https://lhco2020.github.io/homepage/))
+  - Simple toy dataset for testing the models in the notebook. Does not need to be downloaded because the dataset can be generated via a [scikit-learn function](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_moons.html).
+
 </details>
 
 ## Additional Features
+
 - Training and Evaluation of models
 - Callbacks for logging and visualization
 - Preprocessing and postprocessing of data
 - Notebooks for quick training and evaluation
 - Notebooks for tinkering with loss functions and architectures
 - EMA implementation (Exponential Moving Average)
-- Best Practices for coding thanks to the [Lightning-Hydra-Template]() with all major benefits of [PyTorch Lightning](https://www.pytorchlightning.ai/index.html) and [Hydra](https://hydra.cc/docs/intro/) (configurations, logging, multi-gpu, datamodules for easy exchange of datasets, etc.)
+- Best Practices for coding thanks to the [Lightning-Hydra-Template](<>) with all major benefits of [PyTorch Lightning](https://www.pytorchlightning.ai/index.html) and [Hydra](https://hydra.cc/docs/intro/) (configurations, logging, multi-gpu, datamodules for easy exchange of datasets, etc.)
 
 ## ⚡️ Quickstart
 
@@ -266,6 +278,18 @@ The experiments include
   EPiC Jedi (DDIM diffusion based) trained on all jet types with a maximum of 150 particles per jet and conditioning on jet mass and pt.
 </details>
 <br>
+<details>
+  <summary>
+    <b>lhco/bigPC</b>
+  </summary>
+  In this training, the two dijet events of the LHCO dataset are put into one large point cloud, i.e. a point cloud of size 558 (2*279). This is more difficult for the model to learn and a clustering after training is also necessary to get the two dijet events back. However, the generation also works well and this shows that a model can learn large point clouds with less restrictions.
+</details>
+<details>
+  <summary>
+    <b>lhco/bigPC</b>
+  </summary>
+  In this training, the two dijet events of the LHCO dataset are put into one large point cloud, i.e. a point cloud of size 558 (2*279).
+</details>
 
 During training and evaluation, metrics and plots can be logged via comet and wandb. After training the model will be evaluated automatically and the final results will be saved locally and logged via the selected loggers. The evaluation can also be manually started like this
 
@@ -282,35 +306,41 @@ python src/eval.py cfg_path=<cfg_file_path> ckpt_path=<checkpoint_path>
 Notebooks are available to quickly train, evaluate models and create plots.
 
 ## Contributing
+
 Please feel free to contribute to this repository. If you have any questions, feel free to open an issue or contact me directly. When contributing, please make sure to follow style guidelines specified in the pre-commit hooks.
 
 ## Note of Caution
+
 This repository was originally used for a research project and is now being adapted to be more general. The preconfigured use cases have been tested and should work. However, some code might be a bit specific to a certain use case and could be generalized further to allow for more flexibility. Please contact me for any issues.
 
 TODO
+
 - [ ] Context Normaliser should be deleted
+
 - [ ] create separate preprocessing class/ change all datamodels to scipy preprocessing
+
 - [ ] does transformer work?
 
 - model folder is okay
 
 ## Citation
-When using this repository in research, please cite the original papers:
 
+When using this repository in research, please cite the original papers:
 
 ```bibtex
 @misc{birk2023flow,
-      title={Flow Matching Beyond Kinematics: Generating Jets with Particle-ID and Trajectory Displacement Information}, 
+      title={Flow Matching Beyond Kinematics: Generating Jets with Particle-ID and Trajectory Displacement Information},
       author={Joschka Birk and Erik Buhmann and Cedric Ewen and Gregor Kasieczka and David Shih},
       year={2023},
       eprint={2312.00123},
       archivePrefix={arXiv},
       primaryClass={hep-ph}
 }
-````
+```
+
 ```bibtex
 @misc{buhmann2023phase,
-      title={Full Phase Space Resonant Anomaly Detection}, 
+      title={Full Phase Space Resonant Anomaly Detection},
       author={Erik Buhmann and Cedric Ewen and Gregor Kasieczka and Vinicius Mikuni and Benjamin Nachman and David Shih},
       year={2023},
       eprint={2310.06897},
@@ -318,9 +348,10 @@ When using this repository in research, please cite the original papers:
       primaryClass={hep-ph}
 }
 ```
+
 ```bibtex
 @misc{buhmann2023epicly,
-      title={EPiC-ly Fast Particle Cloud Generation with Flow-Matching and Diffusion}, 
+      title={EPiC-ly Fast Particle Cloud Generation with Flow-Matching and Diffusion},
       author={Erik Buhmann and Cedric Ewen and Darius A. Faroughy and Tobias Golling and Gregor Kasieczka and Matthew Leigh and Guillaume Quétant and John Andrew Raine and Debajyoti Sengupta and David Shih},
       year={2023},
       eprint={2310.00049},
