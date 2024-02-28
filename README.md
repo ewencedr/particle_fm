@@ -295,7 +295,8 @@ Additionally, <b>classifiers</b> are available to check, if the generated events
   <summary>
     <b>CaloChallenge Dataset</b>
   </summary>
-  TBD
+  
+  - `calo_challenge/fm_mdma` Flow Matching model with MDMA architecture trained on the CaloChallenge dataset
 </details>
 
 ## 🫱🏼‍🫲🏽 Contributing
