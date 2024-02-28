@@ -4,9 +4,9 @@
 # python train.py experiment=fm_tops
 
 defaults:
-  - override /data: /jetnet/jetnet_tops_30_jedi.yaml
+  - override /data: /calo_challenge/calo_challenge.yaml
   - override /model: flow_matching_mdma.yaml
-  - override /callbacks: /jetnet/jetnet.yaml
+  - override /callbacks: /calo_challenge/calo_challenge.yaml
   - override /trainer: gpu.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -14,7 +14,7 @@ defaults:
 
 
 
-tags: ["flow_matching", "tops150", "cond", "MDMA"]
+tags: ["flow_matching", "CaloChallenge", "cond", "MDMA"]
 
 seed: 12345
 
@@ -23,6 +23,9 @@ trainer:
   max_epochs: 10000
   gradient_clip_val: 0.5
 
+model:
+  features: 4
+  num_particles: 150
 
 callbacks:
   ema:
@@ -33,7 +36,7 @@ callbacks:
     evaluate_ema_weights_instead: True
 
   calo_challenge_eval:
-    every_n_epochs: epochs10000
+    every_n_epochs: 2
     num_jet_samples: -1
     data_type: "val"
     use_ema: ${callbacks.ema.evaluate_ema_weights_instead}
@@ -52,12 +55,12 @@ callbacks:
   #  patience: 2000
   #  mode: "min"
 
-task_name: "fm_tops-${model.num_particles}-MDMA"
+task_name: "CaloChallenge-${model.num_particles}-MDMA"
 
 logger:
   wandb:
     tags: ${tags}
-    group: "fm_tops"
+    group: "CaloChallenge"
     name: ${task_name}
   comet:
     experiment_name: ${task_name}

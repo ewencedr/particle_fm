@@ -9,6 +9,14 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
 
+from data.components.preprocess_calo_challenge import ScalerBase, DQ, LogitTransformer
+from data.components.preprocess_calo_challenge_new import (
+    ScalerBaseNew,
+    DQLinear,
+    LogitTransformer,
+    SqrtTransformer,
+)
+
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 # the setup_root above is equivalent to:

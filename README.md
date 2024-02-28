@@ -127,7 +127,16 @@ Click on the dataset to get more information about the dataset, the features, an
   <summary>
     <b>CaloChallenge</b>
   </summary>
-  TBD
+  
+  - <b>Description:</b> ([dataset reference](https://calochallenge.github.io/homepage/))
+
+    - Dataset 2 from the CaloChallenge, where the data is represented as point clouds (see also [here](https://indico.cern.ch/event/1253794/contributions/5588648/attachments/2746383/4778888/AttentionToMeanFields_ml4jets.pdf))
+    - Thanks to [Benno Käch](https://github.com/kaechb) for providing the code for the dataloader
+
+- <b>Download and Preprocessing</b>:
+
+  - Can be downloaded from [Zenodo](https://zenodo.org/records/6366271)
+  - Some filepaths need to be adjusted in the datamodule
 </details>
 <details>
   <summary>

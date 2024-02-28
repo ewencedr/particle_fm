@@ -1,5 +1,5 @@
-from src.data.components.metrics import calculate_all_wasserstein_metrics
-from src.data.components.utils import (
+from .metrics import calculate_all_wasserstein_metrics
+from .utils import (
     calculate_jet_features,
     center_jets,
     count_parameters,
@@ -11,4 +11,11 @@ from src.data.components.utils import (
     mask_data,
     normalize_tensor,
     one_hot_encode,
+)
+from .preprocess_calo_challenge import ScalerBase, DQ, LogitTransformer
+from .preprocess_calo_challenge_new import (
+    ScalerBaseNew,
+    DQLinear,
+    LogitTransformer,
+    SqrtTransformer,
 )
