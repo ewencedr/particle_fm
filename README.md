@@ -148,15 +148,15 @@ Click on the dataset to get more information about the dataset, the features, an
 
 </details>
 
-## 🌟 Additional Features
+## 🌟 Features
 
-- Training and Evaluation of models
-- Callbacks for logging and visualization
-- Preprocessing and postprocessing of data
-- Notebooks for quick training and evaluation
-- Notebooks for tinkering with loss functions and architectures
-- EMA implementation (Exponential Moving Average)
-- Best Practices for coding thanks to the [Lightning-Hydra-Template](<>) with all major benefits of [PyTorch Lightning](https://www.pytorchlightning.ai/index.html) and [Hydra](https://hydra.cc/docs/intro/) (configurations, logging, multi-gpu, datamodules for easy exchange of datasets, etc.)
+⭐️ Easily train multiple models on various particle physics datasets
+
+⭐️ Lightning DataModules provided for each dataset to allow easy exchange of datasets with automatic preprocessing and postprocessing
+
+⭐️ Lightning Callbacks provided for each dataset to automatically evaluation during training and log to [wandb](https://wandb.ai/site) and [comet](https://www.comet.com/site/) (EMA callback also available)
+
+⭐️ Best Practices for coding thanks to the [Lightning-Hydra-Template](https://github.com/ashleve/lightning-hydra-template) with all major benefits of [PyTorch Lightning](https://www.pytorchlightning.ai/index.html) and [Hydra](https://hydra.cc/docs/intro/) (configurations, logging, multi-gpu, datamodules, callbacks, hyperparameter search, continuous integration etc.). See [Lightning-Hydra-Template](https://github.com/ashleve/lightning-hydra-template) for more information.
 
 ## ⚡️ Quickstart
 
@@ -343,16 +343,3 @@ When using this repository in research, please cite the following papers:
       primaryClass={hep-ph}
 }
 ```
-
-
-## TODOs
-
-- [ ] Context Normaliser should be deleted
-
-- [ ] create separate preprocessing class/ change all datamodels to scipy preprocessing
-
-- [ ] does transformer work?
-
-- [ ] clean up notebooks
-- [ ] add dataset
-- [ ] setup file for installation
