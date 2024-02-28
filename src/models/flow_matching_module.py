@@ -12,7 +12,7 @@ from zuko.utils import odeint
 from src.models.components.diffusion import VPDiffusionSchedule
 from src.utils.pylogger import get_pylogger
 
-from .components import EPiC_encoder, IterativeNormLayer
+from .components import EPiC_encoder, IterativeNormLayer, MDMA
 from .components.droid_transformer import (
     FullCrossAttentionEncoder,
     FullTransformerEncoder,
@@ -21,8 +21,8 @@ from .components.losses import (
     ConditionalFlowMatchingLoss,
     ConditionalFlowMatchingOTLoss,
     DiffusionLoss,
-    FlowMatchingLoss,
     DroidLoss,
+    FlowMatchingLoss,
 )
 from .components.solver import ddim_sampler, euler_maruyama_sampler
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
@@ -166,6 +166,12 @@ class CNF(nn.Module):
                 ctxt_dim=global_cond_dim + 2 * frequencies,
                 **net_config,
             )
+        elif model == "mdma":
+            self.net = MDMA(
+                input_dim=input_dim,
+                **net_config,
+            )
+
         else:
             raise NotImplementedError(f"Model {model} not implemented.")
 

@@ -1,0 +1,47 @@
+_target_: src.models.flow_matching_module.SetFlowMatchingLitModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.00005
+
+scheduler:
+  _target_: src.schedulers.lr_scheduler.CosineWarmupScheduler
+  _partial_: true
+  warmup: 1000
+  max_iters: 10000
+
+model: "mdma"
+net_config:
+  feats: 3
+  latent: 16
+  layers: 4
+  hidden_dim: 128
+  activation: "leaky_relu"
+  wrapper_func: "weight_norm"
+  frequencies: 6
+  num_points: 150
+  t_local_cat: False
+  t_global_cat: False
+  global_cond_dim: 0
+  local_cond_dim: 0
+  dropout: 0.0
+  sum_scale: 1e-2
+
+t_emb: cosine
+frequencies: 16
+#t_global_cat: True
+#t_local_cat: True
+add_time_to_input: True
+
+loss_type: 'FM-OT'
+diff_config:
+  max_sr: 0.999
+  min_sr: 0.02
+criterion: 'mse'
+sigma: 1e-4
+
+use_normaliser: False
+normaliser_config:
+  max_n: 2000

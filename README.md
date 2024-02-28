@@ -34,6 +34,7 @@ This repository contains code for the following papers as well as additional mod
 - [EPiC](https://arxiv.org/abs/2301.08128) (for Sets, based on [DeepSets](https://arxiv.org/abs/1703.06114))
 - [Full Transformer](https://arxiv.org/abs/2307.06836) (for Sets)
 - [CrossAttention Transformer](https://arxiv.org/abs/2307.06836) (for Sets)
+- [MDMA](https://arxiv.org/abs/2305.15254) (for Sets, CrossAttention Transformer)
 - Fully Connected
 
 #### Loss Functions:
@@ -239,6 +240,9 @@ The experiments are defined in yaml files and specify which loss function and ar
   Although not shown in the paper, the models can easily be trained on different combinations of jet types and jet sizes. Examples are:
   - `fm_alljet150_cond`, which is an EPiC Flow Matching model trained on all jet types with a maximum of 150 particles per jet and conditioning on jet mass and pt.
   - `diffusion_alljet150_cond`, which is an EPiC-JeDi model trained on all jet types with a maximum of 150 particles per jet and conditioning on jet mass and pt.
+
+  Additionally, other architectures can be used:
+  - `fm_mdma`, which is an EPiC Flow Matching model trained on the top dataset with the MDMA architecture
 </details>
 
 
