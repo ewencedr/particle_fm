@@ -1,6 +1,6 @@
-from torch import nn
 import torch
 import torch.nn.functional as F
+from torch import nn
 
 
 class Block(nn.Module):
@@ -112,7 +112,7 @@ class MDMA(nn.Module):
         self.t_global_cat = t_global_cat
 
         super().__init__()
-        self.embbed = nn.Linear(
+        self.embed = nn.Linear(
             input_dim + 2 * frequencies * t_local_cat + local_cat_cond, hidden_dim
         )
         self.embbed_cls = nn.Linear(hidden_dim + 1 + global_cond_dim, latent)
@@ -156,7 +156,7 @@ class MDMA(nn.Module):
             x = torch.cat((x, t_in), dim=-1)
         if self.local_cat_cond:
             x = torch.cat((x, global_cond_in.unsqueeze(-1).expand(-1, x.shape[1], 1)), dim=-1)
-        x = self.act(self.embbed(x))
+        x = self.act(self.embed(x))
         x[~mask.bool().squeeze(-1)] = 0
         x_cls = x.sum(1).unsqueeze(1).clone() / self.avg_n
         x_cls = torch.cat((x_cls, mask.sum(1, keepdim=True).reshape(-1, 1, 1)), dim=-1)

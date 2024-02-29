@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from particle_fm.utils.pylogger import get_pylogger
 
 logger_el = get_pylogger("epic_layer")

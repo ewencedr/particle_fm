@@ -3,10 +3,9 @@ from typing import Any, Dict, Optional, Tuple
 import h5py
 import numpy as np
 import torch
+from particle_fm.data.components import normalize_tensor
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
-
-from particle_fm.data.components import normalize_tensor
 
 
 class HLClassifierDataModule(LightningDataModule):

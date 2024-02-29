@@ -2,7 +2,7 @@
 
 from setuptools import find_packages, setup
 
-with open("README", "r") as f:
+with open("README") as f:
     readme = f.read()
 
 setup(

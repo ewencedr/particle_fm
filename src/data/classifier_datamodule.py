@@ -4,9 +4,6 @@ import energyflow as ef
 import h5py
 import numpy as np
 import torch
-from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset
-
 from particle_fm.data.components import normalize_tensor
 from particle_fm.data.components.utils import (
     get_jet_data,
@@ -15,6 +12,8 @@ from particle_fm.data.components.utils import (
     sort_consts,
     sort_jets,
 )
+from pytorch_lightning import LightningDataModule
+from torch.utils.data import DataLoader, Dataset
 
 
 class ClassifierDataModule(LightningDataModule):

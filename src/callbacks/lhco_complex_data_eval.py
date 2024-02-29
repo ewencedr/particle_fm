@@ -6,7 +6,6 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
-
 from particle_fm.data.components.metrics import (
     calculate_all_wasserstein_metrics,
     calculate_wasserstein_metrics_jets,
@@ -20,7 +19,11 @@ from particle_fm.schedulers.logging_scheduler import (
 )
 from particle_fm.utils.data_generation import generate_data
 from particle_fm.utils.lhco_utils import cluster_data, plot_unprocessed_data_lhco
-from particle_fm.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
+from particle_fm.utils.plotting import (
+    apply_mpl_styles,
+    plot_data,
+    prepare_data_for_plotting,
+)
 from particle_fm.utils.pylogger import get_pylogger
 
 from .ema import EMA
@@ -29,8 +32,9 @@ log = get_pylogger("LHCOEvaluationCallback")
 
 
 class LHCOEvaluationCallback(pl.Callback):
-    """Create a callback to evaluate the model on the test dataset of the LHCO dataset when using the more complex datastructures where clustering is required and log
-    the results to loggers. Currently supported are CometLogger and WandbLogger.
+    """Create a callback to evaluate the model on the test dataset of the LHCO dataset when using
+    the more complex datastructures where clustering is required and log the results to loggers.
+    Currently supported are CometLogger and WandbLogger.
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.

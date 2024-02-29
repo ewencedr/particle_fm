@@ -2,6 +2,7 @@
 
 Usage: python particle_fm/eval_ckpt.py --ckpt <path_to_ckpt> --n_samples <int>
 """
+
 import argparse
 import logging
 import os
@@ -26,7 +27,6 @@ from jetnet.evaluation import w1p
 
 # set env variable DATA_DIR again because of hydra
 from omegaconf import OmegaConf
-
 from particle_fm.data.components import calculate_all_wasserstein_metrics
 from particle_fm.data.components.metrics import (
     reversed_kl_divergence_batched,

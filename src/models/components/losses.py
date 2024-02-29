@@ -6,7 +6,6 @@ import numpy as np
 import ot as pot
 import torch
 import torch.nn as nn
-
 from particle_fm.models.components.diffusion import VPDiffusionSchedule
 from particle_fm.utils.pylogger import get_pylogger
 
@@ -271,7 +270,7 @@ class DiffusionLoss(nn.Module):
         # Simple noise loss is for "perceptual quality"
         simple_loss = self.criterion(noises, pred_noises) * mask
 
-        # MLE loss is for maximum liklihood training
+        # MLE loss is for maximum likelihood training
         if self.mle_loss_weight:
             betas = self.diff_sched.get_betas(diffusion_times.view(-1, 1, 1))
             mle_weights = betas / noise_rates

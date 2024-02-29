@@ -5,10 +5,9 @@ import h5py
 import numpy as np
 import pandas as pd
 import torch
+from particle_fm.utils.pylogger import get_pylogger
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
-
-from particle_fm.utils.pylogger import get_pylogger
 
 from .components import (
     center_jets,
@@ -22,8 +21,9 @@ log = get_pylogger("LHCOComplexDataDataModule")
 
 
 class LHCOComplexDataDataModule(LightningDataModule):
-    """LightningDataModule for LHCO dataset, where the data is processed such that both jets are combined into one data structure. If no conditioning is used, the conditioning tensor
-    will be a tensor of zeros.
+    """LightningDataModule for LHCO dataset, where the data is processed such that both jets are
+    combined into one data structure. If no conditioning is used, the conditioning tensor will be a
+    tensor of zeros.
 
     Args:
         val_fraction (float, optional): Fraction of data to use for validation. Between 0 and 1. Defaults to 0.15.

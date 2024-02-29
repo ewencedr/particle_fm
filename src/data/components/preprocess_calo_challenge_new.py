@@ -1,29 +1,25 @@
 import os
+from pathlib import Path
+
+import h5py
+import joblib
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import h5py
-from pathlib import Path
-import joblib
-import matplotlib.pyplot as plt
+from scipy.stats import rv_continuous
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import (
-    PowerTransformer,
-    StandardScaler,
     MinMaxScaler,
+    PowerTransformer,
     QuantileTransformer,
+    StandardScaler,
 )
 from tqdm import tqdm
 
-import matplotlib
-import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import PowerTransformer, StandardScaler, MinMaxScaler
-from scipy.stats import rv_continuous
-
 # Custom transformer for logit transformation
 matplotlib.use("Agg")
-from scipy.stats import rv_continuous
 
 
 class LogitTransformer(BaseEstimator, TransformerMixin):
@@ -204,14 +200,14 @@ class ScalerBaseNew:
         self.featurenames = featurenames
         self.n_features = len(featurenames)
         self.data_dir = data_dir
-        self.scalerpath = Path(data_dir) / "scaler_{}.gz".format(name)
+        self.scalerpath = Path(data_dir) / f"scaler_{name}.gz"
         self.name = name
         if self.scalerpath.is_file() and not overwrite:
             self.transfs = joblib.load(self.scalerpath)
 
     def save_scalar(self, pcs, save=False):
-        # The features need to be converted to numpy immediatly
-        # otherwise the queuflow afterwards doesnt work
+        # The features need to be converted to numpy immediately
+        # otherwise the queuflow afterwards does not work
         print("pre scaling")
         pcs = pcs.astype(np.float64)
         self.plot_scaling(pcs)

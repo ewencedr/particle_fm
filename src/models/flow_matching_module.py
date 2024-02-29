@@ -4,15 +4,14 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from particle_fm.models.components.diffusion import VPDiffusionSchedule
+from particle_fm.utils.pylogger import get_pylogger
 from torch import Tensor
 from torch.distributions import Normal
 from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
-from particle_fm.models.components.diffusion import VPDiffusionSchedule
-from particle_fm.utils.pylogger import get_pylogger
-
-from .components import EPiC_encoder, IterativeNormLayer, MDMA
+from .components import MDMA, EPiC_encoder, IterativeNormLayer
 from .components.droid_transformer import (
     FullCrossAttentionEncoder,
     FullTransformerEncoder,

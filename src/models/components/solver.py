@@ -4,9 +4,8 @@ JeDi/blob/main/src/models/diffusion.py."""
 from typing import Optional, Tuple
 
 import torch
-from tqdm import tqdm
-
 from particle_fm.models.components.diffusion import VPDiffusionSchedule
+from tqdm import tqdm
 
 
 def ddim_predict(

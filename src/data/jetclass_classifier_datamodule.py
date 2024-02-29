@@ -7,10 +7,9 @@ import h5py
 import numpy as np
 import torch
 import vector
+from particle_fm.utils.pylogger import get_pylogger
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset
-
-from particle_fm.utils.pylogger import get_pylogger
 
 logger = get_pylogger(__name__)
 

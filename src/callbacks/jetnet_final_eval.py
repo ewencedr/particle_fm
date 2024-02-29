@@ -11,8 +11,10 @@ import pytorch_lightning as pl
 import torch
 import wandb
 import yaml
-
-from particle_fm.data.components import calculate_all_wasserstein_metrics, normalize_tensor
+from particle_fm.data.components import (
+    calculate_all_wasserstein_metrics,
+    normalize_tensor,
+)
 from particle_fm.data.components.metrics import wasserstein_distance_batched
 from particle_fm.utils.data_generation import generate_data
 from particle_fm.utils.jet_substructure import dump_hlvs

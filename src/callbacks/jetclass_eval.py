@@ -10,7 +10,6 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
-
 from particle_fm.data.components import calculate_all_wasserstein_metrics
 from particle_fm.data.components.metrics import wasserstein_distance_batched
 from particle_fm.schedulers.logging_scheduler import (

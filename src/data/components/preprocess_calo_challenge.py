@@ -1,20 +1,17 @@
 import os
-import numpy as np
-import torch
-import h5py
 from pathlib import Path
+
+import h5py
 import joblib
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import PowerTransformer, StandardScaler, MinMaxScaler
+import numpy as np
+import torch
+from sklearn.preprocessing import MinMaxScaler, PowerTransformer, StandardScaler
 from tqdm import tqdm
 
-
 data_dir = "/beegfs/desy/user/kaechben/calochallenge/"
-import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import PowerTransformer, StandardScaler, MinMaxScaler
 
 
 # Custom transformer for logit transformation
@@ -64,13 +61,13 @@ class ScalerBase:
         self.featurenames = featurenames
         self.n_features = len(self.transfs)
 
-        self.scalerpath = Path(data_dir) / "scaler_{}.gz".format(name)
+        self.scalerpath = Path(data_dir) / f"scaler_{name}.gz"
         if self.scalerpath.is_file():
             self.transfs = joblib.load(self.scalerpath)
 
     def save_scalar(self, pcs: torch.Tensor):
-        # The features need to be converted to numpy immediatly
-        # otherwise the queuflow afterwards doesnt work
+        # The features need to be converted to numpy immediately
+        # otherwise the queuflow afterwards does not work
         assert pcs.dim() == 2
         assert self.n_features == pcs.shape[1]
         pcs = pcs.detach().cpu().numpy()

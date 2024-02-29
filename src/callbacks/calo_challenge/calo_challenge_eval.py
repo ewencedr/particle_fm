@@ -1,11 +1,13 @@
+import traceback
 import warnings
 from typing import Any, Callable, Dict, Mapping, Optional
 
+import hist
+import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
-import hist
 from particle_fm.data.components import calculate_all_wasserstein_metrics
 from particle_fm.schedulers.logging_scheduler import (
     custom1,
@@ -14,28 +16,26 @@ from particle_fm.schedulers.logging_scheduler import (
     epochs10000,
     nolog10000,
 )
+from particle_fm.utils.calo_challenge_utils import (
+    generate_data_calochallenge,
+    plotting_point_cloud,
+)
 from particle_fm.utils.data_generation import generate_data
 from particle_fm.utils.plotting import (
     apply_mpl_styles,
     plot_data,
     prepare_data_for_plotting,
 )
-from particle_fm.utils.calo_challenge_utils import (
-    generate_data_calochallenge,
-    plotting_point_cloud,
-)
 from particle_fm.utils.pylogger import get_pylogger
 
-import matplotlib.pyplot as plt
-import traceback
 from ..ema import EMA
 
 log = get_pylogger("CaloChallengeEvaluationCallback")
 
 
 class CaloChallengeEvaluationCallback(pl.Callback):
-    """Create a callback to evaluate the model on the test dataset of the CaloChallenge dataset and log
-    the results to loggers. Currently supported are CometLogger and WandbLogger.
+    """Create a callback to evaluate the model on the test dataset of the CaloChallenge dataset and
+    log the results to loggers. Currently supported are CometLogger and WandbLogger.
 
     Args:
         every_n_epochs (int, optional): Log every n epochs. Defaults to 10.

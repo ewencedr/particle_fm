@@ -133,15 +133,16 @@ Click on the dataset to get more information about the dataset, its features, an
   <summary>
     <b>CaloChallenge</b>
   </summary>
-  
-  - <b>Description:</b> ([dataset reference](https://calochallenge.github.io/homepage/))
 
-    - Dataset 2 from the CaloChallenge, where the data is represented as point clouds (see also [here](https://indico.cern.ch/event/1253794/contributions/5588648/attachments/2746383/4778888/AttentionToMeanFields_ml4jets.pdf))
-    - Thanks to [Benno Käch](https://github.com/kaechb) for providing the code for the data loader
+- <b>Description:</b> ([dataset reference](https://calochallenge.github.io/homepage/))
+
+  - Dataset 2 from the CaloChallenge, where the data is represented as point clouds (see also [here](https://indico.cern.ch/event/1253794/contributions/5588648/attachments/2746383/4778888/AttentionToMeanFields_ml4jets.pdf))
+  - Thanks to [Benno Käch](https://github.com/kaechb) for providing the code for the data loader
 
 - <b>Download and Preprocessing</b>:
 
   - The preprocessed data is currently only available from inside [DESY](https://www.desy.de/) but will be made available soon. The file paths in the data module already point to the correct paths for the data.
+
   </details>
   <details>
     <summary>
@@ -149,6 +150,7 @@ Click on the dataset to get more information about the dataset, its features, an
     </summary>
 
 - <b>Description:</b> ([dataset reference](https://lhco2020.github.io/homepage/))
+
   - Simple toy dataset for testing the models in the notebook. Does not need to be downloaded because the dataset can be generated via a [scikit-learn function](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_moons.html).
 
 </details>
@@ -274,6 +276,7 @@ Although not shown in the paper, the models can easily be trained on different c
   Additionally, other architectures can be used:
 
 - `fm_mdma`, which is an EPiC Flow Matching model trained on the top dataset with the MDMA architecture
+
   </details>
 
 <details>
@@ -300,21 +303,24 @@ Additionally, <b>classifiers</b> are available to check, if the generated events
 
 - `lhco/epic_classifier` point cloud classifier based on the EPiC architecture. Paths to data must be specified in the config file.
 - `lhco/hl_classifier` fully connected classifier as in [2109.00546](https://arxiv.org/abs/2109.00546) to compare high level features. Paths to data must be specified in the config file.
+
 </details>
 <details>
   <summary>
     <b>JetClass Dataset</b>
   </summary>
-  
-  - `jetclass/jetclass_cond` EPiC Flow Matching model trained on the JetClass dataset and conditioned
-  - `jetclass/jetclass_classifier` After evaluating the generative model, a classifier test can be run. For this, the paths to the generated data needs to be specified in the config file.
+
+- `jetclass/jetclass_cond` EPiC Flow Matching model trained on the JetClass dataset and conditioned
+- `jetclass/jetclass_classifier` After evaluating the generative model, a classifier test can be run. For this, the paths to the generated data needs to be specified in the config file.
+
 </details>
 <details>
   <summary>
     <b>CaloChallenge Dataset</b>
   </summary>
-  
-  - `calo_challenge/fm_mdma` Flow Matching model with MDMA architecture trained on the CaloChallenge dataset
+
+- `calo_challenge/fm_mdma` Flow Matching model with MDMA architecture trained on the CaloChallenge dataset
+
 </details>
 
 ## 🫱🏼‍🫲🏽 Contributing

@@ -9,9 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from sklearn.metrics import roc_auc_score, roc_curve
-
 from particle_fm.utils.pylogger import get_pylogger
+from sklearn.metrics import roc_auc_score, roc_curve
 
 from .ema import EMA
 

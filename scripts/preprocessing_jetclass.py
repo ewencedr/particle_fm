@@ -1,5 +1,6 @@
-"""script to preprocess the JetClass dataset based on the npz files created by
-prepare_dataset.py. See also the repository of the paper: https://github.com/uhh-pd-ml/beyond_kinematics
+"""Script to preprocess the JetClass dataset based on the npz files created by prepare_dataset.py.
+
+See also the repository of the paper: https://github.com/uhh-pd-ml/beyond_kinematics
 """
 
 import glob
@@ -9,9 +10,12 @@ import os
 import h5py
 import hydra
 from omegaconf import DictConfig, OmegaConf
-
 from particle_fm.preprocessing.plotting import plot_h5file
-from particle_fm.preprocessing.utils import calc_means_and_stds, merge_files, standardize_data
+from particle_fm.preprocessing.utils import (
+    calc_means_and_stds,
+    merge_files,
+    standardize_data,
+)
 
 logger = logging.getLogger("preprocessing")
 

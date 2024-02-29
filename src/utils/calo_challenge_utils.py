@@ -1,5 +1,5 @@
 import time
-import torch
+
 import matplotlib as mpl
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -7,8 +7,9 @@ import matplotlib.ticker as ticker
 import mplhep as hep
 import numpy as np
 import seaborn as sns
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import torch
 from matplotlib import patches
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 def generate_data_calochallenge(
@@ -267,7 +268,7 @@ class plotting_point_cloud:
         try:
             self.summary.log_image("inclusive", [fig], self.step)
             plt.close()
-        except:
+        except Exception:
             plt.show()
 
     def plot_scores(self, pred_real, pred_fake, train, step):

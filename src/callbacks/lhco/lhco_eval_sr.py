@@ -6,7 +6,6 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import wandb
-
 from particle_fm.callbacks.ema import EMA
 from particle_fm.data.components import calculate_all_wasserstein_metrics
 from particle_fm.schedulers.logging_scheduler import (
@@ -17,7 +16,11 @@ from particle_fm.schedulers.logging_scheduler import (
     nolog10000,
 )
 from particle_fm.utils.data_generation import generate_data
-from particle_fm.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
+from particle_fm.utils.plotting import (
+    apply_mpl_styles,
+    plot_data,
+    prepare_data_for_plotting,
+)
 from particle_fm.utils.pylogger import get_pylogger
 
 log = get_pylogger("JetNetEvaluationCallbackSR")

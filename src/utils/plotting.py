@@ -12,9 +12,6 @@ import torch
 from cycler import cycler
 from jetnet.utils import efps
 from matplotlib.gridspec import GridSpec
-from scipy.stats import wasserstein_distance as w_dist
-from tqdm import tqdm
-
 from particle_fm.data.components import (
     calculate_jet_features,
     count_parameters,
@@ -22,6 +19,8 @@ from particle_fm.data.components import (
     get_pt_of_selected_multiplicities,
     get_pt_of_selected_particles,
 )
+from scipy.stats import wasserstein_distance as w_dist
+from tqdm import tqdm
 
 from .data_generation import generate_data
 

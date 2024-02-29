@@ -11,13 +11,12 @@ from typing import Any, Dict, List, Optional
 
 import pytorch_lightning as pl
 import torch
+from particle_fm.utils.pylogger import get_pylogger
 from pytorch_lightning import Callback
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities import rank_zero_info, rank_zero_warn
 from pytorch_lightning.utilities.exceptions import MisconfigurationException
 from pytorch_lightning.utilities.types import STEP_OUTPUT
-
-from particle_fm.utils.pylogger import get_pylogger
 
 log = get_pylogger("EMA")
 

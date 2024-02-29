@@ -1,29 +1,31 @@
-import torch
-import numpy as np
-from torch.utils.data import Dataset, DataLoader, BatchSampler
-import pytorch_lightning as pl
-from torch.nn.utils.rnn import pad_sequence
-
-from sklearn.preprocessing import StandardScaler, PowerTransformer, MinMaxScaler
 import copy
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import PowerTransformer, StandardScaler, MinMaxScaler
-from torch.utils.data import Dataset
 from pathlib import Path
+
 import joblib
 import matplotlib.pyplot as plt
-
-from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
+import numpy as np
+import pytorch_lightning as pl
+import torch
 from scipy.stats import rv_continuous
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler, PowerTransformer, StandardScaler
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import (
+    BatchSampler,
+    DataLoader,
+    Dataset,
+    TensorDataset,
+    random_split,
+)
+
 from .components import (
-    ScalerBase,
     DQ,
-    LogitTransformer,
-    ScalerBaseNew,
     DQLinear,
     LogitTransformer,
+    ScalerBase,
+    ScalerBaseNew,
     SqrtTransformer,
 )
 
@@ -60,8 +62,7 @@ class BucketBatchSampler(BatchSampler):
             np.random.shuffle(batches)
         if self.drop_last or len(batches[-1]) == 0:
             batches = batches[:-1]
-        for batch in batches:
-            yield batch
+        yield from batches
 
     def __len__(self):
         if self.drop_last:
@@ -180,8 +181,7 @@ class BucketBatchSamplerMax(BatchSampler):
 
 class CaloChallengeDataloader(pl.LightningDataModule):
     """This is more or less standard boilerplate coded that builds the data loader of the training
-    one thing to note is the custom standard scaler that works on tensors
-    """
+    one thing to note is the custom standard scaler that works on tensors."""
 
     def __init__(self, name, batch_size, augmentation, max=False, **kwargs):
         self.name = name

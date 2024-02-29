@@ -4,11 +4,10 @@ from typing import Callable, List
 
 import hydra
 from omegaconf import DictConfig
+from particle_fm.utils import pylogger, rich_utils
 from pytorch_lightning import Callback
 from pytorch_lightning.loggers import Logger
 from pytorch_lightning.utilities import rank_zero_only
-
-from particle_fm.utils import pylogger, rich_utils
 
 log = pylogger.get_pylogger(__name__)
 

@@ -1,4 +1,7 @@
-"""script to load the JetClass dataset into numpy arrays and write to npz files. See also the repository of the paper: https://github.com/uhh-pd-ml/beyond_kinematics"""
+"""Script to load the JetClass dataset into numpy arrays and write to npz files.
+
+See also the repository of the paper: https://github.com/uhh-pd-ml/beyond_kinematics
+"""
 
 import glob
 import logging
@@ -9,9 +12,8 @@ import hydra
 import numpy as np
 import omegaconf
 from omegaconf import DictConfig, OmegaConf
-from tqdm import tqdm
-
 from particle_fm.preprocessing.utils import read_file
+from tqdm import tqdm
 
 logger = logging.getLogger("prepare_dataset")
 

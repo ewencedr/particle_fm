@@ -1,11 +1,10 @@
 from typing import Any, Dict, Tuple
 
 import torch
+from particle_fm.models.components.mlp import cathode_classifier
 from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification import AUROC, Accuracy
-
-from particle_fm.models.components.mlp import cathode_classifier
 
 
 class HLClassifierLitModule(LightningModule):

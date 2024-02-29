@@ -3,10 +3,9 @@ from typing import Any, Dict, Optional
 import numpy as np
 import torch
 from jetnet.datasets import JetNet
+from particle_fm.utils.pylogger import get_pylogger
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset
-
-from particle_fm.utils.pylogger import get_pylogger
 
 from .components import (
     center_jets,

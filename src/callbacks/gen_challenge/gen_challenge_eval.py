@@ -11,7 +11,6 @@ import pytorch_lightning as pl
 import torch
 import vector
 import wandb
-
 from particle_fm.callbacks.ema import EMA
 from particle_fm.data.components import inverse_normalize_tensor, normalize_tensor
 from particle_fm.data.components.metrics import (
@@ -27,7 +26,11 @@ from particle_fm.schedulers.logging_scheduler import (
 )
 from particle_fm.utils.data_generation import generate_data, generate_data_v2
 from particle_fm.utils.lhco_utils import plot_unprocessed_data_lhco, sort_by_pt
-from particle_fm.utils.plotting import apply_mpl_styles, plot_data, prepare_data_for_plotting
+from particle_fm.utils.plotting import (
+    apply_mpl_styles,
+    plot_data,
+    prepare_data_for_plotting,
+)
 from particle_fm.utils.pylogger import get_pylogger
 
 log = get_pylogger("LHCOEvaluationCallback")
