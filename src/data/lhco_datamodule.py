@@ -18,7 +18,7 @@ from .components import (
     one_hot_encode,
 )
 
-log = get_pylogger("JetNetDataModule")
+log = get_pylogger("LHCODataModule")
 
 
 class LHCODataModule(LightningDataModule):

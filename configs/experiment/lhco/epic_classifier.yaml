@@ -12,8 +12,6 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-
-
 tags: ["classifier", "LHCO", "EPiC"]
 
 seed: 12345
@@ -34,10 +32,8 @@ callbacks:
     mode: min
     verbose: true
 
-#data:
-  #gendatafile: "lhco-xy-10layer-256latent-logpt-new2m_sr-midpoint-300_shuffled"
-  #gendatafile: "lhco-xy-10layer-256latent-logpt-nnew_sr-midpoint-300"
-  #gendatafile: "FPCD_LHCO_SR_shuffled"
+data:
+  gendatafile: "add_name_of_gendatafile_here"
 
 task_name: "epic_classifier"
 

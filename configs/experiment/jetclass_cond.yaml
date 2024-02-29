@@ -27,13 +27,13 @@ trainer:
   gradient_clip_val: 0.5
 
 # setting load_weights_from will load the weights from the given checkpoint, but start training from scratch
-# load_weights_from: /beegfs/desy/user/birkjosc/epic-fm/logs/jetclass/runs/2023-08-24_15-36-42/checkpoints/epoch_160_loss_40.79013-EMA.ckpt
+# load_weights_from: XXX.ckpt
 
 model:
   num_particles: 128
   global_cond_dim: 12 # needs to be calculated when using conditioning (= number of jet types + additional conditioning variables)
   local_cond_dim: 0
-  features: 13  # = 3 + number of `additional_part_features` (see below)
+  features: 13 # = 3 + number of `additional_part_features` (see below)
   layers: 20 # default is 6
   hidden_dim: 300 # default is 128
   latent: 16 # default is 10
@@ -46,8 +46,8 @@ data:
   # preprocessing
   # list of the following: QCD, Hbb, Hcc, Hgg, H4q, Hqql, Zqq, Wqq, Tbqq, Tbl
   # used_jet_types: [Tbqq] # null means all jet types
-  number_of_used_jets: 3_000_000  # training jets
-  number_of_used_jets_val: 80_000  # validation jets
+  number_of_used_jets: 3_000_000 # training jets
+  number_of_used_jets_val: 80_000 # validation jets
   normalize: True
   normalize_sigma: 5
   # conditioning
@@ -57,7 +57,7 @@ data:
   conditioning_mass: False
   conditioning_num_particles: False
   conditioning_jet_type: True
-  conditioning_jet_type_all: True  # if true, all jet types are used for conditioning even if trained on only some of them (see `used_jet_types` above)
+  conditioning_jet_type_all: True # if true, all jet types are used for conditioning even if trained on only some of them (see `used_jet_types` above)
   additional_part_features:
     - part_d0val
     - part_d0err

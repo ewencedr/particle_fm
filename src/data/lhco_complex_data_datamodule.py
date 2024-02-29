@@ -474,4 +474,4 @@ class LHCOComplexDataDataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = LHCOBruteforceDataModule()
+    _ = LHCOComplexDataDataModule()
