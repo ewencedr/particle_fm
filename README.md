@@ -1,7 +1,5 @@
 <div align="center">
 
-
-
 # Particle Flow Matching
 
 Easily train and evaluate multiple generative models on various particle physics datasets
@@ -31,8 +29,6 @@ This repository contains code for the following papers as well as additional mod
 - [EPiC-ly Fast Particle Cloud Generation with Flow-Matching and Diffusion](https://arxiv.org/abs/2310.00049); Erik Buhmann, Cedric Ewen, Darius A. Faroughy, Tobias Golling, Gregor Kasieczka, Matthew Leigh, Guillaume Quétant, John Andrew Raine, Debajyoti Sengupta, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/EPiC-FM)
 - [Full Phase Space Resonant Anomaly Detection](https://arxiv.org/abs/2310.06897); Erik Buhmann, Cedric Ewen, Gregor Kasieczka, Vinicius Mikuni, Benjamin Nachman, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/LHCO_EPiC-FM)
 - [Flow Matching Beyond Kinematics: Generating Jets with Particle-ID and Trajectory Displacement Information](https://arxiv.org/abs/2312.00123); Joschka Birk, Erik Buhmann, Cedric Ewen, Gregor Kasieczka, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/beyond_kinematics)
-
-
 
 ## 🤖 Models
 
@@ -171,12 +167,28 @@ Click on the dataset to get more information about the dataset, its features, an
 
 ### ⚙️ Installation
 
+#### Option 1: Install via pip
+
+If you want to use some modules, you can install the package via pip like so:
+
+```bash
+pip install git+git://github.com/ewencedr/particle_fm.git --upgrade
+```
+
+This allows to access the modules like:
+
+```python
+from particle_fm.data.jetnet_datamodule import JetNetDataModule
+```
+
+#### Option 2: Install from source
+
 Install dependencies
 
 ```bash
 # clone project
-git clone https://github.com/YourGithubName/your-repo-name
-cd your-repo-name
+git clone https://github.com/ewencedr/particle_fm
+cd particle_fm
 
 # [OPTIONAL] create conda environment
 conda create -n myenv python=3.10
@@ -204,22 +216,22 @@ Train model with default configuration
 
 ```bash
 # train on one GPU
-python src/train.py trainer=gpu
+python particle_fm/train.py trainer=gpu
 
 # train on multiple GPUs
-python src/train.py trainer=ddp
+python particle_fm/train.py trainer=ddp
 ```
 
 Train model with chosen experiment configuration from [configs/experiment/](configs/experiment/)
 
 ```bash
-python src/train.py experiment=experiment_name.yaml
+python particle_fm/train.py experiment=experiment_name.yaml
 ```
 
 You can override any parameter from the command line like this
 
 ```bash
-python src/train.py trainer.max_epochs=20 data.batch_size=64
+python particle_fm/train.py trainer.max_epochs=20 data.batch_size=64
 ```
 
 ### 📈 Evaluation
@@ -227,13 +239,13 @@ python src/train.py trainer.max_epochs=20 data.batch_size=64
 During training and evaluation, metrics and plots are automatically evaluated via custom lightning callbacks and logged via comet and wandb. After training most models will also be evaluated automatically and the final results will be saved locally and logged via the selected loggers. The evaluation can also be manually started like this
 
 ```bash
-python src/eval.py experiment=experiment_name.yaml ckpt_path=checkpoint_path
+python particle_fm/eval.py experiment=experiment_name.yaml ckpt_path=checkpoint_path
 ```
 
 You can also specify the config file that was saved at the beginning of the training
 
 ```bash
-python src/eval.py cfg_path=<cfg_file_path> ckpt_path=<checkpoint_path>
+python particle_fm/eval.py cfg_path=<cfg_file_path> ckpt_path=<checkpoint_path>
 ```
 
 Notebooks are available to quickly train, evaluate models and create plots.
