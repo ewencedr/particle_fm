@@ -648,6 +648,7 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         mask: torch.Tensor = None,
         ode_solver: str = "midpoint",
         ode_steps: int = 100,
+        num_points: int = None,
     ):
         """Generate Samples.
 
@@ -656,11 +657,12 @@ class SetFlowMatchingLitModule(pl.LightningModule):
             cond (torch.Tensor, optional): Data on which the model is conditioned. Defaults to None.
             mask (torch.Tensor, optional): Mask for data generation. Defaults to None.
             ode_solver (str, optional): ODE solver to use. Defaults to "dopri5_zuko".
+            num_points (int, optional): Number of points that can be used if num_particles is not constant. Defaults to None.
 
         Returns:
             torch.Tensor: Generated samples
         """
-        z = torch.randn(n_samples, self.hparams.num_particles, self.hparams.features).to(
+        z = torch.randn(n_samples, num_points if num_points else self.hparams.num_particles, self.hparams.features).to(
             self.device
         )
         if cond is not None:
