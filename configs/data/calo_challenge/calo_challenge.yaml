@@ -1,4 +1,4 @@
-_target_: src.data.calo_challenge_datamodule.CaloChallengeDataloader
+_target_: particle_fm.data.calo_challenge_datamodule.CaloChallengeDataloader
 name: "middle_new_linear"
 batch_size: 64
 max: False

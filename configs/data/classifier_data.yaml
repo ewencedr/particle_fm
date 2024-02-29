@@ -1,4 +1,4 @@
-_target_: src.data.classifier_datamodule.ClassifierDataModule
+_target_: particle_fm.data.classifier_datamodule.ClassifierDataModule
 data_dir: ${paths.data_dir}
 gendatafile: "idealized_LHCO"
 batch_size: 128

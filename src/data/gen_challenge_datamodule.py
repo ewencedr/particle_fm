@@ -9,8 +9,8 @@ from sklearn import preprocessing
 from sklearn.pipeline import make_pipeline
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
-from src.utils.preprocessing import LogitScaler
-from src.utils.pylogger import get_pylogger
+from particle_fm.utils.preprocessing import LogitScaler
+from particle_fm.utils.pylogger import get_pylogger
 
 from .components import normalize_tensor
 

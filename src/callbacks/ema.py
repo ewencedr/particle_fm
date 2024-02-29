@@ -17,7 +17,7 @@ from pytorch_lightning.utilities import rank_zero_info, rank_zero_warn
 from pytorch_lightning.utilities.exceptions import MisconfigurationException
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 
-from src.utils.pylogger import get_pylogger
+from particle_fm.utils.pylogger import get_pylogger
 
 log = get_pylogger("EMA")
 

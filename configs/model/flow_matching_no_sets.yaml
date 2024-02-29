@@ -1,4 +1,4 @@
-_target_: src.models.flow_matching_no_sets.FLowMatchingNoSetsLitModule
+_target_: particle_fm.models.flow_matching_no_sets.FLowMatchingNoSetsLitModule
 
 optimizer:
   _target_: torch.optim.AdamW

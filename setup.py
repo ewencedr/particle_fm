@@ -6,7 +6,7 @@ with open("README", "r") as f:
     readme = f.read()
 
 setup(
-    name="src",
+    name="particle_fm",
     version="1.0.0",
     description="Easily train and evaluate multiple generative models on various particle physics datasets",
     author="Cedric Ewen",

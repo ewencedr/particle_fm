@@ -1,5 +1,5 @@
-from src.utils.data_generation import generate_data
-from src.utils.plotting import (
+from particle_fm.utils.data_generation import generate_data
+from particle_fm.utils.plotting import (
     apply_mpl_styles,
     create_and_plot_data,
     do_timing_plots,
@@ -7,9 +7,9 @@ from src.utils.plotting import (
     plot_loss_curves,
     plot_single_jets,
 )
-from src.utils.pylogger import get_pylogger
-from src.utils.rich_utils import enforce_tags, print_config_tree
-from src.utils.utils import (
+from particle_fm.utils.pylogger import get_pylogger
+from particle_fm.utils.rich_utils import enforce_tags, print_config_tree
+from particle_fm.utils.utils import (
     close_loggers,
     extras,
     get_metric_value,

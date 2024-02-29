@@ -1,6 +1,6 @@
 # Average moving average of weights
 ema:
-  _target_: src.callbacks.ema.EMA
+  _target_: particle_fm.callbacks.ema.EMA
   decay: 0.9999
   apply_ema_every_n_steps: 1
   start_step: 0

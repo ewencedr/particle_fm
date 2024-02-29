@@ -1,4 +1,5 @@
 """Callback for evaluating the model on the JetClass dataset."""
+
 import os
 import time
 import warnings
@@ -10,18 +11,18 @@ import pytorch_lightning as pl
 import torch
 import wandb
 
-from src.data.components import calculate_all_wasserstein_metrics
-from src.data.components.metrics import wasserstein_distance_batched
-from src.schedulers.logging_scheduler import (
+from particle_fm.data.components import calculate_all_wasserstein_metrics
+from particle_fm.data.components.metrics import wasserstein_distance_batched
+from particle_fm.schedulers.logging_scheduler import (
     custom1,
     custom5000epochs,
     custom10000epochs,
     epochs10000,
     nolog10000,
 )
-from src.utils.data_generation import generate_data
-from src.utils.jet_substructure import dump_hlvs
-from src.utils.plotting import (
+from particle_fm.utils.data_generation import generate_data
+from particle_fm.utils.jet_substructure import dump_hlvs
+from particle_fm.utils.plotting import (
     apply_mpl_styles,
     plot_data,
     plot_full_substructure,
@@ -29,7 +30,7 @@ from src.utils.plotting import (
     plot_substructure,
     prepare_data_for_plotting,
 )
-from src.utils.pylogger import get_pylogger
+from particle_fm.utils.pylogger import get_pylogger
 
 from .ema import EMA
 

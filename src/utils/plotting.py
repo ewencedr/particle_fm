@@ -1,4 +1,5 @@
 """Plots for analysing generated data."""
+
 # TODO add docstrings
 # TODO add comments
 # TODO add type hints
@@ -14,7 +15,7 @@ from matplotlib.gridspec import GridSpec
 from scipy.stats import wasserstein_distance as w_dist
 from tqdm import tqdm
 
-from src.data.components import (
+from particle_fm.data.components import (
     calculate_jet_features,
     count_parameters,
     get_metrics_data,

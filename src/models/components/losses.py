@@ -7,8 +7,8 @@ import ot as pot
 import torch
 import torch.nn as nn
 
-from src.models.components.diffusion import VPDiffusionSchedule
-from src.utils.pylogger import get_pylogger
+from particle_fm.models.components.diffusion import VPDiffusionSchedule
+from particle_fm.utils.pylogger import get_pylogger
 
 logger_loss = get_pylogger("loss")
 

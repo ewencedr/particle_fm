@@ -6,22 +6,25 @@ import pytorch_lightning as pl
 import torch
 import wandb
 import hist
-from src.data.components import calculate_all_wasserstein_metrics
-from src.schedulers.logging_scheduler import (
+from particle_fm.data.components import calculate_all_wasserstein_metrics
+from particle_fm.schedulers.logging_scheduler import (
     custom1,
     custom5000epochs,
     custom10000epochs,
     epochs10000,
     nolog10000,
 )
-from src.utils.data_generation import generate_data
-from src.utils.plotting import (
+from particle_fm.utils.data_generation import generate_data
+from particle_fm.utils.plotting import (
     apply_mpl_styles,
     plot_data,
     prepare_data_for_plotting,
 )
-from src.utils.calo_challenge_utils import generate_data_calochallenge, plotting_point_cloud
-from src.utils.pylogger import get_pylogger
+from particle_fm.utils.calo_challenge_utils import (
+    generate_data_calochallenge,
+    plotting_point_cloud,
+)
+from particle_fm.utils.pylogger import get_pylogger
 
 import matplotlib.pyplot as plt
 import traceback

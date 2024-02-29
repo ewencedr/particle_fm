@@ -1,4 +1,4 @@
-_target_: src.data.lhco_datamodule.LHCODataModule
+_target_: particle_fm.data.lhco_datamodule.LHCODataModule
 data_dir: ${paths.data_dir}
 batch_size: 1024
 num_workers: 32

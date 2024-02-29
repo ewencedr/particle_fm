@@ -1,4 +1,4 @@
-_target_: src.data.jetnet_datamodule.JetNetDataModule
+_target_: particle_fm.data.jetnet_datamodule.JetNetDataModule
 data_dir: ${paths.data_dir}
 batch_size: 256
 num_workers: 32

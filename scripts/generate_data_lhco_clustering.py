@@ -1,5 +1,4 @@
-""" This script generates data from the EPiC-FM model trained on the LHCO dataset when using a model that required clustering of the data after generation."""
-
+"""This script generates data from the EPiC-FM model trained on the LHCO dataset when using a model that required clustering of the data after generation."""
 
 import os
 import sys
@@ -21,16 +20,16 @@ import torch
 from omegaconf import OmegaConf
 from sklearn.neighbors import KernelDensity
 
-from src.data.components import (
+from particle_fm.data.components import (
     calculate_all_wasserstein_metrics,
     inverse_normalize_tensor,
     normalize_tensor,
 )
-from src.data.components.metrics import wasserstein_distance_batched
-from src.utils.data_generation import generate_data
-from src.utils.jet_substructure import dump_hlvs
-from src.utils.lhco_utils import cluster_data
-from src.utils.plotting import (
+from particle_fm.data.components.metrics import wasserstein_distance_batched
+from particle_fm.utils.data_generation import generate_data
+from particle_fm.utils.jet_substructure import dump_hlvs
+from particle_fm.utils.lhco_utils import cluster_data
+from particle_fm.utils.plotting import (
     apply_mpl_styles,
     plot_data,
     plot_full_substructure,

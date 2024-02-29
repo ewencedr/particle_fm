@@ -11,7 +11,7 @@ import omegaconf
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from src.preprocessing.utils import read_file
+from particle_fm.preprocessing.utils import read_file
 
 logger = logging.getLogger("prepare_dataset")
 

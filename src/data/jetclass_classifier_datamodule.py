@@ -10,7 +10,7 @@ import vector
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
-from src.utils.pylogger import get_pylogger
+from particle_fm.utils.pylogger import get_pylogger
 
 logger = get_pylogger(__name__)
 

@@ -1,4 +1,4 @@
-_target_: src.models.jetclass_classifiers.EPiCClassifierLitModule
+_target_: particle_fm.models.jetclass_classifiers.EPiCClassifierLitModule
 
 optimizer:
   _target_: torch.optim.AdamW
@@ -11,7 +11,6 @@ scheduler:
   _partial_: true
   #warmup: 1000
   #max_iters: 10000
-
 
 net_config:
   input_dim: 7

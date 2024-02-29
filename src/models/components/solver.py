@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 import torch
 from tqdm import tqdm
 
-from src.models.components.diffusion import VPDiffusionSchedule
+from particle_fm.models.components.diffusion import VPDiffusionSchedule
 
 
 def ddim_predict(

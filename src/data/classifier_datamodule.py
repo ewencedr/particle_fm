@@ -7,8 +7,8 @@ import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 
-from src.data.components import normalize_tensor
-from src.data.components.utils import (
+from particle_fm.data.components import normalize_tensor
+from particle_fm.data.components.utils import (
     get_jet_data,
     get_mjj,
     get_nonrel_consts,

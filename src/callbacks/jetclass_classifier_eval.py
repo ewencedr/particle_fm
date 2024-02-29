@@ -1,4 +1,5 @@
 """Callback for evaluating the classifier on the JetClass dataset."""
+
 import os
 from typing import Callable
 
@@ -10,7 +11,7 @@ import pytorch_lightning as pl
 import torch
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from src.utils.pylogger import get_pylogger
+from particle_fm.utils.pylogger import get_pylogger
 
 from .ema import EMA
 

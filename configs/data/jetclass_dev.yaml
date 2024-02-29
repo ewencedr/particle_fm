@@ -1,4 +1,4 @@
-_target_: src.data.jetclass_datamodule.JetClassDataModule
+_target_: particle_fm.data.jetclass_datamodule.JetClassDataModule
 
 # general parameters
 batch_size: 1024

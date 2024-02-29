@@ -6,7 +6,7 @@ import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 
-from src.data.components import normalize_tensor
+from particle_fm.data.components import normalize_tensor
 
 
 class HLClassifierDataModule(LightningDataModule):

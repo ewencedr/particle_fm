@@ -1,4 +1,5 @@
 """PyTorch Lightning DataModule for JetClass dataset."""
+
 import os
 from typing import Any, Dict, Optional
 
@@ -8,7 +9,7 @@ import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
-from src.utils.pylogger import get_pylogger
+from particle_fm.utils.pylogger import get_pylogger
 
 from .components import one_hot_encode
 

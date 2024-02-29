@@ -1,6 +1,6 @@
 # Generate data, calculate plots and metrics and log them to the logger
 lhco_eval:
-  _target_: src.callbacks.lhco.lhco_eval.JetNetEvaluationCallback
+  _target_: particle_fm.callbacks.lhco.lhco_eval.JetNetEvaluationCallback
   every_n_epochs: 100 # evaluate every n epochs
   num_jet_samples: -1 # jet samples to generate
   image_path: ${paths.log_dir}callback_logs/

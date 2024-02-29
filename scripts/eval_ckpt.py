@@ -1,6 +1,6 @@
 """Script to evaluate a checkpoint and generate plots and metrics.
 
-Usage: python src/eval_ckpt.py --ckpt <path_to_ckpt> --n_samples <int>
+Usage: python particle_fm/eval_ckpt.py --ckpt <path_to_ckpt> --n_samples <int>
 """
 import argparse
 import logging
@@ -27,16 +27,16 @@ from jetnet.evaluation import w1p
 # set env variable DATA_DIR again because of hydra
 from omegaconf import OmegaConf
 
-from src.data.components import calculate_all_wasserstein_metrics
-from src.data.components.metrics import (
+from particle_fm.data.components import calculate_all_wasserstein_metrics
+from particle_fm.data.components.metrics import (
     reversed_kl_divergence_batched,
     wasserstein_distance_batched,
 )
 
-# from src.data.components.utils import calculate_jet_features
-from src.utils.data_generation import generate_data
-from src.utils.jet_substructure import calc_substructure  # , dump_hlvs
-from src.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; plot_data,
+# from particle_fm.data.components.utils import calculate_jet_features
+from particle_fm.utils.data_generation import generate_data
+from particle_fm.utils.jet_substructure import calc_substructure  # , dump_hlvs
+from particle_fm.utils.plotting import (  # create_and_plot_data,; plot_single_jets,; plot_data,
     apply_mpl_styles,
     plot_full_substructure,
     plot_jet_features,

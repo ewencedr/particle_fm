@@ -8,7 +8,7 @@ from pytorch_lightning import Callback
 from pytorch_lightning.loggers import Logger
 from pytorch_lightning.utilities import rank_zero_only
 
-from src.utils import pylogger, rich_utils
+from particle_fm.utils import pylogger, rich_utils
 
 log = pylogger.get_pylogger(__name__)
 
@@ -100,9 +100,10 @@ def instantiate_callbacks(callbacks_cfg: DictConfig, ckpt_path: str = None) -> L
         if isinstance(cb_conf, DictConfig) and "_target_" in cb_conf:
             log.info(f"Instantiating callback <{cb_conf._target_}>")
             if (
-                cb_conf._target_ == "src.callbacks.jetnet_final_eval.JetNetFinalEvaluationCallback"
+                cb_conf._target_
+                == "particle_fm.callbacks.jetnet_final_eval.JetNetFinalEvaluationCallback"
                 or cb_conf._target_
-                == "src.callbacks.jetclass_eval_test.JetClassTestEvaluationCallback"
+                == "particle_fm.callbacks.jetclass_eval_test.JetClassTestEvaluationCallback"
             ):
                 cb_conf.ckpt_path = ckpt_path
             callbacks.append(hydra.utils.instantiate(cb_conf))

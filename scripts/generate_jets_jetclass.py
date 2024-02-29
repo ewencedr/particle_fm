@@ -4,9 +4,10 @@ Flow Matching Beyond Kinematics: Generating Jets with Particle-ID
          and Trajectory Displacement Information
 
       arXiv: https://arxiv.org/abs/2312.00123
-      
+
 see also the repository of the paper: https://github.com/uhh-pd-ml/beyond_kinematics
 """
+
 import argparse
 import logging
 import subprocess  # nosec
@@ -24,8 +25,8 @@ from omegaconf import DictConfig, OmegaConf
 
 sys.path.append("../../EPiC-FM")
 
-from src.models.flow_matching_module import SetFlowMatchingLitModule
-from src.utils.data_generation import generate_data
+from particle_fm.models.flow_matching_module import SetFlowMatchingLitModule
+from particle_fm.utils.data_generation import generate_data
 
 vector.register_awkward()
 import os

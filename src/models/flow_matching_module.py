@@ -9,8 +9,8 @@ from torch.distributions import Normal
 from torchdyn.core import NeuralODE
 from zuko.utils import odeint
 
-from src.models.components.diffusion import VPDiffusionSchedule
-from src.utils.pylogger import get_pylogger
+from particle_fm.models.components.diffusion import VPDiffusionSchedule
+from particle_fm.utils.pylogger import get_pylogger
 
 from .components import EPiC_encoder, IterativeNormLayer, MDMA
 from .components.droid_transformer import (
@@ -662,9 +662,11 @@ class SetFlowMatchingLitModule(pl.LightningModule):
         Returns:
             torch.Tensor: Generated samples
         """
-        z = torch.randn(n_samples, num_points if num_points else self.hparams.num_particles, self.hparams.features).to(
-            self.device
-        )
+        z = torch.randn(
+            n_samples,
+            num_points if num_points else self.hparams.num_particles,
+            self.hparams.features,
+        ).to(self.device)
         if cond is not None:
             cond = cond.to(self.device)
             if self.hparams.use_normaliser:

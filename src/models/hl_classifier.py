@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification import AUROC, Accuracy
 
-from src.models.components.mlp import cathode_classifier
+from particle_fm.models.components.mlp import cathode_classifier
 
 
 class HLClassifierLitModule(LightningModule):

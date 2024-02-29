@@ -1,6 +1,6 @@
 # Evaluate the final model on the test set for the JetNet dataset
 jetclass_eval_test:
-  _target_: src.callbacks.jetclass_eval_test.JetClassTestEvaluationCallback
+  _target_: particle_fm.callbacks.jetclass_eval_test.JetClassTestEvaluationCallback
   use_ema: true
   dataset: "test"
   nr_checkpoint_callbacks: 0

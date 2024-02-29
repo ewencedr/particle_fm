@@ -8,7 +8,7 @@ import numpy.ma as ma
 import torch
 from tqdm import tqdm
 
-from src.data.components.utils import inverse_normalize_tensor
+from particle_fm.data.components.utils import inverse_normalize_tensor
 
 # TODO put ODE solver in config dict
 # TODO create pre-processing class for data
