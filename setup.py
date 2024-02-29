@@ -2,13 +2,17 @@
 
 from setuptools import find_packages, setup
 
+with open("README", "r") as f:
+    readme = f.read()
+
 setup(
     name="src",
-    version="0.0.1",
-    description="Describe Your Cool Project",
-    author="",
-    author_email="",
-    url="https://github.com/user/project",  # REPLACE WITH YOUR OWN GITHUB PROJECT LINK
-    install_requires=["pytorch-lightning", "hydra-core"],
+    version="1.0.0",
+    description="Easily train and evaluate multiple generative models on various particle physics datasets",
+    author="Cedric Ewen",
+    author_email="chessdric@gmail.com",
+    url="https://github.com/ewencedr/Particle-FM",
+    long_description=readme,
+    install_requires=["lightning", "hydra-core"],
     packages=find_packages(),
 )
