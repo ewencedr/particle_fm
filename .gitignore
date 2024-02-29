@@ -4,7 +4,7 @@ logs/
 *.pdf
 *.png
 outputs
-.hydra
+.hydra/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
