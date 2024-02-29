@@ -1,3 +1,6 @@
+""" This script generates data from the EPiC-FM model trained on the LHCO dataset when using a model that required clustering of the data after generation."""
+
+
 import os
 import sys
 
