@@ -1,5 +1,7 @@
 <div align="center">
 
+
+
 # Particle Flow Matching
 
 Easily train and evaluate multiple generative models on various particle physics datasets
@@ -16,6 +18,8 @@ Easily train and evaluate multiple generative models on various particle physics
 [![arxiv](http://img.shields.io/badge/arXiv-2310.06897-B31B1B.svg)](https://arxiv.org/abs/2310.06897)
 [![Paper](http://img.shields.io/badge/arxiv-2312.00123-B31B1B.svg)](https://arxiv.org/abs/2312.00123)
 
+<img src="https://github.com/ewencedr/Particle-FM/blob/main/assets/self-cond_CFM_two_moons.gif" width="35%" height="35%"/>
+
 </div>
 
 ## ℹ️ Description
@@ -27,6 +31,8 @@ This repository contains code for the following papers as well as additional mod
 - [EPiC-ly Fast Particle Cloud Generation with Flow-Matching and Diffusion](https://arxiv.org/abs/2310.00049); Erik Buhmann, Cedric Ewen, Darius A. Faroughy, Tobias Golling, Gregor Kasieczka, Matthew Leigh, Guillaume Quétant, John Andrew Raine, Debajyoti Sengupta, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/EPiC-FM)
 - [Full Phase Space Resonant Anomaly Detection](https://arxiv.org/abs/2310.06897); Erik Buhmann, Cedric Ewen, Gregor Kasieczka, Vinicius Mikuni, Benjamin Nachman, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/LHCO_EPiC-FM)
 - [Flow Matching Beyond Kinematics: Generating Jets with Particle-ID and Trajectory Displacement Information](https://arxiv.org/abs/2312.00123); Joschka Birk, Erik Buhmann, Cedric Ewen, Gregor Kasieczka, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/beyond_kinematics)
+
+
 
 ## 🤖 Models
 
