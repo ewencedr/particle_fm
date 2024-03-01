@@ -529,7 +529,7 @@ def plot_data(
             )
             if plot_w_dists:
                 ax7.annotate(
-                    f"W-Dist: {np.round(w_dist_m,5)}",
+                    f"W-Dist: {np.round(w_dist_m, 5)}",
                     xy=(0.5, 0),
                     xycoords="axes fraction",
                     size=10,

@@ -340,7 +340,7 @@ class JetNetDataModule(LightningDataModule):
                 log.info(f"Data of jet types {self.hparams.jet_type} loaded.")
                 log.info(
                     "Conditioning on"
-                    f" {tensor_conditioning_train.shape[-1] if len(tensor_conditioning_train.shape)==2 else 0} variables,"
+                    f" {tensor_conditioning_train.shape[-1] if len(tensor_conditioning_train.shape) == 2 else 0} variables,"
                     " consisting of jet_type:"
                     f" {len(self.hparams.jet_type) if self.hparams.conditioning_type else 0}, pt:"
                     f" {1 if self.hparams.conditioning_pt else 0}, eta:"

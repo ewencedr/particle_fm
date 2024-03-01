@@ -46,20 +46,20 @@ repos:
         args: [--in-place, --wrap-summaries=99, --wrap-descriptions=99]
 
   # python docstring coverage checking
-  - repo: https://github.com/econchick/interrogate
-    rev: 1.5.0 # or master if you're bold
-    hooks:
-      - id: interrogate
-        args:
-          [
-            --verbose,
-            --fail-under=0, # fail if coverage is less than 0% - change as needed
-            --ignore-init-module,
-            --ignore-init-method,
-            --ignore-module,
-            --ignore-nested-functions,
-            -vv,
-          ]
+  #- repo: https://github.com/econchick/interrogate
+  #  rev: 1.5.0 # or master if you're bold
+  #  hooks:
+  #    - id: interrogate
+  #      args:
+  #        [
+  #          --verbose,
+  #          --fail-under=0, # fail if coverage is less than 0% - change as needed
+  #          --ignore-init-module,
+  #          --ignore-init-method,
+  #          --ignore-module,
+  #          --ignore-nested-functions,
+  #          -vv,
+  #        ]
 
   # python check (PEP8), programming errors and code complexity
   - repo: https://github.com/PyCQA/flake8
