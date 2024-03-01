@@ -26,7 +26,6 @@ from .components.losses import (
 )
 from .components.solver import ddim_sampler, euler_maruyama_sampler
 from .components.time_emb import CosineEncoding, GaussianFourierProjection
-from .components.transformer import Transformer
 
 logger = get_pylogger("fm_module")
 
@@ -145,11 +144,6 @@ class CNF(nn.Module):
                 "sum_scale": sum_scale,
             }
             self.net = EPiC_encoder(
-                **net_config,
-            )
-        elif model == "transformer":
-            self.net = Transformer(
-                input_dim=input_dim,
                 **net_config,
             )
         elif model == "droid_fulltransformer":
