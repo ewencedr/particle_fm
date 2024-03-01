@@ -1,6 +1,6 @@
 <div align="center">
 
-# Particle Flow Matching
+# Particle-FM: Flow Matching for Particle Physics
 
 Easily train and evaluate multiple generative models on various particle physics datasets
 
@@ -149,7 +149,7 @@ Click on the dataset to get more information about the dataset, its features, an
       <b>TwoMoons</b>
     </summary>
 
-- <b>Description:</b> ([dataset reference](https://lhco2020.github.io/homepage/))
+  - <b>Description:</b> ([dataset reference](https://lhco2020.github.io/homepage/))
 
   - Simple toy dataset for testing the models in the notebook. Does not need to be downloaded because the dataset can be generated via a [scikit-learn function](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_moons.html).
 
