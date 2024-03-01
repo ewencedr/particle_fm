@@ -10,6 +10,7 @@ import os
 import h5py
 import hydra
 from omegaconf import DictConfig, OmegaConf
+
 from particle_fm.preprocessing.plotting import plot_h5file
 from particle_fm.preprocessing.utils import (
     calc_means_and_stds,

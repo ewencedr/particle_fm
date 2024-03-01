@@ -12,8 +12,9 @@ import hydra
 import numpy as np
 import omegaconf
 from omegaconf import DictConfig, OmegaConf
-from particle_fm.preprocessing.utils import read_file
 from tqdm import tqdm
+
+from particle_fm.preprocessing.utils import read_file
 
 logger = logging.getLogger("prepare_dataset")
 

@@ -21,6 +21,8 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
+from sklearn.neighbors import KernelDensity
+
 from particle_fm.data.components import (
     calculate_all_wasserstein_metrics,
     inverse_normalize_tensor,
@@ -36,7 +38,6 @@ from particle_fm.utils.plotting import (
     plot_substructure,
     prepare_data_for_plotting,
 )
-from sklearn.neighbors import KernelDensity
 
 apply_mpl_styles()
 

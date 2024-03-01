@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 import torch
+
 from particle_fm.data.mnist_datamodule import MNISTDataModule
 
 
