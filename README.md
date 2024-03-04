@@ -141,7 +141,8 @@ Click on the dataset to get more information about the dataset, its features, an
 
 - <b>Download and Preprocessing</b>:
 
-  - The preprocessed data is currently only available from inside [DESY](https://www.desy.de/) but will be made available soon. The file paths in the data module already point to the correct paths for the data.
+  - The data can be downloaded from [Zenodo](https://zenodo.org/records/6366271) and can be preprocessed with the Python script `scripts/preprocessing_calo_challenge.py`. Note, that the file paths in the script need to be adjusted to the correct paths.
+  - The file paths in the data module also need to be adjusted to the correct paths. Inside the [DESY](https://www.desy.de/) network, the default paths are also accessible and can be used, so that the data does not need to be downloaded.
 
   </details>
   <details>
