@@ -24,7 +24,7 @@ Easily train and evaluate multiple generative models on various particle physics
 
 [Flow Matching](https://arxiv.org/abs/2210.02747) (FM) combines different generative models under one framework (e.g. diffusion, score-based models, continuous normalizing flows) and allows for easy comparison of these models. This repository contains multiple (mostly) generative neural networks combined under the FM framework and multiple point cloud datasets from particle physics. With this repository, you can easily train and evaluate multiple models on various datasets.
 
-This repository contains code for the following papers as well as additional models and datasets. For the code repository that only contains the code for the papers, please refer to the repositories linked in the papers.
+This repository contains code for the following papers as well as additional models and datasets. For the code repositories that only contains the code for the papers, please refer to the repositories linked in the papers.
 
 - [EPiC-ly Fast Particle Cloud Generation with Flow-Matching and Diffusion](https://arxiv.org/abs/2310.00049); Erik Buhmann, Cedric Ewen, Darius A. Faroughy, Tobias Golling, Gregor Kasieczka, Matthew Leigh, Guillaume Quétant, John Andrew Raine, Debajyoti Sengupta, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/EPiC-FM)
 - [Full Phase Space Resonant Anomaly Detection](https://arxiv.org/abs/2310.06897); Erik Buhmann, Cedric Ewen, Gregor Kasieczka, Vinicius Mikuni, Benjamin Nachman, David Shih; 2023; [Code](https://github.com/uhh-pd-ml/LHCO_EPiC-FM)
